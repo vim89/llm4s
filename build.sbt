@@ -2,14 +2,14 @@ import Dependencies._
 
 ThisBuild / scalaVersion     := "2.13.12"
 ThisBuild / version          := "0.1.0-SNAPSHOT"
-ThisBuild / organization     := "com.example"
-ThisBuild / organizationName := "example"
+ThisBuild / organization     := "org.llm4s"
+ThisBuild / organizationName := "llm4s"
 
 lazy val root = (project in file("."))
   .settings(
-    name := "Agent4S",
+    name := "llm4s",
     libraryDependencies ++= List(
-      "com.azure" % "azure-ai-openai" % "1.0.0-beta.13",
+      "com.azure" % "azure-ai-openai" % "1.0.0-beta.14",
       munit       % Test
     )
   )
