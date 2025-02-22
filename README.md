@@ -17,9 +17,13 @@ This we want to implement (and the equivalent python frameworks):
 * An agentic framework (PydanticAI, CrewAI etc)
 
 
+## Project Structure
+ * llm4s - main project - contains the core LLM4S framework
+ * shared - shared code between main project and workspace runner
+ * workspace-runner - The code that performs the requested actions on the code workspace within the docker container.
 
 
-# Random Todos
+## Random Todos
 
 
  - [ ] Add a tiktoken port 

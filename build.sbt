@@ -6,6 +6,7 @@ ThisBuild / organization     := "org.llm4s"
 ThisBuild / organizationName := "llm4s"
 
 lazy val root = (project in file("."))
+  .dependsOn(shared)
   .settings(
     name := "llm4s",
     libraryDependencies ++= List(
@@ -14,4 +15,19 @@ lazy val root = (project in file("."))
     )
   )
 
-// See https://www.scala-sbt.org/1.x/docs/Using-Sonatype.html for instructions on how to publish to Sonatype.
+lazy val shared = (project in file("shared"))
+  .settings(
+    name := "shared",
+    libraryDependencies ++= List(
+      "com.lihaoyi" %% "upickle" % "4.1.0"
+    )
+  )
+
+lazy val workspaceRunner = (project in file("workspaceRunner"))
+  .dependsOn(shared)
+  .settings(
+    name := "workspace-runner",
+    libraryDependencies ++= List(
+      "com.lihaoyi" %% "upickle" % "4.1.0"
+    )
+  )
