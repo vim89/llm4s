@@ -1,6 +1,5 @@
-package agent4s
+package org.llm4s
 
-import agent4s.llmconnect.{LLMConnect, LLMConnection}
 import com.azure.ai.openai.models.{
   ChatCompletionsOptions,
   ChatRequestAssistantMessage,
@@ -10,6 +9,7 @@ import com.azure.ai.openai.models.{
 }
 import com.azure.ai.openai.{OpenAIClient, OpenAIClientBuilder, OpenAIServiceVersion}
 import com.azure.core.credential.{AzureKeyCredential, TokenCredential}
+import org.llm4s.llmconnect.{LLMConnect, LLMConnection}
 
 object Main {
   def main(args: Array[String]): Unit = {

@@ -1,4 +1,4 @@
-package agent4s.llmconnect
+package org.llm4s.llmconnect
 
 import com.azure.ai.openai.{OpenAIClient, OpenAIClientBuilder, OpenAIServiceVersion}
 import com.azure.core.credential.AzureKeyCredential
