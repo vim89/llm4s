@@ -7,8 +7,7 @@ N.b. This is most definitely a work in progress project and is likely to change 
 Whilst most LLM work is done in Python we believe that Scala can offer a fundamentally better foundation for 
 building reliable, maintainable AI-powered applications.
 
-The goal of this project is large but unobtainable - take the lessons learned from the Python LLM ecosystem and build
-even better tooling platform.
+The goal of this project is large but obtainable (I can't believe we typoed 'unobtainable' in the earlier version of the page! :) )  - let's take the lessons learned from the Python LLM ecosystem and build a better tooling platform.
 
 This we want to implement (and the equivalent python frameworks):
 
