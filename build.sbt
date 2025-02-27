@@ -19,15 +19,23 @@ lazy val shared = (project in file("shared"))
   .settings(
     name := "shared",
     libraryDependencies ++= List(
-      "com.lihaoyi" %% "upickle" % "4.1.0"
+      "com.lihaoyi"   %% "upickle"         % "4.1.0",
+      "ch.qos.logback" % "logback-classic" % "1.5.17"
     )
   )
 
 lazy val workspaceRunner = (project in file("workspaceRunner"))
   .dependsOn(shared)
+  .enablePlugins(JavaAppPackaging)
+  .enablePlugins(DockerPlugin)
   .settings(
+    Docker / maintainer := "llm4s",
+    dockerExposedPorts  := Seq(8080),
+    dockerBaseImage     := "eclipse-temurin:21-jdk",
+//    Compile / mainClass := Some("com.llm4s.runner.RunnerMain"),
     name := "workspace-runner",
     libraryDependencies ++= List(
-      "com.lihaoyi" %% "upickle" % "4.1.0"
+      "com.lihaoyi" %% "upickle" % "4.1.0",
+      "com.lihaoyi" %% "cask"    % "0.10.2"
     )
   )

@@ -19,9 +19,9 @@ object Main {
 
     val chatMessages = new java.util.ArrayList[ChatRequestMessage]
     chatMessages.add(new ChatRequestSystemMessage("You are a helpful assistant. You will talk like a pirate."))
-    chatMessages.add(new ChatRequestUserMessage("Can you help me?"))
+    chatMessages.add(new ChatRequestUserMessage("Please write a scala function to add two integers"))
     chatMessages.add(new ChatRequestAssistantMessage("Of course, me hearty! What can I do for ye?"))
-    chatMessages.add(new ChatRequestAssistantMessage("What's the best way to train a parrot?"))
+    chatMessages.add(new ChatRequestUserMessage("What's the best way to train a parrot?"))
 
     val chatCompletions =
       client.getChatCompletions(llmConnection.defaultModel, new ChatCompletionsOptions(chatMessages))
