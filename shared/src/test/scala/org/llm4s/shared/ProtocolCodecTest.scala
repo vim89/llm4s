@@ -3,6 +3,7 @@ package org.llm4s.shared
 import org.scalatest.funsuite.AnyFunSuite
 import upickle.default._
 
+
 class ProtocolCodecTest extends AnyFunSuite {
 
   test("Encode and decode ExecShellCommand") {
