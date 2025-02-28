@@ -15,8 +15,8 @@ object RunnerMain extends cask.MainRoutes {
     "LLM4S Runner service - please use the rest endpoint"
   }
 
-  @cask.post("/do-thing")
-  def doThing(request: cask.Request) = {
+  @cask.post("/execCommand")
+  def execCommand(request: cask.Request) = {
     try {
       val requestBody = request.text()
       val requestObj = read[Request](requestBody)
