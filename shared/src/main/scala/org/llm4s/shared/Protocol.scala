@@ -5,10 +5,18 @@ import upickle.default.{ReadWriter, macroRW}
 sealed trait Request
 
 object Request {
+}
+
+object Request {
   implicit val rw: ReadWriter[Request] = ReadWriter.merge(
     macroRW[ListDirectoryCommand]
     macroRW[ExecShellCommand]
   )
+}
+
+sealed trait Response
+
+object Response {
   implicit val rw: ReadWriter[Response] = ReadWriter.merge(
     macroRW[ListDirectoryResponse],
     macroRW[ErrorResponse],
