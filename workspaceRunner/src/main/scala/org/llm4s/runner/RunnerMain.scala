@@ -1,6 +1,8 @@
 package org.llm4s.runner
 
 import org.slf4j.LoggerFactory
+import org.llm4s.shared._
+import upickle.default._
 
 // https://com-lihaoyi.github.io/cask/
 
@@ -8,14 +10,17 @@ object RunnerMain extends cask.MainRoutes {
 
   val logger = LoggerFactory.getLogger(getClass)
 
-  @cask.get("/")
+  val commandRunner = new CommandRunner()
   def hello() = {
     "LLM4S Runner service - please use the rest endpoint"
   }
 
   @cask.post("/do-thing")
   def doThing(request: cask.Request) = {
-    request.text().reverse
+    val requestBody = request.text()
+    val requestObj = read[Request](requestBody)
+    val responseObj = commandRunner.executeCommand(requestObj)
+    write(responseObj)
   }
 
   initialize()
