@@ -2,54 +2,51 @@ package org.llm4s.shared
 
 import upickle.default.{ReadWriter, macroRW}
 
-sealed trait Request
+sealed trait WorkspaceCommandRequest
 
-object Request {
-}
-
-object Request {
-  implicit val rw: ReadWriter[Request] = ReadWriter.merge(
+object WorkspaceCommandRequest {
+  implicit val rw: ReadWriter[WorkspaceCommandRequest] = ReadWriter.merge(
     macroRW[ListDirectoryCommand],
     macroRW[ExecShellCommand]
   )
 }
 
-sealed trait Response
+sealed trait WorkspaceCommandResponse
 
-object Response {
-  implicit val rw: ReadWriter[Response] = ReadWriter.merge(
+object WorkspaceCommandResponse {
+  implicit val rw: ReadWriter[WorkspaceCommandResponse] = ReadWriter.merge(
     macroRW[ListDirectoryResponse],
     macroRW[ErrorResponse],
     macroRW[ExecShellResponse]
   )
 }
 
-case class ExecShellResponse(commandId: String, stdin: String, stdout: String, returnCode: Int) extends Response
+case class ExecShellResponse(commandId: String, stdin: String, stdout: String, returnCode: Int)
+    extends WorkspaceCommandResponse
 
 object ExecShellResponse {
   implicit val rw: ReadWriter[ExecShellResponse] = macroRW
 }
 
-case class ExecShellCommand(commandId: String, shellCommand: String) extends Request
+case class ExecShellCommand(commandId: String, shellCommand: String) extends WorkspaceCommandRequest
 
 object ExecShellCommand {
   implicit val rw: ReadWriter[ExecShellCommand] = macroRW
 }
 
-case class ListDirectoryCommand(commandId: String, path: String) extends Request
+case class ListDirectoryCommand(commandId: String, path: String) extends WorkspaceCommandRequest
 
 object ListDirectoryCommand {
   implicit val rw: ReadWriter[ListDirectoryCommand] = macroRW
 }
 
-sealed trait Response
-case class ListDirectoryResponse(commandId: String, files: List[String]) extends Response
+case class ListDirectoryResponse(commandId: String, files: List[String]) extends WorkspaceCommandResponse
 
 object ListDirectoryResponse {
   implicit val rw: ReadWriter[ListDirectoryResponse] = macroRW
 }
 
-case class ErrorResponse(commandId: String, errorMessage: String) extends Response
+case class ErrorResponse(commandId: String, errorMessage: String) extends WorkspaceCommandResponse
 
 object ErrorResponse {
   implicit val rw: ReadWriter[ErrorResponse] = macroRW

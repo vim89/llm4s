@@ -19,7 +19,7 @@ object RunnerMain extends cask.MainRoutes {
   def execCommand(request: cask.Request) = {
     try {
       val requestBody = request.text()
-      val requestObj = read[Request](requestBody)
+      val requestObj  = read[WorkspaceCommandRequest](requestBody)
       val responseObj = commandRunner.executeCommand(requestObj)
       cask.Response(write(responseObj), 200)
     } catch {

@@ -4,14 +4,15 @@ import org.llm4s.shared._
 
 class CommandRunner {
 
-  def executeCommand(request: Request): Response = {
+  def executeCommand(request: WorkspaceCommandRequest): WorkspaceCommandResponse = {
     try {
       request match {
-        case cmd: ExecShellCommand => handleExecShellCommand(cmd)
+        case cmd: ExecShellCommand     => handleExecShellCommand(cmd)
         case cmd: ListDirectoryCommand => handleListDirectoryCommand(cmd)
       }
     } catch {
-      case e: Exception => ErrorResponse(request.asInstanceOf[{ def commandId: String }].commandId, e.getMessage)
+      case e: Exception =>
+        ErrorResponse(request.asInstanceOf[{ def commandId: String }].commandId, e.getMessage)
     }
   }
 
