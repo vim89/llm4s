@@ -9,7 +9,7 @@ object Request {
 
 object Request {
   implicit val rw: ReadWriter[Request] = ReadWriter.merge(
-    macroRW[ListDirectoryCommand]
+    macroRW[ListDirectoryCommand],
     macroRW[ExecShellCommand]
   )
 }
