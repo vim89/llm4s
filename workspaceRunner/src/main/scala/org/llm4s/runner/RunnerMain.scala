@@ -17,10 +17,16 @@ object RunnerMain extends cask.MainRoutes {
 
   @cask.post("/do-thing")
   def doThing(request: cask.Request) = {
-    val requestBody = request.text()
-    val requestObj = read[Request](requestBody)
-    val responseObj = commandRunner.executeCommand(requestObj)
-    write(responseObj)
+    try {
+      val requestBody = request.text()
+      val requestObj = read[Request](requestBody)
+      val responseObj = commandRunner.executeCommand(requestObj)
+      cask.Response(write(responseObj), 200)
+    } catch {
+      case e: Exception =>
+        val errorResponse = ErrorResponse("unknown", e.getMessage)
+        cask.Response(write(errorResponse), 400)
+    }
   }
 
   initialize()
