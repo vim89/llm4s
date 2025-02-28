@@ -4,6 +4,12 @@ import upickle.default.{ReadWriter, macroRW}
 
 sealed trait Request
 
+object Request {
+  implicit val rw: ReadWriter[Request] = ReadWriter.merge(
+    macroRW[ListDirectoryCommand]
+  )
+}
+
 case class ListDirectoryCommand(commandId: String, path: String) extends Request
 
 object ListDirectoryCommand {
