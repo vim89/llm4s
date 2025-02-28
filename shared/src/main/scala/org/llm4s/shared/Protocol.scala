@@ -7,7 +7,24 @@ sealed trait Request
 object Request {
   implicit val rw: ReadWriter[Request] = ReadWriter.merge(
     macroRW[ListDirectoryCommand]
+    macroRW[ExecShellCommand]
   )
+  implicit val rw: ReadWriter[Response] = ReadWriter.merge(
+    macroRW[ListDirectoryResponse],
+    macroRW[ErrorResponse],
+    macroRW[ExecShellResponse]
+  )
+}
+
+case class ExecShellResponse(commandId: String, stdin: String, stdout: String, returnCode: Int) extends Response
+
+object ExecShellResponse {
+  implicit val rw: ReadWriter[ExecShellResponse] = macroRW
+
+case class ExecShellCommand(commandId: String, shellCommand: String) extends Request
+
+object ExecShellCommand {
+  implicit val rw: ReadWriter[ExecShellCommand] = macroRW
 }
 
 case class ListDirectoryCommand(commandId: String, path: String) extends Request
