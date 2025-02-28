@@ -20,6 +20,7 @@ case class ExecShellResponse(commandId: String, stdin: String, stdout: String, r
 
 object ExecShellResponse {
   implicit val rw: ReadWriter[ExecShellResponse] = macroRW
+}
 
 case class ExecShellCommand(commandId: String, shellCommand: String) extends Request
 
