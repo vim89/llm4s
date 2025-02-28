@@ -21,7 +21,8 @@ lazy val shared = (project in file("shared"))
     name := "shared",
     libraryDependencies ++= List(
       "com.lihaoyi"   %% "upickle"         % "4.1.0",
-      "ch.qos.logback" % "logback-classic" % "1.5.17"
+      "ch.qos.logback" % "logback-classic" % "1.5.17",
+      "org.scalatest" %% "scalatest" % "3.2.16" % Test
     )
   )
 
