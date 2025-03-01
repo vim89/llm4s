@@ -2,7 +2,9 @@ package org.llm4s.shared
 
 import upickle.default.{ReadWriter, macroRW}
 
-sealed trait WorkspaceCommandRequest
+sealed trait WorkspaceCommandRequest {
+  def commandId: String
+}
 
 object WorkspaceCommandRequest {
   implicit val rw: ReadWriter[WorkspaceCommandRequest] = ReadWriter.merge(
@@ -46,7 +48,7 @@ object ListDirectoryResponse {
   implicit val rw: ReadWriter[ListDirectoryResponse] = macroRW
 }
 
-case class ErrorResponse(commandId: String, errorMessage: String) extends WorkspaceCommandResponse
+case class ErrorResponse(commandId: String, error: String) extends WorkspaceCommandResponse
 
 object ErrorResponse {
   implicit val rw: ReadWriter[ErrorResponse] = macroRW

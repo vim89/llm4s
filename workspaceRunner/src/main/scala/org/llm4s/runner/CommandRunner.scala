@@ -12,17 +12,40 @@ class CommandRunner {
       }
     } catch {
       case e: Exception =>
-        ErrorResponse(request.asInstanceOf[{ def commandId: String }].commandId, e.getMessage)
+        ErrorResponse(request.commandId, e.getMessage)
     }
   }
 
   private def handleExecShellCommand(command: ExecShellCommand): ExecShellResponse = {
-    // Mock implementation
-    ExecShellResponse(command.commandId, command.shellCommand, "Mocked output", 0)
+    import scala.sys.process._
+    import scala.util.{Try, Success, Failure}
+
+    val commandId    = command.commandId
+    val shellCommand = command.shellCommand
+
+    Try {
+      val output = shellCommand.!!
+      ExecShellResponse(commandId, shellCommand, output, 0)
+    } match {
+      case Success(response)  => response
+      case Failure(exception) => ExecShellResponse(commandId, shellCommand, exception.getMessage, 1)
+    }
   }
 
-  private def handleListDirectoryCommand(command: ListDirectoryCommand): ListDirectoryResponse = {
-    // Mock implementation
-    ListDirectoryResponse(command.commandId, List("file1.txt", "file2.txt"))
+  private def handleListDirectoryCommand(command: ListDirectoryCommand): WorkspaceCommandResponse = {
+    import scala.sys.process._
+    import scala.util.{Try, Success, Failure}
+
+    val directory = command.path
+    val commandId = command.commandId
+
+    Try {
+      val output = Seq("ls", "-1", directory).!!
+      val files  = output.split("\n").toList
+      ListDirectoryResponse(commandId, files)
+    } match {
+      case Success(response)  => response
+      case Failure(exception) => ErrorResponse(commandId, exception.getMessage)
+    }
   }
 }

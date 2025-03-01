@@ -6,6 +6,7 @@ ThisBuild / organization     := "org.llm4s"
 ThisBuild / organizationName := "llm4s"
 
 lazy val root = (project in file("."))
+  .aggregate(shared, workspaceRunner)
   .dependsOn(shared)
   .settings(
     name := "llm4s",
@@ -13,6 +14,7 @@ lazy val root = (project in file("."))
       "com.azure"      % "azure-ai-openai" % "1.0.0-beta.14",
       "ch.qos.logback" % "logback-classic" % "1.5.17",
       "com.lihaoyi"   %% "upickle"         % "4.1.0",
+      "com.lihaoyi"   %% "requests"        % "0.9.0",
       "org.scalatest" %% "scalatest"       % "3.2.19" % Test
     )
   )
@@ -41,6 +43,16 @@ lazy val workspaceRunner = (project in file("workspaceRunner"))
       "ch.qos.logback" % "logback-classic" % "1.5.17",
       "com.lihaoyi"   %% "upickle"         % "4.1.0",
       "com.lihaoyi"   %% "cask"            % "0.10.2",
+      "org.scalatest" %% "scalatest"       % "3.2.19" % Test
+    )
+  )
+
+lazy val samples = (project in file("samples"))
+  .dependsOn(shared, root)
+  .settings(
+    name := "samples",
+    libraryDependencies ++= List(
+      "ch.qos.logback" % "logback-classic" % "1.5.17",
       "org.scalatest" %% "scalatest"       % "3.2.19" % Test
     )
   )
