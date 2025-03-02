@@ -1,17 +1,9 @@
-package org.llm4s
+package org.llm4s.samples.basic
 
-import com.azure.ai.openai.models.{
-  ChatCompletionsOptions,
-  ChatRequestAssistantMessage,
-  ChatRequestMessage,
-  ChatRequestSystemMessage,
-  ChatRequestUserMessage
-}
-import com.azure.ai.openai.{OpenAIClient, OpenAIClientBuilder, OpenAIServiceVersion}
-import com.azure.core.credential.{AzureKeyCredential, TokenCredential}
-import org.llm4s.llmconnect.{LLMConnect, LLMConnection}
+import com.azure.ai.openai.models._
+import org.llm4s.llmconnect.LLMConnect
 
-object Main {
+object BasicLLMCallingExample {
   def main(args: Array[String]): Unit = {
 
     val llmConnection = LLMConnect.getClient()

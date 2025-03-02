@@ -1,5 +1,6 @@
 package org.llm4s.samples.workspace
 
+import org.llm4s.shared.{FileOperation, ReplaceOperation}
 import org.llm4s.workspace.ContainerisedWorkspace
 import org.slf4j.LoggerFactory
 
@@ -20,28 +21,57 @@ object ContainerisedWorkspaceDemo extends App {
       logger.info("Container started successfully")
 
       // List the workspace directory
-      val dirContents = workspace.listDirectory("/workspace")
-      logger.info(s"Initial directory contents: ${dirContents.files.mkString(", ")}")
+      val dirContents = workspace.exploreFiles("/workspace")
+      logger.info(s"Initial directory contents: ${dirContents.files.map(_.path).mkString(", ")}")
 
       // Execute a simple command
-      val echoResult = workspace.execShellCommand("echo 'Hello from workspace'")
-      logger.info(s"Echo command result (exit code ${echoResult.returnCode}): ${echoResult.stdout}")
+      val echoResult = workspace.executeCommand("echo 'Hello from workspace'")
+      logger.info(s"Echo command result (exit code ${echoResult.exitCode}): ${echoResult.stdout}")
 
       // Create a new file
-      val touchResult = workspace.execShellCommand("touch /workspace/test_file.txt")
-      logger.info(s"Touch command exit code: ${touchResult.returnCode}")
+      val touchResult = workspace.executeCommand("touch /workspace/test_file.txt")
+      logger.info(s"Touch command exit code: ${touchResult.exitCode}")
 
       // List the directory again to see the new file
-      val updatedContents = workspace.listDirectory("/workspace")
-      logger.info(s"Updated directory contents: ${updatedContents.files.mkString(", ")}")
+      val updatedContents = workspace.exploreFiles("/workspace")
+      logger.info(s"Updated directory contents: ${updatedContents.files.map(_.path).mkString(", ")}")
 
-      // Write some content to the file
-      val writeResult = workspace.execShellCommand("echo 'This is a test file' > /workspace/test_file.txt")
-      logger.info(s"Write to file exit code: ${writeResult.returnCode}")
+      // Write content to the file using the interface
+      val writeResult = workspace.writeFile("/workspace/test_file.txt", "This is a test file")
+      logger.info(s"Write to file success: ${writeResult.success}")
 
-      // Read the file content
-      val catResult = workspace.execShellCommand("cat /workspace/test_file.txt")
-      logger.info(s"File content: ${catResult.stdout}")
+      // Read the file content using the interface
+      val readResult = workspace.readFile("/workspace/test_file.txt")
+      logger.info(s"File content: ${readResult.content}")
+
+      // Modify the file using file operations
+      val modifyResult = workspace.modifyFile(
+        "/workspace/test_file.txt",
+        List(
+          ReplaceOperation(startLine = 0, endLine = 4, newContent = "This")
+        )
+      )
+      logger.info(s"File modification success: ${modifyResult.success}")
+
+      // Read the modified file
+      val modifiedContent = workspace.readFile("/workspace/test_file.txt")
+      logger.info(s"Modified file content: ${modifiedContent.content}")
+
+      // Search for content in files
+      val searchResult = workspace.searchFiles(
+        List("/workspace"),
+        "new line",
+        "literal",
+        recursive = Some(true)
+      )
+      logger.info(s"Search results: ${searchResult.matches.length} matches found")
+      searchResult.matches.foreach { match_ =>
+        logger.info(s"Match in ${match_.path}: ${match_.matchText}")
+      }
+
+      // Get workspace info
+      val workspaceInfo = workspace.getWorkspaceInfo()
+      logger.info(s"Workspace info: ${workspaceInfo.root}")
     } else {
       logger.error("Failed to start the workspace container")
     }

@@ -15,7 +15,7 @@ import scala.util.{Failure, Success, Try}
   * Mounting the workspace inside a container provides a secure and isolated environment for running
   * arbitrary commands.   The worst action a command can take is to corrupt the workspace directory.
   */
-class ContainerisedWorkspace(val workspaceDir: String) {
+class ContainerisedWorkspace(val workspaceDir: String) extends WorkspaceAgentInterface {
   private val logger        = LoggerFactory.getLogger(getClass)
   private val containerName = s"workspace-runner-${java.util.UUID.randomUUID().toString}"
   private val port          = 8080
@@ -205,66 +205,20 @@ class ContainerisedWorkspace(val workspaceDir: String) {
     }
   }
 
-  /** Execute a shell command in the workspace
-    * @param shellCommand The command to execute
-    * @param workingDir Optional working directory relative to workspace
-    * @return The response from the command execution
-    */
-  def execShellCommand(shellCommand: String, workingDir: Option[String] = None): ExecShellResponse = {
-    if (!containerRunning.get()) {
-      throw new RuntimeException("Container is not running - cannot execute command")
-    }
-
-    val commandId = java.util.UUID.randomUUID().toString
-    val requestObj = ExecShellCommand(
-      commandId = commandId,
-      shellCommand = shellCommand
-    )
-
-    sendCommandRequest(requestObj) match {
-      case resp: ExecShellResponse => resp
-      case error: ErrorResponse =>
-        throw new RuntimeException(s"Command execution error: ${error.error}")
-      case other =>
-        throw new RuntimeException(s"Unexpected response: $other")
-    }
-  }
-
-  /** List the contents of a directory in the workspace
-    * @param directory The directory to list (relative to workspace)
-    * @return The response containing the list of files/directories
-    */
-  def listDirectory(directory: String = "/"): ListDirectoryResponse = {
-    if (!containerRunning.get()) {
-      throw new RuntimeException("Container is not running - cannot list directory")
-    }
-
-    val commandId = java.util.UUID.randomUUID().toString
-    val requestObj = ListDirectoryCommand(
-      commandId = commandId,
-      path = directory
-    )
-
-    sendCommandRequest(requestObj) match {
-      case resp: ListDirectoryResponse => resp
-      case error: ErrorResponse =>
-        throw new RuntimeException(s"Directory listing error: ${error.error}")
-      case other =>
-        throw new RuntimeException(s"Unexpected response: $other")
-    }
-  }
+  // Create a remote interface implementation that uses sendCommandRequest
+  private val remoteInterface = WorkspaceAgentInterfaceRemote(sendCommandRequest)
 
   /** Sends a command request to the workspace runner
     * @param request The request to send
     * @return The response from the workspace runner
     */
-  private def sendCommandRequest(request: WorkspaceCommandRequest): WorkspaceCommandResponse = {
+  private def sendCommandRequest(request: WorkspaceAgentCommand): WorkspaceAgentResponse = {
     if (!containerRunning.get()) {
       throw new RuntimeException("Container is not running - cannot send command")
     }
 
     try {
-      val endpoint    = s"$baseUrl/execCommand"
+      val endpoint    = s"$baseUrl/agent"
       val requestBody = write(request)
 
       logger.debug(s"Sending request to $endpoint: $requestBody")
@@ -278,17 +232,76 @@ class ContainerisedWorkspace(val workspaceDir: String) {
       )
 
       if (response.statusCode == 200) {
-        read[WorkspaceCommandResponse](response.text())
+        read[WorkspaceAgentResponse](response.text())
       } else {
         logger.error(s"Request failed with status code: ${response.statusCode}, body: ${response.text()}")
-        ErrorResponse(request.commandId, s"HTTP error: ${response.statusCode}")
+        WorkspaceAgentErrorResponse(request.commandId, "WORKSPACE_ERROR", s"HTTP error: ${response.statusCode}")
       }
     } catch {
       case ex: Exception =>
         // If we get an exception, the container might be down
         handleContainerDown()
         logger.error(s"Exception sending request: ${ex.getMessage}", ex)
-        ErrorResponse(request.commandId, ex.getMessage)
+        WorkspaceAgentErrorResponse(request.commandId, "WORKSPACE_ERROR", s"Unknown error : ${ex.getMessage}")
     }
+  }
+
+  // WorkspaceAgentInterface implementation - delegate to remoteInterface
+  override def exploreFiles(
+      path: String,
+      recursive: Option[Boolean] = None,
+      excludePatterns: Option[List[String]] = None,
+      maxDepth: Option[Int] = None,
+      returnMetadata: Option[Boolean] = None
+  ): ExploreFilesResponse = {
+    remoteInterface.exploreFiles(path, recursive, excludePatterns, maxDepth, returnMetadata)
+  }
+
+  override def readFile(
+      path: String,
+      startLine: Option[Int] = None,
+      endLine: Option[Int] = None
+  ): ReadFileResponse = {
+    remoteInterface.readFile(path, startLine, endLine)
+  }
+
+  override def writeFile(
+      path: String,
+      content: String,
+      mode: Option[String] = None,
+      createDirectories: Option[Boolean] = None
+  ): WriteFileResponse = {
+    remoteInterface.writeFile(path, content, mode, createDirectories)
+  }
+
+  override def modifyFile(
+      path: String,
+      operations: List[FileOperation]
+  ): ModifyFileResponse = {
+    remoteInterface.modifyFile(path, operations)
+  }
+
+  override def searchFiles(
+      paths: List[String],
+      query: String,
+      searchType: String,
+      recursive: Option[Boolean] = None,
+      excludePatterns: Option[List[String]] = None,
+      contextLines: Option[Int] = None
+  ): SearchFilesResponse = {
+    remoteInterface.searchFiles(paths, query, searchType, recursive, excludePatterns, contextLines)
+  }
+
+  override def executeCommand(
+      command: String,
+      workingDirectory: Option[String] = None,
+      timeout: Option[Int] = None,
+      environment: Option[Map[String, String]] = None
+  ): ExecuteCommandResponse = {
+    remoteInterface.executeCommand(command, workingDirectory, timeout, environment)
+  }
+
+  override def getWorkspaceInfo(): GetWorkspaceInfoResponse = {
+    remoteInterface.getWorkspaceInfo()
   }
 }

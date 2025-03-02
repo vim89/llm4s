@@ -1,69 +1,102 @@
-# LLM4S
+# LLM4S - Large Language Models for Scala
 
-Goal: To provide a simple, robust and scalable framework for building LLM applications in Scala.
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-N.b. This is most definitely a work in progress project and is likely to change significantly over time.
+## Overview
 
-Whilst most LLM work is done in Python we believe that Scala can offer a fundamentally better foundation for 
-building reliable, maintainable AI-powered applications.
+LLM4S provides a simple, robust, and scalable framework for building LLM applications in Scala. While most LLM work is done in Python, we believe that Scala offers a fundamentally better foundation for building reliable, maintainable AI-powered applications.
 
-The goal of this project is large but obtainable (I can't believe we typoed 'unobtainable' in the earlier version of the page! :) )  - let's take the lessons learned from the Python LLM ecosystem and build a better tooling platform.
+> **Note:** This is a work in progress project and is likely to change significantly over time.
 
-This we want to implement (and the equivalent python frameworks):
+## Why Scala for LLMs?
 
-* Single API access multiple LLM providers (LiteLLM)
-* A great tool chain for building LLM apps (LangChain/LangGraph)
-* An agentic framework (PydanticAI, CrewAI etc)
+- **Type Safety**: Catch errors at compile time rather than runtime
+- **Functional Programming**: Immutable data structures and pure functions for more predictable code
+- **JVM Ecosystem**: Access to a vast array of libraries and tools
+- **Concurrency**: Better handling of concurrent operations with Scala's actor model
+- **Performance**: JVM performance with functional programming elegance
 
+## Features
+
+- **Containerized Workspace**: Secure execution environment for LLM-driven operations
+- **Workspace Agent Interface**: Standardized protocol for file operations and command execution
+- **Multi-Provider Support**: Planned support for multiple LLM providers (OpenAI, Anthropic, etc.)
 
 ## Project Structure
- * llm4s - main project - contains the core LLM4S framework
- * shared - shared code between main project and workspace runner
- * workspace-runner - The code that performs the requested actions on the code workspace within the docker container.
- * samples - usage examples 
 
-## Random Todos
+- **llm4s**: Main project - contains the core LLM4S framework
+- **shared**: Shared code between main project and workspace runner
+- **workspaceRunner**: Code that performs the requested actions on the workspace within the docker container
+- **samples**: Usage examples demonstrating various features
 
+## Getting Started
 
- - [ ] Add a tiktoken port 
- - [ ] Generalize calling API to be able to call anthropic as well.
- - [ ] Implement full agentic loop code
- - [ ] Implement a simple tool calling mechanism
+### Prerequisites
 
+- JDK 11+
+- SBT
+- Docker (for containerized workspace)
 
-## React loop
+### Building the Project
 
-## Tool calling handling
-Tool calling is a critical integration - make it as simple as possible
-### Tool sig generation
+```bash
+sbt compile
+```
 
-e.g. ScalaMeta based tool definition generator
+### Running the Examples
 
-Take a method e.g. 
+```bash
+sbt "samples/runMain org.llm4s.samples.basic.BasicLLMCallingExample"
+sbt "samples/runMain org.llm4s.samples.workspace.ContainerisedWorkspaceDemo"
+```
+
+## Roadmap
+
+Our goal is to implement Scala equivalents of popular Python LLM frameworks:
+
+- [ ] Single API access to multiple LLM providers (like LiteLLM)
+- [ ] A comprehensive toolchain for building LLM apps (like LangChain/LangGraph)
+- [ ] An agentic framework (like PydanticAI, CrewAI)
+- [ ] Tokenization utilities (port of tiktoken)
+- [ ] Full ReAct loop implementation
+- [ ] Simple tool calling mechanism
+
+## Tool Calling
+
+Tool calling is a critical integration - we aim to make it as simple as possible:
+
+### Tool Signature Generation
+
+Using ScalaMeta to automatically generate tool definitions from Scala methods:
 
 ```scala
-
 /** My tool does some funky things with a & b...
- * @param a: The first thing
- * @param b: The second thing
+ * @param a The first thing
+ * @param b The second thing
  */
- def my_tool(a: Int, b: String): ToolResponse = {
- ...
- }
+def myTool(a: Int, b: String): ToolResponse = {
+  // Implementation
+}
 ```
-Use ScalaMeta to extract the method params / types, doc comment etc and generate an openai tool definition from it.
-see: https://github.com/scalameta/scalameta/pull/692
-https://github.com/scalameta/scalameta/issues/556
 
-### Tool call mapping
-  From the tool call request - map the parameters and invoke the method.
+ScalaMeta extracts method parameters, types, and documentation to generate OpenAI-compatible tool definitions.
 
-This could be code generation - or reflective?
- Or code generation from the scalameta parse to mean that a lLM request to call a tool 
- can be mapped to the given tool calling arguments.
-  
-### Docker container based execution
+### Tool Call Mapping
 
-A lot of tools need to be run in a protected environment (e.g. a docker container to prevent
-accidental leakage/accidents when for example the LLM tries to do an 'rm -rf /' or similar (even by accident))
+Mapping LLM tool call requests to actual method invocations through:
+- Code generation
+- Reflection-based approaches
+- ScalaMeta-based parameter mapping
+
+### Secure Execution
+
+Tools run in a protected Docker container environment to prevent accidental system damage or data leakage.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
