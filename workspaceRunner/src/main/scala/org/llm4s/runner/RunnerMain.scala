@@ -4,23 +4,23 @@ import cask.model.Response
 import org.llm4s.shared._
 import org.slf4j.LoggerFactory
 
-import java.nio.file.{Files, Paths}
+import java.nio.file.{ Files, Paths }
 import java.util.concurrent.atomic.AtomicLong
-import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
+import java.util.concurrent.{ Executors, ScheduledExecutorService, TimeUnit }
 
 /**
  * Main entry point for the Workspace Runner service.
- * 
+ *
  * This service provides a REST API for interacting with a workspace filesystem and executing commands.
  * It's designed to run inside a container with a mounted workspace directory, providing a secure
  * execution environment for LLM-driven operations.
- * 
+ *
  * Features:
  * - REST API for workspace operations (file exploration, reading, writing, etc.)
  * - Command execution in the workspace
  * - Heartbeat mechanism to ensure the service is responsive
  * - Automatic shutdown if no heartbeat is received within the timeout period
- * 
+ *
  * The service binds to 0.0.0.0 to be accessible from outside the container.
  */
 object RunnerMain extends cask.MainRoutes {
@@ -46,21 +46,20 @@ object RunnerMain extends cask.MainRoutes {
 
   /**
    * Root endpoint that provides basic information about the service.
-   * 
+   *
    * @return A simple message indicating the service is running
    */
   @cask.get("/")
-  def root(): String = {
+  def root(): String =
     "LLM4S Runner service - please use the rest endpoint"
-  }
 
   /**
    * Main endpoint for handling workspace agent commands.
-   * 
+   *
    * This endpoint accepts WorkspaceAgentCommand objects as JSON and routes them to the
    * appropriate handler in the WorkspaceAgentInterface implementation. It handles error
    * cases and returns properly formatted responses.
-   * 
+   *
    * @param request The HTTP request containing a serialized WorkspaceAgentCommand
    * @return A Response containing the serialized WorkspaceAgentResponse
    */
@@ -73,7 +72,7 @@ object RunnerMain extends cask.MainRoutes {
       val command     = ProtocolCodec.decodeAgentCommand(requestBody)
 
       val response =
-        try {
+        try
           command match {
             case cmd: ExploreFilesCommand =>
               workspaceInterface
@@ -138,7 +137,7 @@ object RunnerMain extends cask.MainRoutes {
             case cmd: GetWorkspaceInfoCommand =>
               workspaceInterface.getWorkspaceInfo().copy(commandId = cmd.commandId)
           }
-        } catch {
+        catch {
           case e: WorkspaceAgentException =>
             WorkspaceAgentErrorResponse(
               commandId = command.commandId,
@@ -171,11 +170,11 @@ object RunnerMain extends cask.MainRoutes {
 
   /**
    * Heartbeat endpoint to verify the service is alive.
-   * 
+   *
    * The ContainerisedWorkspace class periodically calls this endpoint to ensure
    * the service is still responsive. If no heartbeat is received within the timeout
    * period, the service will shut down.
-   * 
+   *
    * @return A simple "ok" response
    */
   @cask.get("/heartbeat")
@@ -186,10 +185,10 @@ object RunnerMain extends cask.MainRoutes {
 
   /**
    * Endpoint to retrieve information about the workspace.
-   * 
+   *
    * This provides details about the workspace configuration, including the root path
    * and any relevant settings or limitations.
-   * 
+   *
    * @return A Response containing the serialized workspace information
    */
   @cask.get("/workspace-info")
@@ -212,7 +211,7 @@ object RunnerMain extends cask.MainRoutes {
 
   /**
    * Updates the last heartbeat timestamp.
-   * 
+   *
    * This is called whenever a heartbeat is received or when any command is executed,
    * to prevent the service from shutting down during active use.
    */
@@ -223,12 +222,12 @@ object RunnerMain extends cask.MainRoutes {
 
   /**
    * Starts the watchdog timer that monitors for heartbeats.
-   * 
+   *
    * If no heartbeat is received within the configured timeout period,
    * the service will shut down. This prevents orphaned processes if
    * the parent application crashes or loses connection.
    */
-  private def startWatchdog(): Unit = {
+  private def startWatchdog(): Unit =
     watchdogExecutor.scheduleAtFixedRate(
       () => {
         val currentTime            = System.currentTimeMillis()
@@ -244,16 +243,15 @@ object RunnerMain extends cask.MainRoutes {
       2,
       TimeUnit.SECONDS
     )
-  }
 
   initialize()
 
   /**
    * Main entry point for the application.
-   * 
+   *
    * Initializes the service, ensures the workspace directory exists,
    * starts the watchdog timer, and begins listening for requests.
-   * 
+   *
    * @param args Command line arguments (not used)
    */
   override def main(args: Array[String]): Unit = {
@@ -274,10 +272,9 @@ object RunnerMain extends cask.MainRoutes {
 
   /**
    * Gracefully shuts down the service.
-   * 
+   *
    * Stops the watchdog timer and performs any necessary cleanup.
    */
-  def shutdown(): Unit = {
+  def shutdown(): Unit =
     watchdogExecutor.shutdown()
-  }
 }

@@ -1,68 +1,72 @@
 package org.llm4s.llmconnect
 
-import com.azure.ai.openai.{OpenAIClient, OpenAIClientBuilder, OpenAIServiceVersion}
+import com.azure.ai.openai.{ OpenAIClientBuilder, OpenAIServiceVersion, OpenAIClient => AzureOpenAIClient }
 import com.azure.core.credential.AzureKeyCredential
+import org.llm4s.llmconnect.config.{ AnthropicConfig, AzureConfig, OpenAIConfig, ProviderConfig }
+import org.llm4s.llmconnect.model._
+import org.llm4s.llmconnect.provider.{ AnthropicClient, LLMProvider, OpenAIClient, AzureOpenAIClient => AzureClient }
 
 object LLMConnect {
-  sealed trait ClientType
-  case object OpenAIClient extends ClientType
-  case object AzureClient  extends ClientType
-
-  private def readEnv(key: String): Option[String] = {
+  private def readEnv(key: String): Option[String] =
     sys.env.get(key)
-  }
 
-  def getLLMModel(): String = {
-
-    readEnv("LLM_MODEL").getOrElse(
+  /**
+   * Get an LLMClient based on environment variables
+   */
+  def getClient(): LLMClient = {
+    val model = readEnv("LLM_MODEL").getOrElse(
       throw new IllegalArgumentException("LLM_MODEL not set, set this to define default model")
     )
-  }
 
-  def getClient(): LLMConnection = {
-
-    val model = getLLMModel()
-    println("Model: " + model)
     if (model.startsWith("openai/")) {
-      val openaiClient = createOpenAIClient()
-      LLMConnection(model.replace("openai/", ""), OpenAIClient, openaiClient)
+      val modelName = model.replace("openai/", "")
+      val config    = OpenAIConfig.fromEnv(modelName)
+      new OpenAIClient(config)
     } else if (model.startsWith("azure/")) {
-      val azureClient = createAzureClient()
-      LLMConnection(model.replace("azure/", ""), AzureClient, azureClient)
+      val modelName   = model.replace("azure/", "")
+      val config      = AzureConfig.fromEnv(modelName)
+      val azureClient = createAzureClient(config)
+      new AzureClient(config, azureClient)
+    } else if (model.startsWith("anthropic/")) {
+      val modelName = model.replace("anthropic/", "")
+      val config    = AnthropicConfig.fromEnv(modelName)
+      new AnthropicClient(config)
     } else {
       throw new IllegalArgumentException(s"Model $model not supported")
     }
   }
 
-  private def createOpenAIClient(): OpenAIClient = {
-    val key = readEnv("OPENAI_API_KEY").getOrElse(
-      throw new IllegalArgumentException("OPENAI_API_KEY not set, required when using openai/ model.")
-    )
-    new OpenAIClientBuilder().credential(new AzureKeyCredential(key)).buildClient();
-  }
-  private def createAzureClient(): OpenAIClient = {
+  /**
+   * Get an LLMClient with explicit provider and configuration
+   */
+  def getClient(provider: LLMProvider, config: ProviderConfig): LLMClient =
+    provider match {
+      case LLMProvider.OpenAI =>
+        new OpenAIClient(config.asInstanceOf[OpenAIConfig])
+      case LLMProvider.Azure =>
+        val azureConfig = config.asInstanceOf[AzureConfig]
+        val azureClient = createAzureClient(azureConfig)
+        new AzureClient(azureConfig, azureClient)
+      case LLMProvider.Anthropic =>
+        val anthropicConfig = config.asInstanceOf[AnthropicConfig]
+        new AnthropicClient(anthropicConfig)
+    }
 
-    // read environment variables - AZURE_API_KEY AZURE_API_VERSION AZURE_API_BASE
-    val key = Option(sys.env("AZURE_API_KEY"))
-      .getOrElse(throw new IllegalArgumentException("AZURE_API_KEY not set, required when using azure/ model."))
-    val version =
-      Option(sys.env("AZURE_API_VERSION")).getOrElse(
-        throw new IllegalArgumentException(
-          s"AZURE_API_KEY not set, required when using azure/ model. Options - ${OpenAIServiceVersion.values().map(_.toString).mkString(",")}."
-        )
-      )
-    val base = Option(sys.env("AZURE_API_BASE"))
-      .getOrElse(throw new IllegalArgumentException("AZURE_API_KEY not set, , required when using azure/ model."))
-
-    // create Azure client
+  private def createAzureClient(config: AzureConfig): AzureOpenAIClient =
     new OpenAIClientBuilder()
-      .credential(new AzureKeyCredential(key))
-      .endpoint(base)
-      .serviceVersion(OpenAIServiceVersion.valueOf(version))
-      .buildClient();
+      .credential(new AzureKeyCredential(config.apiKey))
+      .endpoint(config.endpoint)
+      .serviceVersion(OpenAIServiceVersion.valueOf(config.apiVersion))
+      .buildClient()
 
+  /**
+   * Convenience method for quick completion
+   */
+  def complete(
+    messages: Seq[Message],
+    options: CompletionOptions = CompletionOptions()
+  ): Either[LLMError, Completion] = {
+    val conversation = Conversation(messages)
+    getClient().complete(conversation, options)
   }
-
 }
-
-case class LLMConnection(defaultModel: String, clientType: LLMConnect.ClientType, client: OpenAIClient)

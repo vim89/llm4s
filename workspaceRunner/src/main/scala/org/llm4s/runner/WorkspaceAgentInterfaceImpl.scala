@@ -1,22 +1,23 @@
 package org.llm4s.runner
 
 import org.llm4s.shared._
-import java.io.{File, FileWriter, BufferedWriter, PrintWriter}
-import java.nio.file.{Files, Path, Paths, StandardOpenOption}
+import java.io.{ File, FileWriter, BufferedWriter, PrintWriter }
+import java.nio.file.{ Files, Path, Paths, StandardOpenOption }
 import java.nio.charset.StandardCharsets
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import scala.io.Source
-import scala.util.{Try, Success, Failure, Using}
+import scala.util.{ Try, Success, Failure, Using }
 import scala.jdk.CollectionConverters._
 import scala.sys.process._
-import java.util.regex.{Pattern, Matcher}
+import java.util.regex.{ Pattern, Matcher }
 import java.util.concurrent.TimeUnit
 
-/** Implementation of WorkspaceAgentInterface that operates on a local filesystem workspace.
-  *
-  * @param workspaceRoot The root directory of the workspace
-  */
+/**
+ * Implementation of WorkspaceAgentInterface that operates on a local filesystem workspace.
+ *
+ * @param workspaceRoot The root directory of the workspace
+ */
 class WorkspaceAgentInterfaceImpl(workspaceRoot: String) extends WorkspaceAgentInterface {
 
   private val rootPath = Paths.get(workspaceRoot).toAbsolutePath.normalize()
@@ -41,12 +42,13 @@ class WorkspaceAgentInterfaceImpl(workspaceRoot: String) extends WorkspaceAgentI
     "**/vendor/**"
   )
 
-  /** Resolves a relative path against the workspace root, ensuring it doesn't escape the workspace.
-    *
-    * @param relativePath The path relative to workspace root
-    * @return The absolute path
-    * @throws IllegalArgumentException if the path attempts to escape the workspace
-    */
+  /**
+   * Resolves a relative path against the workspace root, ensuring it doesn't escape the workspace.
+   *
+   * @param relativePath The path relative to workspace root
+   * @return The absolute path
+   * @throws IllegalArgumentException if the path attempts to escape the workspace
+   */
   private def resolvePath(relativePath: String): Path = {
     val normalized = rootPath.resolve(relativePath).normalize()
 
@@ -57,11 +59,12 @@ class WorkspaceAgentInterfaceImpl(workspaceRoot: String) extends WorkspaceAgentI
     normalized
   }
 
-  /** Creates file metadata for a given path.
-    *
-    * @param path The file path
-    * @return FileMetadata object
-    */
+  /**
+   * Creates file metadata for a given path.
+   *
+   * @param path The file path
+   * @return FileMetadata object
+   */
   private def createFileMetadata(path: Path): FileMetadata = {
     val file         = path.toFile
     val relativePath = rootPath.relativize(path).toString
@@ -74,13 +77,14 @@ class WorkspaceAgentInterfaceImpl(workspaceRoot: String) extends WorkspaceAgentI
     )
   }
 
-  /** Checks if a path matches any of the exclusion patterns.
-    *
-    * @param path The path to check
-    * @param excludePatterns Patterns to exclude
-    * @return true if the path should be excluded
-    */
-  private def isExcluded(path: String, excludePatterns: List[String]): Boolean = {
+  /**
+   * Checks if a path matches any of the exclusion patterns.
+   *
+   * @param path The path to check
+   * @param excludePatterns Patterns to exclude
+   * @return true if the path should be excluded
+   */
+  private def isExcluded(path: String, excludePatterns: List[String]): Boolean =
     // Simple glob matching implementation
     // In a real implementation, use a proper glob library
     excludePatterns.exists { pattern =>
@@ -91,16 +95,16 @@ class WorkspaceAgentInterfaceImpl(workspaceRoot: String) extends WorkspaceAgentI
 
       path.matches(regex)
     }
-  }
 
-  /** List files and directories in a specified path, optionally recursively.
-    */
+  /**
+   * List files and directories in a specified path, optionally recursively.
+   */
   override def exploreFiles(
-      path: String,
-      recursive: Option[Boolean] = None,
-      excludePatterns: Option[List[String]] = None,
-      maxDepth: Option[Int] = None,
-      returnMetadata: Option[Boolean] = None
+    path: String,
+    recursive: Option[Boolean] = None,
+    excludePatterns: Option[List[String]] = None,
+    maxDepth: Option[Int] = None,
+    returnMetadata: Option[Boolean] = None
   ): ExploreFilesResponse = {
     val resolvedPath    = resolvePath(path)
     val isRecursive     = recursive.getOrElse(false)
@@ -134,10 +138,10 @@ class WorkspaceAgentInterfaceImpl(workspaceRoot: String) extends WorkspaceAgentI
       val allFiles = stream.iterator().asScala.toList
 
       val filteredFiles = allFiles
-        .filterNot(p => {
+        .filterNot { p =>
           val relativePath = rootPath.relativize(p).toString
           isExcluded(relativePath, patterns)
-        })
+        }
         .take(defaultLimits.maxDirectoryEntries + 1)
 
       val isTruncated = filteredFiles.size > defaultLimits.maxDirectoryEntries
@@ -158,17 +162,17 @@ class WorkspaceAgentInterfaceImpl(workspaceRoot: String) extends WorkspaceAgentI
         isTruncated = isTruncated,
         totalFound = filteredFiles.size
       )
-    } finally {
+    } finally
       stream.close()
-    }
   }
 
-  /** Read the content of a file, with options to read specific line ranges.
-    */
+  /**
+   * Read the content of a file, with options to read specific line ranges.
+   */
   override def readFile(
-      path: String,
-      startLine: Option[Int] = None,
-      endLine: Option[Int] = None
+    path: String,
+    startLine: Option[Int] = None,
+    endLine: Option[Int] = None
   ): ReadFileResponse = {
     val resolvedPath = resolvePath(path)
 
@@ -228,13 +232,14 @@ class WorkspaceAgentInterfaceImpl(workspaceRoot: String) extends WorkspaceAgentI
     }
   }
 
-  /** Write content to a file, creating the file if it doesn't exist.
-    */
+  /**
+   * Write content to a file, creating the file if it doesn't exist.
+   */
   override def writeFile(
-      path: String,
-      content: String,
-      mode: Option[String] = None,
-      createDirectories: Option[Boolean] = None
+    path: String,
+    content: String,
+    mode: Option[String] = None,
+    createDirectories: Option[Boolean] = None
   ): WriteFileResponse = {
     val resolvedPath = resolvePath(path)
     val writeMode    = mode.getOrElse("overwrite")
@@ -295,11 +300,12 @@ class WorkspaceAgentInterfaceImpl(workspaceRoot: String) extends WorkspaceAgentI
     }
   }
 
-  /** Perform targeted modifications to a file without rewriting the entire content.
-    */
+  /**
+   * Perform targeted modifications to a file without rewriting the entire content.
+   */
   override def modifyFile(
-      path: String,
-      operations: List[FileOperation]
+    path: String,
+    operations: List[FileOperation]
   ): ModifyFileResponse = {
     val resolvedPath = resolvePath(path)
 
@@ -352,13 +358,14 @@ class WorkspaceAgentInterfaceImpl(workspaceRoot: String) extends WorkspaceAgentI
     }
   }
 
-  /** Apply file operations to a list of lines.
-    *
-    * @param lines Original file lines
-    * @param operations Operations to apply
-    * @return Modified lines
-    */
-  private def applyOperations(lines: List[String], operations: List[FileOperation]): List[String] = {
+  /**
+   * Apply file operations to a list of lines.
+   *
+   * @param lines Original file lines
+   * @param operations Operations to apply
+   * @return Modified lines
+   */
+  private def applyOperations(lines: List[String], operations: List[FileOperation]): List[String] =
     operations.foldLeft(lines) { (currentLines, operation) =>
       operation match {
         case ReplaceOperation(_, startLine, endLine, newContent) =>
@@ -426,17 +433,17 @@ class WorkspaceAgentInterfaceImpl(workspaceRoot: String) extends WorkspaceAgentI
           }
       }
     }
-  }
 
-  /** Search for content in files across the workspace.
-    */
+  /**
+   * Search for content in files across the workspace.
+   */
   override def searchFiles(
-      paths: List[String],
-      query: String,
-      searchType: String,
-      recursive: Option[Boolean] = None,
-      excludePatterns: Option[List[String]] = None,
-      contextLines: Option[Int] = None
+    paths: List[String],
+    query: String,
+    searchType: String,
+    recursive: Option[Boolean] = None,
+    excludePatterns: Option[List[String]] = None,
+    contextLines: Option[Int] = None
   ): SearchFilesResponse = {
     val isRecursive = recursive.getOrElse(true)
     val context     = contextLines.getOrElse(2)
@@ -454,9 +461,9 @@ class WorkspaceAgentInterfaceImpl(workspaceRoot: String) extends WorkspaceAgentI
     val pattern = if (searchType == "literal") {
       Pattern.compile(Pattern.quote(query))
     } else {
-      try {
+      try
         Pattern.compile(query)
-      } catch {
+      catch {
         case e: Exception =>
           throw new WorkspaceAgentException(
             s"Invalid regex pattern: ${e.getMessage}",
@@ -480,19 +487,18 @@ class WorkspaceAgentInterfaceImpl(workspaceRoot: String) extends WorkspaceAgentI
 
       if (Files.isDirectory(resolvedPath)) {
         val stream = if (isRecursive) Files.walk(resolvedPath) else Files.list(resolvedPath)
-        try {
+        try
           stream
             .iterator()
             .asScala
             .filter(p => Files.isRegularFile(p))
-            .filterNot(p => {
+            .filterNot { p =>
               val relativePath = rootPath.relativize(p).toString
               isExcluded(relativePath, patterns)
-            })
+            }
             .toList
-        } finally {
+        finally
           stream.close()
-        }
       } else {
         List(resolvedPath)
       }
@@ -541,13 +547,14 @@ class WorkspaceAgentInterfaceImpl(workspaceRoot: String) extends WorkspaceAgentI
     )
   }
 
-  /** Execute a shell command in the workspace.
-    */
+  /**
+   * Execute a shell command in the workspace.
+   */
   override def executeCommand(
-      command: String,
-      workingDirectory: Option[String] = None,
-      timeout: Option[Int] = None,
-      environment: Option[Map[String, String]] = None
+    command: String,
+    workingDirectory: Option[String] = None,
+    timeout: Option[Int] = None,
+    environment: Option[Map[String, String]] = None
   ): ExecuteCommandResponse = {
     val workDir = workingDirectory
       .map(dir => resolvePath(dir).toFile)
@@ -574,22 +581,19 @@ class WorkspaceAgentInterfaceImpl(workspaceRoot: String) extends WorkspaceAgentI
       try {
         val process = processBuilder.run(
           ProcessLogger(
-            line => {
+            line =>
               if (stdout.length < defaultLimits.maxOutputSize) {
                 stdout.append(line).append("\n")
-              }
-            },
-            line => {
+              },
+            line =>
               if (stderr.length < defaultLimits.maxOutputSize) {
                 stderr.append(line).append("\n")
               }
-            }
           )
         )
 
-        while (process.isAlive() && System.currentTimeMillis() - startTime < timeoutMs) {
+        while (process.isAlive() && System.currentTimeMillis() - startTime < timeoutMs)
           Thread.sleep(100)
-        }
 
         val completed = !process.isAlive()
 
@@ -626,14 +630,14 @@ class WorkspaceAgentInterfaceImpl(workspaceRoot: String) extends WorkspaceAgentI
     )
   }
 
-  /** Retrieve information about the workspace, including default settings and limits.
-    */
-  override def getWorkspaceInfo(): GetWorkspaceInfoResponse = {
+  /**
+   * Retrieve information about the workspace, including default settings and limits.
+   */
+  override def getWorkspaceInfo(): GetWorkspaceInfoResponse =
     GetWorkspaceInfoResponse(
       commandId = "local",
       root = rootPath.toString,
       defaultExclusions = defaultExclusions,
       limits = defaultLimits
     )
-  }
 }

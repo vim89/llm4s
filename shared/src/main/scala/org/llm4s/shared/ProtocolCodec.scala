@@ -4,19 +4,15 @@ import upickle.default._
 
 object ProtocolCodec {
 
-  def decodeAgentCommand(json: String): WorkspaceAgentCommand = {
+  def decodeAgentCommand(json: String): WorkspaceAgentCommand =
     read[WorkspaceAgentCommand](json)
-  }
 
-  def encodeAgentCommand(command: WorkspaceAgentCommand): String = {
+  def encodeAgentCommand(command: WorkspaceAgentCommand): String =
     write(command)
-  }
 
-  def decodeAgentResponse(json: String): WorkspaceAgentResponse = {
+  def decodeAgentResponse(json: String): WorkspaceAgentResponse =
     read[WorkspaceAgentResponse](json)
-  }
 
-  def encodeAgentResponse(response: WorkspaceAgentResponse): String = {
+  def encodeAgentResponse(response: WorkspaceAgentResponse): String =
     write(response)
-  }
 }

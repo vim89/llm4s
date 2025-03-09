@@ -4,17 +4,18 @@ import org.llm4s.shared._
 import org.slf4j.LoggerFactory
 import upickle.default._
 
-import java.io.{BufferedReader, File, InputStreamReader}
+import java.io.{ BufferedReader, File, InputStreamReader }
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
-import scala.util.{Failure, Success, Try}
+import java.util.concurrent.{ Executors, ScheduledExecutorService, TimeUnit }
+import scala.util.{ Failure, Success, Try }
 
-/** Mount the workspace `workspaceDir` as read/writable inside a container as /workspace and provide
-  * the command interface to that workspace.
-  *
-  * Mounting the workspace inside a container provides a secure and isolated environment for running
-  * arbitrary commands.   The worst action a command can take is to corrupt the workspace directory.
-  */
+/**
+ * Mount the workspace `workspaceDir` as read/writable inside a container as /workspace and provide
+ * the command interface to that workspace.
+ *
+ * Mounting the workspace inside a container provides a secure and isolated environment for running
+ * arbitrary commands.   The worst action a command can take is to corrupt the workspace directory.
+ */
 class ContainerisedWorkspace(val workspaceDir: String) extends WorkspaceAgentInterface {
   private val logger        = LoggerFactory.getLogger(getClass)
   private val containerName = s"workspace-runner-${java.util.UUID.randomUUID().toString}"
@@ -30,9 +31,10 @@ class ContainerisedWorkspace(val workspaceDir: String) extends WorkspaceAgentInt
   private val containerRunning                            = new AtomicBoolean(false)
   private val heartbeatExecutor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
 
-  /** Starts the workspace runner docker container
-    * @return true if the container was started successfully, false otherwise
-    */
+  /**
+   * Starts the workspace runner docker container
+   * @return true if the container was started successfully, false otherwise
+   */
   def startContainer(): Boolean = {
     logger.info(s"Starting workspace runner container: $containerName")
 
@@ -101,7 +103,7 @@ class ContainerisedWorkspace(val workspaceDir: String) extends WorkspaceAgentInt
     logger.info("Waiting for container service to be ready...")
 
     var attempts = 0
-    while (attempts < MaxStartupAttempts) {
+    while (attempts < MaxStartupAttempts)
       Try {
         requests.get(s"$baseUrl/heartbeat", readTimeout = 1000, connectTimeout = 1000)
       } match {
@@ -113,7 +115,6 @@ class ContainerisedWorkspace(val workspaceDir: String) extends WorkspaceAgentInt
           logger.debug(s"Waiting for service to be ready (attempt $attempts/$MaxStartupAttempts)")
           Thread.sleep(1000)
       }
-    }
 
     logger.error(s"Service failed to respond within $MaxStartupAttempts attempts")
     false
@@ -123,7 +124,7 @@ class ContainerisedWorkspace(val workspaceDir: String) extends WorkspaceAgentInt
     logger.info("Starting heartbeat task")
 
     heartbeatExecutor.scheduleAtFixedRate(
-      () => {
+      () =>
         if (containerRunning.get()) {
           try {
             val response = requests.get(s"$baseUrl/heartbeat", readTimeout = 2000, connectTimeout = 2000)
@@ -137,20 +138,18 @@ class ContainerisedWorkspace(val workspaceDir: String) extends WorkspaceAgentInt
               logger.warn(s"Failed to send heartbeat: ${e.getMessage}")
               handleContainerDown()
           }
-        }
-      },
+        },
       0,
       HeartbeatIntervalSeconds,
       TimeUnit.SECONDS
     )
   }
 
-  private def handleContainerDown(): Unit = {
+  private def handleContainerDown(): Unit =
     if (containerRunning.compareAndSet(true, false)) {
       logger.error("Container appears to be down - no longer receiving heartbeats")
       // We don't stop the heartbeat executor in case the container comes back up
     }
-  }
 
   def stopContainer(): Boolean = {
     logger.info(s"Stopping workspace runner container: $containerName")
@@ -158,11 +157,11 @@ class ContainerisedWorkspace(val workspaceDir: String) extends WorkspaceAgentInt
 
     // Shutdown heartbeat task
     heartbeatExecutor.shutdown()
-    try {
+    try
       if (!heartbeatExecutor.awaitTermination(3, TimeUnit.SECONDS)) {
         heartbeatExecutor.shutdownNow()
       }
-    } catch {
+    catch {
       case _: InterruptedException => heartbeatExecutor.shutdownNow()
     }
 
@@ -208,10 +207,11 @@ class ContainerisedWorkspace(val workspaceDir: String) extends WorkspaceAgentInt
   // Create a remote interface implementation that uses sendCommandRequest
   private val remoteInterface = WorkspaceAgentInterfaceRemote(sendCommandRequest)
 
-  /** Sends a command request to the workspace runner
-    * @param request The request to send
-    * @return The response from the workspace runner
-    */
+  /**
+   * Sends a command request to the workspace runner
+   * @param request The request to send
+   * @return The response from the workspace runner
+   */
   private def sendCommandRequest(request: WorkspaceAgentCommand): WorkspaceAgentResponse = {
     if (!containerRunning.get()) {
       throw new RuntimeException("Container is not running - cannot send command")
@@ -248,60 +248,53 @@ class ContainerisedWorkspace(val workspaceDir: String) extends WorkspaceAgentInt
 
   // WorkspaceAgentInterface implementation - delegate to remoteInterface
   override def exploreFiles(
-      path: String,
-      recursive: Option[Boolean] = None,
-      excludePatterns: Option[List[String]] = None,
-      maxDepth: Option[Int] = None,
-      returnMetadata: Option[Boolean] = None
-  ): ExploreFilesResponse = {
+    path: String,
+    recursive: Option[Boolean] = None,
+    excludePatterns: Option[List[String]] = None,
+    maxDepth: Option[Int] = None,
+    returnMetadata: Option[Boolean] = None
+  ): ExploreFilesResponse =
     remoteInterface.exploreFiles(path, recursive, excludePatterns, maxDepth, returnMetadata)
-  }
 
   override def readFile(
-      path: String,
-      startLine: Option[Int] = None,
-      endLine: Option[Int] = None
-  ): ReadFileResponse = {
+    path: String,
+    startLine: Option[Int] = None,
+    endLine: Option[Int] = None
+  ): ReadFileResponse =
     remoteInterface.readFile(path, startLine, endLine)
-  }
 
   override def writeFile(
-      path: String,
-      content: String,
-      mode: Option[String] = None,
-      createDirectories: Option[Boolean] = None
-  ): WriteFileResponse = {
+    path: String,
+    content: String,
+    mode: Option[String] = None,
+    createDirectories: Option[Boolean] = None
+  ): WriteFileResponse =
     remoteInterface.writeFile(path, content, mode, createDirectories)
-  }
 
   override def modifyFile(
-      path: String,
-      operations: List[FileOperation]
-  ): ModifyFileResponse = {
+    path: String,
+    operations: List[FileOperation]
+  ): ModifyFileResponse =
     remoteInterface.modifyFile(path, operations)
-  }
 
   override def searchFiles(
-      paths: List[String],
-      query: String,
-      searchType: String,
-      recursive: Option[Boolean] = None,
-      excludePatterns: Option[List[String]] = None,
-      contextLines: Option[Int] = None
-  ): SearchFilesResponse = {
+    paths: List[String],
+    query: String,
+    searchType: String,
+    recursive: Option[Boolean] = None,
+    excludePatterns: Option[List[String]] = None,
+    contextLines: Option[Int] = None
+  ): SearchFilesResponse =
     remoteInterface.searchFiles(paths, query, searchType, recursive, excludePatterns, contextLines)
-  }
 
   override def executeCommand(
-      command: String,
-      workingDirectory: Option[String] = None,
-      timeout: Option[Int] = None,
-      environment: Option[Map[String, String]] = None
-  ): ExecuteCommandResponse = {
+    command: String,
+    workingDirectory: Option[String] = None,
+    timeout: Option[Int] = None,
+    environment: Option[Map[String, String]] = None
+  ): ExecuteCommandResponse =
     remoteInterface.executeCommand(command, workingDirectory, timeout, environment)
-  }
 
-  override def getWorkspaceInfo(): GetWorkspaceInfoResponse = {
+  override def getWorkspaceInfo(): GetWorkspaceInfoResponse =
     remoteInterface.getWorkspaceInfo()
-  }
 }

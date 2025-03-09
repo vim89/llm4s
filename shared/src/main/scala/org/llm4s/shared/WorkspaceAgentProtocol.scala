@@ -1,6 +1,6 @@
 package org.llm4s.shared
 
-import upickle.default.{ReadWriter, macroRW}
+import upickle.default.{ ReadWriter, macroRW }
 
 // Core trait for all workspace commands
 sealed trait WorkspaceAgentCommand {
@@ -39,10 +39,10 @@ object WorkspaceAgentResponse {
 
 // Error response for any command
 case class WorkspaceAgentErrorResponse(
-    commandId: String,
-    error: String,
-    code: String,
-    details: Option[String] = None
+  commandId: String,
+  error: String,
+  code: String,
+  details: Option[String] = None
 ) extends WorkspaceAgentResponse
 
 object WorkspaceAgentErrorResponse {
@@ -51,10 +51,10 @@ object WorkspaceAgentErrorResponse {
 
 // File metadata representation
 case class FileMetadata(
-    path: String,
-    size: Long,
-    isDirectory: Boolean,
-    lastModified: String
+  path: String,
+  size: Long,
+  isDirectory: Boolean,
+  lastModified: String
 )
 
 object FileMetadata {
@@ -63,12 +63,12 @@ object FileMetadata {
 
 // 1. ExploreFiles Command and Response
 case class ExploreFilesCommand(
-    commandId: String,
-    path: String,
-    recursive: Option[Boolean] = None,
-    excludePatterns: Option[List[String]] = None,
-    maxDepth: Option[Int] = None,
-    returnMetadata: Option[Boolean] = None
+  commandId: String,
+  path: String,
+  recursive: Option[Boolean] = None,
+  excludePatterns: Option[List[String]] = None,
+  maxDepth: Option[Int] = None,
+  returnMetadata: Option[Boolean] = None
 ) extends WorkspaceAgentCommand
 
 object ExploreFilesCommand {
@@ -76,9 +76,9 @@ object ExploreFilesCommand {
 }
 
 case class FileEntry(
-    path: String,
-    isDirectory: Boolean,
-    metadata: Option[FileMetadata] = None
+  path: String,
+  isDirectory: Boolean,
+  metadata: Option[FileMetadata] = None
 )
 
 object FileEntry {
@@ -86,10 +86,10 @@ object FileEntry {
 }
 
 case class ExploreFilesResponse(
-    commandId: String,
-    files: List[FileEntry],
-    isTruncated: Boolean,
-    totalFound: Int
+  commandId: String,
+  files: List[FileEntry],
+  isTruncated: Boolean,
+  totalFound: Int
 ) extends WorkspaceAgentResponse
 
 object ExploreFilesResponse {
@@ -98,10 +98,10 @@ object ExploreFilesResponse {
 
 // 2. ReadFile Command and Response
 case class ReadFileCommand(
-    commandId: String,
-    path: String,
-    startLine: Option[Int] = None,
-    endLine: Option[Int] = None
+  commandId: String,
+  path: String,
+  startLine: Option[Int] = None,
+  endLine: Option[Int] = None
 ) extends WorkspaceAgentCommand
 
 object ReadFileCommand {
@@ -109,12 +109,12 @@ object ReadFileCommand {
 }
 
 case class ReadFileResponse(
-    commandId: String,
-    content: String,
-    metadata: FileMetadata,
-    isTruncated: Boolean,
-    totalLines: Int,
-    returnedLines: Int
+  commandId: String,
+  content: String,
+  metadata: FileMetadata,
+  isTruncated: Boolean,
+  totalLines: Int,
+  returnedLines: Int
 ) extends WorkspaceAgentResponse
 
 object ReadFileResponse {
@@ -123,11 +123,11 @@ object ReadFileResponse {
 
 // 3. WriteFile Command and Response
 case class WriteFileCommand(
-    commandId: String,
-    path: String,
-    content: String,
-    mode: Option[String] = None, // "create", "overwrite", or "append"
-    createDirectories: Option[Boolean] = None
+  commandId: String,
+  path: String,
+  content: String,
+  mode: Option[String] = None, // "create", "overwrite", or "append"
+  createDirectories: Option[Boolean] = None
 ) extends WorkspaceAgentCommand
 
 object WriteFileCommand {
@@ -135,10 +135,10 @@ object WriteFileCommand {
 }
 
 case class WriteFileResponse(
-    commandId: String,
-    success: Boolean,
-    path: String,
-    bytesWritten: Long
+  commandId: String,
+  success: Boolean,
+  path: String,
+  bytesWritten: Long
 ) extends WorkspaceAgentResponse
 
 object WriteFileResponse {
@@ -158,10 +158,10 @@ object FileOperation {
 }
 
 case class ReplaceOperation(
-    `type`: String = "replace",
-    startLine: Int,
-    endLine: Int,
-    newContent: String
+  `type`: String = "replace",
+  startLine: Int,
+  endLine: Int,
+  newContent: String
 ) extends FileOperation
 
 object ReplaceOperation {
@@ -169,9 +169,9 @@ object ReplaceOperation {
 }
 
 case class InsertOperation(
-    `type`: String = "insert",
-    afterLine: Int,
-    newContent: String
+  `type`: String = "insert",
+  afterLine: Int,
+  newContent: String
 ) extends FileOperation
 
 object InsertOperation {
@@ -179,9 +179,9 @@ object InsertOperation {
 }
 
 case class DeleteOperation(
-    `type`: String = "delete",
-    startLine: Int,
-    endLine: Int
+  `type`: String = "delete",
+  startLine: Int,
+  endLine: Int
 ) extends FileOperation
 
 object DeleteOperation {
@@ -189,10 +189,10 @@ object DeleteOperation {
 }
 
 case class RegexReplaceOperation(
-    `type`: String = "regexReplace",
-    pattern: String,
-    replacement: String,
-    flags: Option[String] = None
+  `type`: String = "regexReplace",
+  pattern: String,
+  replacement: String,
+  flags: Option[String] = None
 ) extends FileOperation
 
 object RegexReplaceOperation {
@@ -200,9 +200,9 @@ object RegexReplaceOperation {
 }
 
 case class ModifyFileCommand(
-    commandId: String,
-    path: String,
-    operations: List[FileOperation]
+  commandId: String,
+  path: String,
+  operations: List[FileOperation]
 ) extends WorkspaceAgentCommand
 
 object ModifyFileCommand {
@@ -210,9 +210,9 @@ object ModifyFileCommand {
 }
 
 case class ModifyFileResponse(
-    commandId: String,
-    success: Boolean,
-    path: String
+  commandId: String,
+  success: Boolean,
+  path: String
 ) extends WorkspaceAgentResponse
 
 object ModifyFileResponse {
@@ -221,13 +221,13 @@ object ModifyFileResponse {
 
 // 5. SearchFiles Command and Response
 case class SearchFilesCommand(
-    commandId: String,
-    paths: List[String],
-    query: String,
-    `type`: String, // "regex" or "literal"
-    recursive: Option[Boolean] = None,
-    excludePatterns: Option[List[String]] = None,
-    contextLines: Option[Int] = None
+  commandId: String,
+  paths: List[String],
+  query: String,
+  `type`: String, // "regex" or "literal"
+  recursive: Option[Boolean] = None,
+  excludePatterns: Option[List[String]] = None,
+  contextLines: Option[Int] = None
 ) extends WorkspaceAgentCommand
 
 object SearchFilesCommand {
@@ -235,11 +235,11 @@ object SearchFilesCommand {
 }
 
 case class SearchMatch(
-    path: String,
-    line: Int,
-    matchText: String,
-    contextBefore: List[String],
-    contextAfter: List[String]
+  path: String,
+  line: Int,
+  matchText: String,
+  contextBefore: List[String],
+  contextAfter: List[String]
 )
 
 object SearchMatch {
@@ -247,10 +247,10 @@ object SearchMatch {
 }
 
 case class SearchFilesResponse(
-    commandId: String,
-    matches: List[SearchMatch],
-    isTruncated: Boolean,
-    totalMatches: Int
+  commandId: String,
+  matches: List[SearchMatch],
+  isTruncated: Boolean,
+  totalMatches: Int
 ) extends WorkspaceAgentResponse
 
 object SearchFilesResponse {
@@ -259,11 +259,11 @@ object SearchFilesResponse {
 
 // 6. ExecuteCommand Command and Response
 case class ExecuteCommandCommand(
-    commandId: String,
-    command: String,
-    workingDirectory: Option[String] = None,
-    timeout: Option[Int] = None,
-    environment: Option[Map[String, String]] = None
+  commandId: String,
+  command: String,
+  workingDirectory: Option[String] = None,
+  timeout: Option[Int] = None,
+  environment: Option[Map[String, String]] = None
 ) extends WorkspaceAgentCommand
 
 object ExecuteCommandCommand {
@@ -271,12 +271,12 @@ object ExecuteCommandCommand {
 }
 
 case class ExecuteCommandResponse(
-    commandId: String,
-    stdout: String,
-    stderr: String,
-    exitCode: Int,
-    isOutputTruncated: Boolean,
-    durationMs: Long
+  commandId: String,
+  stdout: String,
+  stderr: String,
+  exitCode: Int,
+  isOutputTruncated: Boolean,
+  durationMs: Long
 ) extends WorkspaceAgentResponse
 
 object ExecuteCommandResponse {
@@ -285,7 +285,7 @@ object ExecuteCommandResponse {
 
 // 7. GetWorkspaceInfo Command and Response
 case class GetWorkspaceInfoCommand(
-    commandId: String
+  commandId: String
 ) extends WorkspaceAgentCommand
 
 object GetWorkspaceInfoCommand {
@@ -293,10 +293,10 @@ object GetWorkspaceInfoCommand {
 }
 
 case class WorkspaceLimits(
-    maxFileSize: Long,
-    maxDirectoryEntries: Int,
-    maxSearchResults: Int,
-    maxOutputSize: Long
+  maxFileSize: Long,
+  maxDirectoryEntries: Int,
+  maxSearchResults: Int,
+  maxOutputSize: Long
 )
 
 object WorkspaceLimits {
@@ -304,10 +304,10 @@ object WorkspaceLimits {
 }
 
 case class GetWorkspaceInfoResponse(
-    commandId: String,
-    root: String,
-    defaultExclusions: List[String],
-    limits: WorkspaceLimits
+  commandId: String,
+  root: String,
+  defaultExclusions: List[String],
+  limits: WorkspaceLimits
 ) extends WorkspaceAgentResponse
 
 object GetWorkspaceInfoResponse {

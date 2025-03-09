@@ -1,31 +1,46 @@
 package org.llm4s.samples.basic
 
-import com.azure.ai.openai.models._
-import org.llm4s.llmconnect.LLMConnect
+import org.llm4s.llmconnect.LLM
+import org.llm4s.llmconnect.model._
 
 object BasicLLMCallingExample {
   def main(args: Array[String]): Unit = {
+    // Create a conversation with messages
+    val conversation = Conversation(
+      Seq(
+        SystemMessage("You are a helpful assistant. You will talk like a pirate."),
+        UserMessage("Please write a scala function to add two integers"),
+        AssistantMessage("Of course, me hearty! What can I do for ye?"),
+        UserMessage("What's the best way to train a parrot?")
+      )
+    )
 
-    val llmConnection = LLMConnect.getClient()
-    val client        = llmConnection.client
+    // Get a client using environment variables
+    val client = LLM.client()
 
-    val chatMessages = new java.util.ArrayList[ChatRequestMessage]
-    chatMessages.add(new ChatRequestSystemMessage("You are a helpful assistant. You will talk like a pirate."))
-    chatMessages.add(new ChatRequestUserMessage("Please write a scala function to add two integers"))
-    chatMessages.add(new ChatRequestAssistantMessage("Of course, me hearty! What can I do for ye?"))
-    chatMessages.add(new ChatRequestUserMessage("What's the best way to train a parrot?"))
+    // Complete the conversation
+    client.complete(conversation) match {
+      case Right(completion) =>
+        println(s"Model ID=${completion.id} is created at ${completion.created}")
+        println(s"Chat Role: ${completion.message.role}")
+        println("Message:")
+        println(completion.message.content)
 
-    val chatCompletions =
-      client.getChatCompletions(llmConnection.defaultModel, new ChatCompletionsOptions(chatMessages))
+        // Print usage information if available
+        completion.usage.foreach { usage =>
+          println(
+            s"Tokens used: ${usage.totalTokens} (${usage.promptTokens} prompt, ${usage.completionTokens} completion)"
+          )
+        }
 
-    System.out.printf("Model ID=%s is created at %s.%n", chatCompletions.getId, chatCompletions.getCreatedAt)
-    import scala.jdk.CollectionConverters._
-    for (choice <- chatCompletions.getChoices.asScala) {
-      val message = choice.getMessage
-      System.out.printf("Index: %d, Chat Role: %s.%n", choice.getIndex, message.getRole)
-      System.out.println("Message:")
-      System.out.println(message.getContent)
+      case Left(error) =>
+        error match {
+          case UnknownError(throwable) =>
+            println(s"Error: ${throwable.getMessage}")
+            throwable.printStackTrace()
+          case _ =>
+            println(s"Error: ${error.message}")
+        }
     }
   }
-
 }

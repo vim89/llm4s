@@ -1,11 +1,12 @@
 package org.llm4s.samples.workspace
 
-import org.llm4s.shared.{FileOperation, ReplaceOperation}
+import org.llm4s.shared.{ FileOperation, ReplaceOperation }
 import org.llm4s.workspace.ContainerisedWorkspace
 import org.slf4j.LoggerFactory
 
-/** Demonstrates the basic usage of the Workspace class
-  */
+/**
+ * Demonstrates the basic usage of the Workspace class
+ */
 object ContainerisedWorkspaceDemo extends App {
   private val logger = LoggerFactory.getLogger(getClass)
 
@@ -15,7 +16,7 @@ object ContainerisedWorkspaceDemo extends App {
 
   val workspace = new ContainerisedWorkspace(workspaceDir)
 
-  try {
+  try
     // Start the workspace container
     if (workspace.startContainer()) {
       logger.info("Container started successfully")
@@ -65,9 +66,7 @@ object ContainerisedWorkspaceDemo extends App {
         recursive = Some(true)
       )
       logger.info(s"Search results: ${searchResult.matches.length} matches found")
-      searchResult.matches.foreach { match_ =>
-        logger.info(s"Match in ${match_.path}: ${match_.matchText}")
-      }
+      searchResult.matches.foreach(match_ => logger.info(s"Match in ${match_.path}: ${match_.matchText}"))
 
       // Get workspace info
       val workspaceInfo = workspace.getWorkspaceInfo()
@@ -75,15 +74,14 @@ object ContainerisedWorkspaceDemo extends App {
     } else {
       logger.error("Failed to start the workspace container")
     }
-  } catch {
+  catch {
     case e: Exception =>
       logger.error(s"Error during workspace demo: ${e.getMessage}", e)
-  } finally {
+  } finally
     // Always clean up the container
     if (workspace.stopContainer()) {
       logger.info("Container stopped successfully")
     } else {
       logger.error("Failed to stop the container")
     }
-  }
 }

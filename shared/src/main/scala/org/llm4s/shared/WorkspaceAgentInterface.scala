@@ -4,9 +4,9 @@ package org.llm4s.shared
  * Exception thrown when a workspace agent command fails
  */
 class WorkspaceAgentException(
-    val error: String,
-    val code: String,
-    val details: Option[String] = None
+  val error: String,
+  val code: String,
+  val details: Option[String] = None
 ) extends RuntimeException(s"$code: $error${details.map(d => s" - $d").getOrElse("")}")
 
 /**
@@ -25,11 +25,11 @@ trait WorkspaceAgentInterface {
    * @return Response with list of files and directories
    */
   def exploreFiles(
-      path: String,
-      recursive: Option[Boolean] = None,
-      excludePatterns: Option[List[String]] = None,
-      maxDepth: Option[Int] = None,
-      returnMetadata: Option[Boolean] = None
+    path: String,
+    recursive: Option[Boolean] = None,
+    excludePatterns: Option[List[String]] = None,
+    maxDepth: Option[Int] = None,
+    returnMetadata: Option[Boolean] = None
   ): ExploreFilesResponse
 
   /**
@@ -41,9 +41,9 @@ trait WorkspaceAgentInterface {
    * @return Response with file content and metadata
    */
   def readFile(
-      path: String,
-      startLine: Option[Int] = None,
-      endLine: Option[Int] = None
+    path: String,
+    startLine: Option[Int] = None,
+    endLine: Option[Int] = None
   ): ReadFileResponse
 
   /**
@@ -56,10 +56,10 @@ trait WorkspaceAgentInterface {
    * @return Response with write operation result
    */
   def writeFile(
-      path: String,
-      content: String,
-      mode: Option[String] = None,
-      createDirectories: Option[Boolean] = None
+    path: String,
+    content: String,
+    mode: Option[String] = None,
+    createDirectories: Option[Boolean] = None
   ): WriteFileResponse
 
   /**
@@ -70,8 +70,8 @@ trait WorkspaceAgentInterface {
    * @return Response with modification result
    */
   def modifyFile(
-      path: String,
-      operations: List[FileOperation]
+    path: String,
+    operations: List[FileOperation]
   ): ModifyFileResponse
 
   /**
@@ -86,12 +86,12 @@ trait WorkspaceAgentInterface {
    * @return Response with search results
    */
   def searchFiles(
-      paths: List[String],
-      query: String,
-      searchType: String,
-      recursive: Option[Boolean] = None,
-      excludePatterns: Option[List[String]] = None,
-      contextLines: Option[Int] = None
+    paths: List[String],
+    query: String,
+    searchType: String,
+    recursive: Option[Boolean] = None,
+    excludePatterns: Option[List[String]] = None,
+    contextLines: Option[Int] = None
   ): SearchFilesResponse
 
   /**
@@ -104,10 +104,10 @@ trait WorkspaceAgentInterface {
    * @return Response with command execution result
    */
   def executeCommand(
-      command: String,
-      workingDirectory: Option[String] = None,
-      timeout: Option[Int] = None,
-      environment: Option[Map[String, String]] = None
+    command: String,
+    workingDirectory: Option[String] = None,
+    timeout: Option[Int] = None,
+    environment: Option[Map[String, String]] = None
   ): ExecuteCommandResponse
 
   /**

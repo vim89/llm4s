@@ -5,6 +5,9 @@ ThisBuild / version          := "0.1.0-SNAPSHOT"
 ThisBuild / organization     := "org.llm4s"
 ThisBuild / organizationName := "llm4s"
 
+// Scalafmt configuration
+ThisBuild / scalafmtOnCompile := true
+
 lazy val root = (project in file("."))
   .aggregate(shared, workspaceRunner)
   .dependsOn(shared)
@@ -12,6 +15,7 @@ lazy val root = (project in file("."))
     name := "llm4s",
     libraryDependencies ++= List(
       "com.azure"      % "azure-ai-openai" % "1.0.0-beta.14",
+      "com.anthropic"  % "anthropic-java"  % "0.7.0",
       "ch.qos.logback" % "logback-classic" % "1.5.17",
       "com.lihaoyi"   %% "upickle"         % "4.1.0",
       "com.lihaoyi"   %% "requests"        % "0.9.0",

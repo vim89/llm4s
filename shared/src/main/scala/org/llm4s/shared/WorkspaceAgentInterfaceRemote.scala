@@ -8,13 +8,14 @@ import java.util.UUID
  *
  * @param handler A function that processes WorkspaceAgentCommands and returns WorkspaceAgentResponses
  */
-class WorkspaceAgentInterfaceRemote(handler: WorkspaceAgentCommand => WorkspaceAgentResponse) extends WorkspaceAgentInterface {
+class WorkspaceAgentInterfaceRemote(handler: WorkspaceAgentCommand => WorkspaceAgentResponse)
+    extends WorkspaceAgentInterface {
 
   private def generateCommandId(): String = UUID.randomUUID().toString
 
   private def handleCommand[T <: WorkspaceAgentResponse](
-      command: WorkspaceAgentCommand,
-      responseClass: Class[T]
+    command: WorkspaceAgentCommand,
+    responseClass: Class[T]
   ): T = {
     val response = handler(command)
     response match {
@@ -42,11 +43,11 @@ class WorkspaceAgentInterfaceRemote(handler: WorkspaceAgentCommand => WorkspaceA
    * @return Response with list of files and directories
    */
   override def exploreFiles(
-      path: String,
-      recursive: Option[Boolean] = None,
-      excludePatterns: Option[List[String]] = None,
-      maxDepth: Option[Int] = None,
-      returnMetadata: Option[Boolean] = None
+    path: String,
+    recursive: Option[Boolean] = None,
+    excludePatterns: Option[List[String]] = None,
+    maxDepth: Option[Int] = None,
+    returnMetadata: Option[Boolean] = None
   ): ExploreFilesResponse = {
     val command = ExploreFilesCommand(
       commandId = generateCommandId(),
@@ -68,9 +69,9 @@ class WorkspaceAgentInterfaceRemote(handler: WorkspaceAgentCommand => WorkspaceA
    * @return Response with file content and metadata
    */
   override def readFile(
-      path: String,
-      startLine: Option[Int] = None,
-      endLine: Option[Int] = None
+    path: String,
+    startLine: Option[Int] = None,
+    endLine: Option[Int] = None
   ): ReadFileResponse = {
     val command = ReadFileCommand(
       commandId = generateCommandId(),
@@ -91,10 +92,10 @@ class WorkspaceAgentInterfaceRemote(handler: WorkspaceAgentCommand => WorkspaceA
    * @return Response with write operation result
    */
   override def writeFile(
-      path: String,
-      content: String,
-      mode: Option[String] = None,
-      createDirectories: Option[Boolean] = None
+    path: String,
+    content: String,
+    mode: Option[String] = None,
+    createDirectories: Option[Boolean] = None
   ): WriteFileResponse = {
     val command = WriteFileCommand(
       commandId = generateCommandId(),
@@ -114,8 +115,8 @@ class WorkspaceAgentInterfaceRemote(handler: WorkspaceAgentCommand => WorkspaceA
    * @return Response with modification result
    */
   override def modifyFile(
-      path: String,
-      operations: List[FileOperation]
+    path: String,
+    operations: List[FileOperation]
   ): ModifyFileResponse = {
     val command = ModifyFileCommand(
       commandId = generateCommandId(),
@@ -137,12 +138,12 @@ class WorkspaceAgentInterfaceRemote(handler: WorkspaceAgentCommand => WorkspaceA
    * @return Response with search results
    */
   override def searchFiles(
-      paths: List[String],
-      query: String,
-      searchType: String,
-      recursive: Option[Boolean] = None,
-      excludePatterns: Option[List[String]] = None,
-      contextLines: Option[Int] = None
+    paths: List[String],
+    query: String,
+    searchType: String,
+    recursive: Option[Boolean] = None,
+    excludePatterns: Option[List[String]] = None,
+    contextLines: Option[Int] = None
   ): SearchFilesResponse = {
     val command = SearchFilesCommand(
       commandId = generateCommandId(),
@@ -166,10 +167,10 @@ class WorkspaceAgentInterfaceRemote(handler: WorkspaceAgentCommand => WorkspaceA
    * @return Response with command execution result
    */
   override def executeCommand(
-      command: String,
-      workingDirectory: Option[String] = None,
-      timeout: Option[Int] = None,
-      environment: Option[Map[String, String]] = None
+    command: String,
+    workingDirectory: Option[String] = None,
+    timeout: Option[Int] = None,
+    environment: Option[Map[String, String]] = None
   ): ExecuteCommandResponse = {
     val cmd = ExecuteCommandCommand(
       commandId = generateCommandId(),
@@ -198,15 +199,15 @@ class WorkspaceAgentInterfaceRemote(handler: WorkspaceAgentCommand => WorkspaceA
  * Companion object for WorkspaceAgentInterfaceRemote with factory methods.
  */
 object WorkspaceAgentInterfaceRemote {
+
   /**
    * Create a new WorkspaceAgentInterfaceRemote with the given handler function.
    *
    * @param handler A function that processes WorkspaceAgentCommands and returns WorkspaceAgentResponses
    * @return A new WorkspaceAgentInterfaceRemote instance
    */
-  def apply(handler: WorkspaceAgentCommand => WorkspaceAgentResponse): WorkspaceAgentInterfaceRemote = {
+  def apply(handler: WorkspaceAgentCommand => WorkspaceAgentResponse): WorkspaceAgentInterfaceRemote =
     new WorkspaceAgentInterfaceRemote(handler)
-  }
 
   /**
    * Create a new WorkspaceAgentInterfaceRemote with a handler that wraps exceptions in ErrorResponses.
@@ -215,10 +216,10 @@ object WorkspaceAgentInterfaceRemote {
    * @return A new WorkspaceAgentInterfaceRemote instance with exception handling
    */
   def withErrorHandling(
-      handler: PartialFunction[WorkspaceAgentCommand, WorkspaceAgentResponse]
+    handler: PartialFunction[WorkspaceAgentCommand, WorkspaceAgentResponse]
   ): WorkspaceAgentInterfaceRemote = {
-    val safeHandler: WorkspaceAgentCommand => WorkspaceAgentResponse = cmd => {
-      try {
+    val safeHandler: WorkspaceAgentCommand => WorkspaceAgentResponse = cmd =>
+      try
         if (handler.isDefinedAt(cmd)) {
           handler(cmd)
         } else {
@@ -229,7 +230,7 @@ object WorkspaceAgentInterfaceRemote {
             None
           )
         }
-      } catch {
+      catch {
         case e: Exception =>
           WorkspaceAgentErrorResponse(
             cmd.commandId,
@@ -238,7 +239,6 @@ object WorkspaceAgentInterfaceRemote {
             Some(e.getStackTrace.mkString("\n"))
           )
       }
-    }
 
     new WorkspaceAgentInterfaceRemote(safeHandler)
   }
