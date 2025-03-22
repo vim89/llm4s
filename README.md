@@ -5,7 +5,7 @@
     <a href="https://github.com/llm4s/llm4s/blob/main/LICENSE">
         <img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt ="License">
     </a>
-    <a href="https://discord.gg/wuPM9dRgDw">
+    <a href="https://discord.gg/4uvTPn6qww">
         <img src="https://img.shields.io/static/v1?label=Chat%20on&message=Discord&color=blue&logo=Discord&style=flat-square" alt="Discord">
     </a>
 </h4>
