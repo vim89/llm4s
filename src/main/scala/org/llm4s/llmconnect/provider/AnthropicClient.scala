@@ -2,11 +2,14 @@ package org.llm4s.llmconnect.provider
 
 import com.anthropic.client.okhttp.AnthropicOkHttpClient
 import com.anthropic.core.{ JsonValue, ObjectMappers }
-import com.anthropic.models.{ MessageCreateParams, Tool }
+import com.anthropic.models.messages
+import com.anthropic.models.messages.Message
+import com.anthropic.models.messages.MessageCreateParams
 import org.llm4s.llmconnect.LLMClient
 import org.llm4s.llmconnect.config.AnthropicConfig
 import org.llm4s.llmconnect.model._
 import org.llm4s.toolapi.ToolFunction
+import com.anthropic.models.messages.Tool
 
 import scala.jdk.CollectionConverters._
 
@@ -47,7 +50,7 @@ class AnthropicClient(config: AnthropicConfig) extends LLMClient {
       val messageParams = paramsBuilder.build()
 
       // Make API call
-      val response = client.messages().create(messageParams)
+      val response: messages.Message = client.messages().create(messageParams)
 
       // Convert response to our model
       Right(convertFromAnthropicResponse(response))
@@ -127,7 +130,7 @@ class AnthropicClient(config: AnthropicConfig) extends LLMClient {
   }
 
   // Convert Anthropic response to our model
-  private def convertFromAnthropicResponse(response: com.anthropic.models.Message): Completion = {
+  private def convertFromAnthropicResponse(response: Message): Completion = {
     // Extract content
     val content = response
       .content()
@@ -159,7 +162,7 @@ class AnthropicClient(config: AnthropicConfig) extends LLMClient {
   }
 
   // Extract tool calls from Anthropic response
-  private def extractToolCalls(response: com.anthropic.models.Message): Seq[ToolCall] = {
+  private def extractToolCalls(response: Message): Seq[ToolCall] = {
     val toolCalls = response.content().asScala.toList.filter(_.isToolUse).map { cb =>
       val toolUse   = cb.asToolUse()
       val toolId    = toolUse.id()

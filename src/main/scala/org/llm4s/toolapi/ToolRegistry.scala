@@ -24,7 +24,7 @@ object ToolCallError {
 /**
  * Registry for tool functions with execution capabilities
  */
-class ToolRegistry(tools: Seq[ToolFunction[_, _]]) {
+class ToolRegistry(val tools: Seq[ToolFunction[_, _]]) {
   // Get a specific tool by name
   def getTool(name: String): Option[ToolFunction[_, _]] = tools.find(_.name == name)
 

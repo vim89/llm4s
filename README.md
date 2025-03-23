@@ -42,7 +42,7 @@ LLM4S provides a simple, robust, and scalable framework for building LLM applica
 
 ### Prerequisites
 
-- JDK 11+
+- JDK 21+
 - SBT
 - Docker (for containerized workspace)
 
