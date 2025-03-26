@@ -16,6 +16,7 @@ lazy val root = (project in file("."))
       "com.azure"      % "azure-ai-openai" % "1.0.0-beta.15",
       "com.anthropic"  % "anthropic-java"  % "0.8.0",
       "ch.qos.logback" % "logback-classic" % "1.5.18",
+      "com.knuddels" % "jtokkit" % "1.1.0",
       "com.lihaoyi"   %% "upickle"         % "4.1.0",
       "com.lihaoyi"   %% "requests"        % "0.9.0",
       "org.scalatest" %% "scalatest"       % "3.2.19" % Test
