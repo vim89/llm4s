@@ -14,8 +14,9 @@ object LLMConnect {
    * Get an LLMClient based on environment variables
    */
   def getClient(): LLMClient = {
-    val model = readEnv("LLM_MODEL").getOrElse(
-      throw new IllegalArgumentException("LLM_MODEL not set, set this to define default model")
+    val LLM_MODEL_ENV_KEY = "LLM_MODEL"
+    val model = readEnv(LLM_MODEL_ENV_KEY).getOrElse(
+      throw new IllegalArgumentException(s"Please set the `$LLM_MODEL_ENV_KEY` environment variable to specify the default model")
     )
 
     if (model.startsWith("openai/")) {
