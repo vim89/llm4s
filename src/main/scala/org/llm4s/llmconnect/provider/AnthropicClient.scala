@@ -1,15 +1,17 @@
 package org.llm4s.llmconnect.provider
-
+import scala.jdk.CollectionConverters._
 import com.anthropic.client.okhttp.AnthropicOkHttpClient
-import com.anthropic.core.{ JsonValue, ObjectMappers }
+import com.anthropic.core.{ JsonObject, JsonString, JsonValue, ObjectMappers }
 import com.anthropic.models.messages
 import com.anthropic.models.messages.Message
 import com.anthropic.models.messages.MessageCreateParams
 import org.llm4s.llmconnect.LLMClient
 import org.llm4s.llmconnect.config.AnthropicConfig
 import org.llm4s.llmconnect.model._
-import org.llm4s.toolapi.ToolFunction
+import org.llm4s.toolapi.{ ObjectSchema, ToolFunction }
 import com.anthropic.models.messages.Tool
+import com.fasterxml.jackson.core.JsonParser
+import com.fasterxml.jackson.databind.JsonDeserializer
 
 import scala.jdk.CollectionConverters._
 
@@ -49,8 +51,9 @@ class AnthropicClient(config: AnthropicConfig) extends LLMClient {
       // Build the parameters
       val messageParams = paramsBuilder.build()
 
+      val messageService = client.messages()
       // Make API call
-      val response: messages.Message = client.messages().create(messageParams)
+      val response: messages.Message = messageService.create(messageParams)
 
       // Convert response to our model
       Right(convertFromAnthropicResponse(response))
@@ -65,6 +68,30 @@ class AnthropicClient(config: AnthropicConfig) extends LLMClient {
         Left(UnknownError(e))
     }
 
+  /*
+curl https://api.anthropic.com/v1/messages \
+     --header "x-api-key: $ANTHROPIC_API_KEY" \
+     --header "anthropic-version: 2023-06-01" \
+     --header "content-type: application/json" \
+     --data \
+'{
+    "model": "claude-3-7-sonnet-20250219",
+    "max_tokens": 1024,
+    "tools": [{
+        "name": "get_weather",
+        "description": "Get the current weather in a given location",
+        "input_schema": {
+          "type":"object",
+          "properties":{
+            "location":{"type":"string","description":"City and country e.g. Bogotá, Colombia"},
+            "units":{"type":"string","description":"Units the temperature will be returned in.","enum":["celsius","fahrenheit"]}
+          },
+          "additionalProperties": {}
+        }
+    }],
+    "messages": [{"role": "user", "content": "What is the weather like in San Francisco?"}]
+}'
+   */
   override def streamComplete(
     conversation: Conversation,
     options: CompletionOptions = CompletionOptions(),
@@ -106,27 +133,26 @@ class AnthropicClient(config: AnthropicConfig) extends LLMClient {
 
   // Convert our ToolFunction to Anthropic's Tool
   private def convertToolToAnthropicTool(toolFunction: ToolFunction[_, _]): Tool = {
-    val schema     = toolFunction.schema
-    val jsonSchema = schema.toJsonSchema
+    // note: in case of debug set this environment variable -- `ANTHROPIC_LOG=debug`
 
-    // Convert to Anthropic InputSchema format
+    val objectSchema       = toolFunction.schema.asInstanceOf[ObjectSchema[_]]
+    val jsonSchema: JsonObject =
+      ObjectMappers.jsonMapper().readValue(objectSchema.toJsonSchema.render(), classOf[JsonObject])
+    val jsonSchemaMap   = jsonSchema.values()
+    val inputProperties = jsonSchemaMap.get("properties")
+
     val inputSchemaBuilder = Tool.InputSchema.builder()
+    inputSchemaBuilder.properties(inputProperties)
+    objectSchema.properties.map(p => p.required)
 
-    // Add properties
-    println("JS = \n" + jsonSchema.obj("properties").render(indent = 2))
-    inputSchemaBuilder.properties(JsonValue.from(jsonSchema.obj("properties").render()))
-
-    // Add required fields if present
-    if (jsonSchema.obj.contains("required")) {
-      inputSchemaBuilder.putAdditionalProperty("required", JsonValue.from(jsonSchema.obj("required").render()))
-    }
-    // Build the tool
-    Tool
+    val tool = Tool
       .builder()
       .name(toolFunction.name)
       .description(toolFunction.description)
-      .inputSchema(inputSchemaBuilder.build())
+      .inputSchema(inputSchemaBuilder.build().validate())
       .build()
+    println("Tool:" + tool)
+    tool
   }
 
   // Convert Anthropic response to our model

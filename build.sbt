@@ -14,7 +14,7 @@ lazy val root = (project in file("."))
     name := "llm4s",
     libraryDependencies ++= List(
       "com.azure"      % "azure-ai-openai" % "1.0.0-beta.15",
-      "com.anthropic"  % "anthropic-java"  % "0.8.0",
+      "com.anthropic"  % "anthropic-java"  % "0.9.1",
       "ch.qos.logback" % "logback-classic" % "1.5.18",
       "com.lihaoyi"   %% "upickle"         % "4.1.0",
       "com.lihaoyi"   %% "requests"        % "0.9.0",
