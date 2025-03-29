@@ -16,7 +16,9 @@ object LLMConnect {
   def getClient(): LLMClient = {
     val LLM_MODEL_ENV_KEY = "LLM_MODEL"
     val model = readEnv(LLM_MODEL_ENV_KEY).getOrElse(
-      throw new IllegalArgumentException(s"Please set the `$LLM_MODEL_ENV_KEY` environment variable to specify the default model")
+      throw new IllegalArgumentException(
+        s"Please set the `$LLM_MODEL_ENV_KEY` environment variable to specify the default model"
+      )
     )
 
     if (model.startsWith("openai/")) {
@@ -33,7 +35,7 @@ object LLMConnect {
       val config    = AnthropicConfig.fromEnv(modelName)
       new AnthropicClient(config)
     } else {
-      throw new IllegalArgumentException(s"Model $model not supported")
+      throw new IllegalArgumentException(s"Model $model is not supported. Supported formats are: 'openai/model-name', 'azure/model-name', or 'anthropic/model-name'.")
     }
   }
 
