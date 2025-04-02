@@ -134,7 +134,7 @@ To know everything about GSoC and how it works, check out this talk:
 Want to connect with maintainers? The LLM4S project is maintained by:
 
 - **Rory Graves** - [https://www.linkedin.com/in/roryjgraves/](https://www.linkedin.com/in/roryjgraves/) | Email: [rory.graves@fieldmark.co.uk](mailto:rory.graves@fieldmark.co.uk)  
-- **Kannupriya Kalra** - [https://www.linkedin.com/in/kannupriyakalra/](https://www.linkedin.com/in/kannupriyakalra/) | Email: [kannupriya.kalra@gmail.com](mailto:kannupriya.kalra@gmail.com)
+- **Kannupriya Kalra** - [https://www.linkedin.com/in/kannupriyakalra/](https://www.linkedin.com/in/kannupriyakalra/) | Email: [kannupriya.kalra@gmail.com](mailto:kannupriyakalra@gmail.com)
 
 
 ## License
