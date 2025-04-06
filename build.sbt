@@ -6,7 +6,7 @@ inThisBuild(
     organizationName := "llm4s",
 
     // Scalafmt configuration
-    scalafmtOnCompile := true,
+//    scalafmtOnCompile := true,
     // Maven central repository deployment
     homepage               := Some(url("https://github.com/llm4s/")),
     sonatypeCredentialHost := "s01.oss.sonatype.org",
