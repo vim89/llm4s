@@ -13,7 +13,7 @@ inThisBuild(
     sonatypeRepository     := "https://s01.oss.sonatype.org/service/local",
     pgpPublicRing          := file("/tmp/public.asc"),
     pgpSecretRing          := file("/tmp/secret.asc"),
-    pgpPassphrase          := sys.env.get("PGP_PASSWORD").map(_.toArray),
+    pgpPassphrase          := sys.env.get("PGP_PASSPHRASE").map(_.toArray),
     scmInfo := Some(
       ScmInfo(
         url("https://github.com/llm4s/llm4s/"),
