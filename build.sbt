@@ -1,10 +1,13 @@
+import xerial.sbt.Sonatype.sonatypeCentralHost
+
 inThisBuild(
   List(
-    scalaVersion     := "2.13.16",
-    version          := "0.1.0-SNAPSHOT",
-    organization     := "org.llm4s",
-    organizationName := "llm4s",
-    versionScheme    := Some("early-semver"),
+    scalaVersion           := "2.13.16",
+    version                := "0.1.0-SNAPSHOT",
+    organization           := "org.llm4s",
+    organizationName       := "llm4s",
+    versionScheme          := Some("early-semver"),
+    sonatypeCredentialHost := sonatypeCentralHost,
     // Scalafmt configuration
 //    scalafmtOnCompile := true,
     // Maven central repository deployment
