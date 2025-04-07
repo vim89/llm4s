@@ -26,6 +26,8 @@ inThisBuild(
   )
 )
 
+sonatypeRepository := "https://s01.oss.sonatype.org/service/local"
+
 lazy val root = (project in file("."))
   .aggregate(shared, workspaceRunner)
   .dependsOn(shared)
