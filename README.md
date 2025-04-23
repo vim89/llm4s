@@ -134,7 +134,7 @@ Tools run in a protected Docker container environment to prevent accidental syst
 
 ## 📢 Talks & Presentations
 
-See the talks being given by maintainers globally and witness the engagement by developers around the world.
+See the talks being given by maintainers and open source developers globally and witness the engagement by developers around the world.
 
 Stay updated with talks, workshops, and presentations about **LLM4S** happening globally. These sessions dive into the architecture, features, and future plans of the project.
 
