@@ -56,10 +56,36 @@ To get started with the LLM4S project, check out this teaser talk presented by *
 sbt compile
 ```
 
+### Setup your LLM Environment
+
+You will need an API key for either OpenAI (https://platform.openai.com/) or Anthropic (https://console.anthropic.com/)
+other LLMS may be supported in the future (see the backlog.
+
+Set the environment variables:
+
+```
+LLM_MODEL=openai/gpt-4o
+OPENAI_API_KEY=<your_openai_api_key>
+```
+or Anthropic:
+```
+LLM_MODEL=anthropic/claude-3-7-sonnet-latest
+ANTHROPIC_API_KEY=<your_anthropic_api_key>
+```
+
+Thia will allow you to run the non-containerized examples.
+
+
 ### Running the Examples
 
 ```bash
 sbt "samples/runMain org.llm4s.samples.basic.BasicLLMCallingExample"
+```
+
+### Run containerised test
+
+```bash
+sbt docker:publishLocal
 sbt "samples/runMain org.llm4s.samples.workspace.ContainerisedWorkspaceDemo"
 ```
 
