@@ -131,6 +131,25 @@ Mapping LLM tool call requests to actual method invocations through:
 
 Tools run in a protected Docker container environment to prevent accidental system damage or data leakage.
 
+
+## 📢 Talks & Presentations
+
+See the talks being given by maintainers globally and witness the engagement by developers around the world.
+
+Stay updated with talks, workshops, and presentations about **LLM4S** happening globally. These sessions dive into the architecture, features, and future plans of the project.
+
+### Upcoming & Past Talks
+
+| Date           | Event/Conference   | Talk Title                            | Location                        | Speaker Name        | Details URL                                                                                             | Recording Link URL                                                                 |
+|----------------|--------------------|----------------------------------------|---------------------------------|---------------------|---------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
+| **25-Feb-2025** | Bay Area Scala     | Let's Teach LLMs to Write Great Scala! | Tubi office, San Francisco, CA  | Kannupriya Kalra     | [Event Info](https://lu.ma/5fz2y9or)                                                                       | [Watch Recording](https://www.youtube.com/watch?v=SXybj2P3_DE&t=779s&ab_channel=SalarRahmanian) |
+| **20-Apr-2025** | Scala India        | Let's Teach LLMs to Write Great Scala! | India                           | Kannupriya Kalra     | [Event Info](https://www.linkedin.com/posts/activity-7318299169914249216-Sec-?utm_source=share&utm_medium=member_desktop&rcm=ACoAAA8qk7UBmvcZ2O7aAJfMpsdEXBvcKSNiHWM) | [Watch Recording](https://www.youtube.com/watch?v=PiUaVKuV0dM&ab_channel=ScalaIndia)  |
+
+> 📝 *Want to invite us for a talk or workshop? Reach out via our respective emails or connect on Discord: [https://discord.gg/4uvTPn6qww](https://discord.gg/4uvTPn6qww)*
+
+
+
+
 ## Contributing
 
 Interested in contributing? Start here:
@@ -159,8 +178,8 @@ To know everything about GSoC and how it works, check out this talk:
 
 Want to connect with maintainers? The LLM4S project is maintained by:
 
-- **Rory Graves** - [https://www.linkedin.com/in/roryjgraves/](https://www.linkedin.com/in/roryjgraves/) | Email: [rory.graves@fieldmark.co.uk](mailto:rory.graves@fieldmark.co.uk)  
-- **Kannupriya Kalra** - [https://www.linkedin.com/in/kannupriyakalra/](https://www.linkedin.com/in/kannupriyakalra/) | Email: [kannupriyakalra@gmail.com](mailto:kannupriyakalra@gmail.com)
+- **Rory Graves** - [https://www.linkedin.com/in/roryjgraves/](https://www.linkedin.com/in/roryjgraves/) | Email: [rory.graves@fieldmark.co.uk](mailto:rory.graves@fieldmark.co.uk) | Discord: `rorybot1`  
+- **Kannupriya Kalra** - [https://www.linkedin.com/in/kannupriyakalra/](https://www.linkedin.com/in/kannupriyakalra/) | Email: [kannupriyakalra@gmail.com](mailto:kannupriyakalra@gmail.com) | Discord: `kannupriyakalra_46520`
 
 
 ## License
