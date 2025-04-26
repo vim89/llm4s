@@ -15,6 +15,17 @@
 
 LLM4S provides a simple, robust, and scalable framework for building LLM applications in Scala. While most LLM work is done in Python, we believe that Scala offers a fundamentally better foundation for building reliable, maintainable AI-powered applications.
 
+<br>
+
+<p align="center">
+  <img src="assets/llm4s-overview.jpeg" alt="LLM4S Overview" width="600"/>
+  <br>
+  <em></em>
+</p>
+
+<br>
+
+
 > **Note:** This is a work in progress project and is likely to change significantly over time.
 
 ## Why Scala for LLMs?
