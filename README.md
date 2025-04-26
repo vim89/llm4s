@@ -20,7 +20,7 @@ LLM4S provides a simple, robust, and scalable framework for building LLM applica
 <p align="center">
   <img src="assets/llm4s-overview.jpeg" alt="LLM4S Overview" width="600"/>
   <br>
-  <em>LLM4S teaser talk was given at Bay Area Scala Conference on 25th Feb 2025 by Kannupriya Kalra</em>
+  <em></em>
 </p>
 
 <br>
