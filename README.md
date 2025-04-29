@@ -209,6 +209,15 @@ Stay updated with talks, workshops, and presentations about **LLM4S** happening 
 > 📝 *Want to invite us for a talk or workshop? Reach out via our respective emails or connect on Discord: [https://discord.gg/4uvTPn6qww](https://discord.gg/4uvTPn6qww)*
 
 
+### Why You Should Contribute to LLM4S?
+
+- Build AI-powered applications in a statically typed, functional language designed for large systems.  
+- Help shape the Scala ecosystem’s future in the AI/LLM space.  
+- Learn modern LLM techniques like zero-shot prompting, tool calling, and agentic workflows.  
+- Collaborate with experienced Scala engineers and open-source contributors.  
+- Gain real-world experience working with Dockerized environments and multi-LLM providers.  
+- Contribute to a Google Summer of Code (GSoC)-eligible project. 
+- Join a global developer community focused on type-safe, maintainable AI systems.  
 
 
 ## Contributing
