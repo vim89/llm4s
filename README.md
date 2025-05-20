@@ -301,6 +301,11 @@ To know everything about GSoC and how it works, check out this talk:
 
 🎥 **GSoC Process Explained:** [https://lnkd.in/e_dM57bZ](https://lnkd.in/e_dM57bZ)
 
+To learn about the experience of GSoC contributors, check out their blogs:
+
+📝 **Contributor Blogs:**  
+
+- **Elvan Konukseven** - [elvankonukseven.com/blog](https://www.elvankonukseven.com/blog)
 
 ## Maintainers
 
