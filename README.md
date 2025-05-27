@@ -299,7 +299,19 @@ To know everything about GSoC and how it works, check out this talk:
 
 🎥 **GSoC Process Explained:** [https://lnkd.in/e_dM57bZ](https://lnkd.in/e_dM57bZ)
 
-To learn about the experience of GSoC contributors, check out their blogs:
+To learn about the experience of GSoC contributors, check out their blogs in the section below.
+
+### 👥 GSoC Contributor Onboarding Resources
+
+> Hello GSoCers and future GSoC aspirants! Here are some essential onboarding links to help you collaborate and stay organized within the LLM4S community.
+
+- 🔗 **LLM4S GSoC GitHub Team**:  
+  You have been invited to join the LLM4S GitHub team for GSoC participants. Accepting this invite will grant you access to internal resources and coordination tools.  
+  👉 [https://github.com/orgs/llm4s/teams/gsoc/members](https://github.com/orgs/llm4s/teams/gsoc/members)
+
+- 📌 **Private GSoC Project Tracking Board**:  
+  Once you're part of the team, you will have access to our private GSoC tracking board. This board helps you track tasks, timelines, and project deliverables throughout the GSoC period.  
+  👉 [https://github.com/orgs/llm4s/projects/3](https://github.com/orgs/llm4s/projects/3)
 
 
 ## GSoC 2025: Funded Project Ideas from LLM4S
