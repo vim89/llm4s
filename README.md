@@ -306,7 +306,7 @@ To learn about the experience of GSoC contributors, check out their blogs:
 
 ### LLM4S - Implement an agentic toolkit for Large Language Models
 
-- **Contributor:** Elvan Konukseven
+- **Contributor:** [Elvan Konukseven](https://github.com/elvankonukseven)
 - **LinkedIn:** [https://www.linkedin.com/in/elvan-konukseven/](https://www.linkedin.com/in/elvan-konukseven/)
 - **Discord:** elvan_31441
 - **Mentor:** [Kannupriya Kalra](https://www.linkedin.com/in/kannupriyakalra/) (Email: [kannupriyakalra@gmail.com](mailto:kannupriyakalra@gmail.com))
@@ -316,7 +316,7 @@ To learn about the experience of GSoC contributors, check out their blogs:
 
 ### LLM4S - RAG in a box
 
-- **Contributor:** Gopi Trinadh Maddikunta
+- **Contributor:** [Gopi Trinadh Maddikunta](https://github.com/GOPITRINADH3561)
 - **LinkedIn:** [https://www.linkedin.com/in/gopitrinadhmaddikunta/](https://www.linkedin.com/in/gopitrinadhmaddikunta/)
 - **Discord:** g3nadh_58439
 - **Mentor:** [Kannupriya Kalra](https://www.linkedin.com/in/kannupriyakalra/) (Email: [kannupriyakalra@gmail.com](mailto:kannupriyakalra@gmail.com)m)
@@ -326,7 +326,7 @@ To learn about the experience of GSoC contributors, check out their blogs:
 
 ### LLM4S - Support image, voice and other LLM modalites
 
-- **Contributor:** Anshuman Awasthi
+- **Contributor:** [Anshuman Awasthi](https://github.com/AnshumanAI)
 - **LinkedIn:** [https://www.linkedin.com/in/let-me-try-to-fork-your-responsibilities/](https://www.linkedin.com/in/let-me-try-to-fork-your-responsibilities/)
 - **Discord:** anshuman23026
 - **Mentor:** [Kannupriya Kalra](https://www.linkedin.com/in/kannupriyakalra/) (Email: [kannupriyakalra@gmail.com](mailto:kannupriyakalra@gmail.com))
@@ -335,7 +335,7 @@ To learn about the experience of GSoC contributors, check out their blogs:
 
 ### LLM4S - Tracing support
 
-- **Contributor:** Shubham Vishwakarma
+- **Contributor:** [Shubham Vishwakarma](https://github.com/Vi-shub)
 - **LinkedIn:** [https://www.linkedin.com/in/shubham-vish/](https://www.linkedin.com/in/shubham-vish/)
 - **Discord:** oxygen4076
 - **Mentor:** [Kannupriya Kalra](https://www.linkedin.com/in/kannupriyakalra/) (Email: [kannupriyakalra@gmail.com](mailto:kannupriyakalra@gmail.com))
