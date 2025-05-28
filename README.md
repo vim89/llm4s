@@ -289,13 +289,17 @@ Want to be part of developing this and interact with other developers? Join our 
 
  **LLM4S Discord:** https://lnkd.in/eb4ZFdtG
 
-## Google Summer of Code (GSoC) 2025
+## Google Summer of Code (GSoC)
+
+<br>
 
 <p align="center">
-  <img src="assets/gsoc-llm4s-selection.png" alt="GSoC Logo" width="400"/>
+  <img src="assets/gsoc-logo.png" alt="GSoC Logo" width="400"/>
   <br>
-  <em>LLM4S was selected for GSoC 2025 under the Scala Center organisation.</em>
+  <em>LLM4S was selected for GSoC 2024 under the Python Software Foundation</em>
 </p>
+
+<br>
 
 
 This project is also participating in **Google Summer of Code (GSoC) 2025**! If you're interested in contributing to the project as a contributor, check out the details here:
