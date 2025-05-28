@@ -8,7 +8,7 @@ inThisBuild(
   List(
     crossScalaVersions := List(scala213, scala3),
     scalaVersion       := scala3,
-    version            := "0.1.6"
+    version            := "0.1.6",
     organization       := "org.llm4s",
     organizationName   := "llm4s",
     versionScheme      := Some("early-semver"),
