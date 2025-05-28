@@ -8,7 +8,7 @@ inThisBuild(
   List(
     crossScalaVersions := List(scala213, scala3),
     scalaVersion       := scala3,
-    version            := "0.1.0-SNAPSHOT",
+    version            := "0.1.6
     organization       := "org.llm4s",
     organizationName   := "llm4s",
     versionScheme      := Some("early-semver"),
@@ -165,7 +165,7 @@ lazy val samples = (project in file("samples"))
   )
 
 val crossLibDependencies = Seq(
-  "org.llm4s"     %% "llm4s"     % "0.1.0-SNAPSHOT",
+  "org.llm4s"     %% "llm4s"     % "0.1.6",
   "org.scalatest" %% "scalatest" % "3.2.19" % Test
 )
 
@@ -207,5 +207,5 @@ addCommandAlias("fullCrossTest", ";clean ;crossTestScala2/clean ;crossTestScala3
 
 // MiMa settings remain the same
 mimaPreviousArtifacts := Set(
-  organization.value %% "llm4s" % "0.1.0-SNAPSHOT"
+  organization.value %% "llm4s" % "0.1.6"
 )
