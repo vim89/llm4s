@@ -260,12 +260,14 @@ Stay updated with talks, workshops, and presentations about **LLM4S** happening 
 
 ### Upcoming & Past Talks
 
-| Date                  | Event/Conference | Talk Title                             | Location                       | Speaker Name     | Details URL                                                                                                                                                        | Recording Link URL                                                                           |
-| --------------------- | ---------------- | -------------------------------------- | ------------------------------ | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
-| **25-Feb-2025** | Bay Area Scala   | Let's Teach LLMs to Write Great Scala! | Tubi office, San Francisco, CA | Kannupriya Kalra | [Event Info](https://lu.ma/5fz2y9or)                                                                                                                                  | [Watch Recording](https://www.youtube.com/watch?v=SXybj2P3_DE&t=779s&ab_channel=SalarRahmanian) |
-| **20-Apr-2025** | Scala India      | Let's Teach LLMs to Write Great Scala! | India                          | Kannupriya Kalra | [Event Info](https://www.linkedin.com/posts/activity-7318299169914249216-Sec-?utm_source=share&utm_medium=member_desktop&rcm=ACoAAA8qk7UBmvcZ2O7aAJfMpsdEXBvcKSNiHWM) | [Watch Recording](https://www.youtube.com/watch?v=PiUaVKuV0dM&ab_channel=ScalaIndia)            |
+| Date         | Event/Conference            | Talk Title                                                       | Location        | Speaker Name     | Details URL                                                                                                                                                                                                                                                                                                                                                                                  | Recording Link URL                                                                                   |
+| ------------ | ---------------------------| ---------------------------------------------------------------- | --------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| -------------------------------------------------------------------------------------------------- |
+| **25-Feb-2025** | Bay Area Scala             | Let's Teach LLMs to Write Great Scala! (Original version)        | Tubi office, San Francisco, CA | Kannupriya Kalra | [Event Info](https://lu.ma/5fz2y9or)                                                                                                                                                                                                                                                                                                                                                         | [Watch Recording](https://www.youtube.com/watch?v=SXybj2P3_DE&t=779s&ab_channel=SalarRahmanian)    |
+| **20-Apr-2025** | Scala India                | Let's Teach LLMs to Write Great Scala! (Updated from Feb 2025)    | India           | Kannupriya Kalra | [Event Info](https://www.linkedin.com/posts/activity-7318299169914249216-Sec-?utm_source=share&utm_medium=member_desktop&rcm=ACoAAA8qk7UBmvcZ2O7aAJfMpsdEXBvcKSNiHWM)                                                                                                                                                                                                                       | [Watch Recording](https://www.youtube.com/watch?v=PiUaVKuV0dM&ab_channel=ScalaIndia)                |
+| **28-May-2025** | Functional World 2025 by Scalac | Let's Teach LLMs to Write Great Scala! (Updated from Apr 2025)    | Gdansk, Poland  | Kannupriya Kalra | [LinkedIn Post 1](https://www.linkedin.com/posts/scalac_ai-functionalworld-scala-ugcPost-7326538223818563584-U2Ru?utm_source=share&utm_medium=member_desktop&rcm=ACoAAA8qk7UBmvcZ2O7aAJfMpsdEXBvcKSNiHWM) <br> [LinkedIn Post 2](https://www.linkedin.com/posts/scalac_lets-teach-llms-to-write-great-scala-ugcPost-7332752921190625281-K2YD?utm_source=share&utm_medium=member_desktop&rcm=ACoAAA8qk7UBmvcZ2O7aAJfMpsdEXBvcKSNiHWM) <br> [Reddit Discussion](https://www.reddit.com/r/scala/comments/1krvvgv/meetup_lets_teach_llms_to_write_great_scala/) <br> [Meetup Link](https://www.meetup.com/functionalworld/events/307654612/?eventOrigin=group_upcoming_events) | [Watch Recording](https://www.linkedin.com/events/7326538222593839104/comments/)                          |
 
 > 📝 *Want to invite us for a talk or workshop? Reach out via our respective emails or connect on Discord: [https://discord.gg/4uvTPn6qww](https://discord.gg/4uvTPn6qww)*
+
 
 ### Why You Should Contribute to LLM4S?
 
@@ -289,7 +291,18 @@ Want to be part of developing this and interact with other developers? Join our 
 
  **LLM4S Discord:** https://lnkd.in/eb4ZFdtG
 
-## Google Summer of Code 2025
+## Google Summer of Code (GSoC)
+
+<br>
+
+<p align="center">
+  <img src="assets/gsoc-llm4s-selection.png" alt="GSoC Logo" width="400"/>
+  <br>
+  <em>LLM4S was selected for GSoC 2025 under the Scala Center Organisation.</em>
+</p>
+
+<br>
+
 
 This project is also participating in **Google Summer of Code (GSoC) 2025**! If you're interested in contributing to the project as a contributor, check out the details here:
 
@@ -325,6 +338,7 @@ To learn about the experience of GSoC contributors, check out their blogs in the
 - **Co-mentor:** [Rory Graves](https://www.linkedin.com/in/roryjgraves/) (Email: [rory.graves@fieldmark.co.uk](mailto:rory.graves@fieldmark.co.uk))
 - **Announcement:** [Official Acceptance Post](https://www.linkedin.com/posts/elvan-konukseven_got-accepted-into-the-google-summer-of-code-activity-7326980179812139008-OoMU?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0)
 - **Contributor Blogs:** [elvankonukseven.com/blog](https://www.elvankonukseven.com/blog)
+- **Work log:** WIP
 
 ### LLM4S - RAG in a box
 
@@ -335,6 +349,8 @@ To learn about the experience of GSoC contributors, check out their blogs in the
 - **Co-mentor:** [Rory Graves](https://www.linkedin.com/in/roryjgraves/) (Email: [rory.graves@fieldmark.co.uk](mailto:rory.graves@fieldmark.co.uk))
 - **Co-mentor:** [Dmitry Mamonov](https://www.linkedin.com/in/dmamonov/) (Email: [dmitry.s.mamonov@gmail.com](mailto:dmitry.s.mamonov@gmail.com))
 - **Announcement:** [Official Acceptance Post](https://www.linkedin.com/posts/gopitrinadhmaddikunta_gsoc-googlesummerofcode-scalacenter-activity-7328890778594803714-uP8t?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0)
+- **Contributor Blogs:** [gopitrinadh.site/blog](https://gopitrinadh.site/blog)
+- **Work log:** WIP
 
 ### LLM4S - Support image, voice and other LLM modalites
 
@@ -344,6 +360,8 @@ To learn about the experience of GSoC contributors, check out their blogs in the
 - **Mentor:** [Kannupriya Kalra](https://www.linkedin.com/in/kannupriyakalra/) (Email: [kannupriyakalra@gmail.com](mailto:kannupriyakalra@gmail.com))
 - **Co-mentor:** [Rory Graves](https://www.linkedin.com/in/roryjgraves/) (Email:[rory.graves@fieldmark.co.uk](mailto:rory.graves@fieldmark.co.uk))
 - **Announcement:** [Official Acceptance Post](https://www.linkedin.com/posts/let-me-try-to-fork-your-responsibilities_big-announcement-im-thrilled-to-activity-7327724651726405635-3Y7V?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0)
+- **Contributor Blogs:** WIP
+- **Work Log:** [GitHub Project Board](https://github.com/users/AnshumanAI/projects/2/views/1)
 
 ### LLM4S - Tracing support
 
@@ -354,7 +372,9 @@ To learn about the experience of GSoC contributors, check out their blogs in the
 - **Co-mentor:** [Rory Graves](https://www.linkedin.com/in/roryjgraves/) (Email: [rory.graves@fieldmark.co.uk](mailto:rory.graves@fieldmark.co.uk))
 - **Co-mentor:** [Dmitry Mamonov](https://www.linkedin.com/in/dmamonov/) (Email: [dmitry.s.mamonov@gmail.com](mailto:dmitry.s.mamonov@gmail.com))
 - **Announcement:** [Official Acceptance Post](https://www.linkedin.com/posts/shubham-vish_gsoc2025-scalacenter-llm4s-activity-7326533865836068864-kQVf?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0)
-
+- **Contributor Blogs:** WIP
+- **Work log:** WIP
+  
 Feel free to reach out to the contributors or mentors listed for any guidance or questions related to **GSoC 2026**.
 
 ## Maintainers
