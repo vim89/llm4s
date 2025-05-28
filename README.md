@@ -339,7 +339,7 @@ To learn about the experience of GSoC contributors, check out their blogs in the
 - **Co-mentor:** [Rory Graves](https://www.linkedin.com/in/roryjgraves/) (Email: [rory.graves@fieldmark.co.uk](mailto:rory.graves@fieldmark.co.uk))
 - **Announcement:** [Official Acceptance Post](https://www.linkedin.com/posts/elvan-konukseven_got-accepted-into-the-google-summer-of-code-activity-7326980179812139008-OoMU?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0)
 - **Contributor Blogs:** [elvankonukseven.com/blog](https://www.elvankonukseven.com/blog)
-- **Work log:** WIP
+- **Work log:** [GitHub Project Board](https://github.com/users/elvankonukseven/projects/4/views/1)
 
 ### LLM4S - RAG in a box
 
