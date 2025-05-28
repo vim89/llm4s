@@ -294,9 +294,9 @@ Want to be part of developing this and interact with other developers? Join our 
 <br>
 
 <p align="center">
-  <img src="assets/gsoc-logo.png" alt="GSoC Logo" width="400"/>
+  <img src="assets/gsoc-llm4s-selection.png" alt="GSoC Logo" width="400"/>
   <br>
-  <em>LLM4S was selected for GSoC 2024 under the Python Software Foundation</em>
+  <em>LLM4S was selected for GSoC 2025 under the Scala Center Organisation.</em>
 </p>
 
 <br>
