@@ -1,14 +1,16 @@
 import com.typesafe.sbt.packager.docker.Cmd
+import sbt.Keys.{libraryDependencies, *}
+
 
 // Define supported Scala versions
-val scala213 = "2.13.14"
+val scala213 = "2.13.16"
 val scala3   = "3.3.6"
 
 inThisBuild(
   List(
     crossScalaVersions := List(scala213, scala3),
     scalaVersion       := scala3,
-    version            := "0.1.6",
+//    version            := "0.1.6",
     organization       := "org.llm4s",
     organizationName   := "llm4s",
     versionScheme      := Some("early-semver"),
@@ -16,6 +18,16 @@ inThisBuild(
 //    scalafmtOnCompile := true,
     // Maven central repository deployment
     homepage := Some(url("https://github.com/llm4s/")),
+    licenses := List("MIT" -> url("https://mit-license.org/")),
+    developers := List(
+      Developer(
+        "rorygraves",
+        "Rory Graves",
+        "rory.graves@fieldmark.co.uk",
+        url("https://github.com/rorygraves")
+      )
+    ),
+
     ThisBuild / publishTo := {
       val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
       if (isSnapshot.value) Some("central-snapshots".at(centralSnapshots))
@@ -165,7 +177,7 @@ lazy val samples = (project in file("samples"))
   )
 
 val crossLibDependencies = Seq(
-  "org.llm4s"     %% "llm4s"     % "0.1.6",
+//  "org.llm4s"     %% "llm4s"     % "0.1.6",
   "org.scalatest" %% "scalatest" % "3.2.19" % Test
 )
 
@@ -207,5 +219,5 @@ addCommandAlias("fullCrossTest", ";clean ;crossTestScala2/clean ;crossTestScala3
 
 // MiMa settings remain the same
 mimaPreviousArtifacts := Set(
-  organization.value %% "llm4s" % "0.1.6"
+  organization.value %% "llm4s" % "0.0.1"
 )
