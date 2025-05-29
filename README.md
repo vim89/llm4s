@@ -360,7 +360,7 @@ To learn about the experience of GSoC contributors, check out their blogs in the
 - **Mentor:** [Kannupriya Kalra](https://www.linkedin.com/in/kannupriyakalra/) (Email: [kannupriyakalra@gmail.com](mailto:kannupriyakalra@gmail.com))
 - **Co-mentor:** [Rory Graves](https://www.linkedin.com/in/roryjgraves/) (Email:[rory.graves@fieldmark.co.uk](mailto:rory.graves@fieldmark.co.uk))
 - **Announcement:** [Official Acceptance Post](https://www.linkedin.com/posts/let-me-try-to-fork-your-responsibilities_big-announcement-im-thrilled-to-activity-7327724651726405635-3Y7V?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0)
-- **Contributor Blogs:** WIP
+- **Contributor Blogs:** [Anshuman's GSoC Journey](https://awesomegsoc.hashnode.dev/)
 - **Work Log:** [GitHub Project Board](https://github.com/users/AnshumanAI/projects/2/views/1)
 
 ### LLM4S - Tracing support
