@@ -374,8 +374,8 @@ To learn about the experience of GSoC contributors, check out their blogs in the
 - **Co-mentor:** [Rory Graves](https://www.linkedin.com/in/roryjgraves/) (Email: [rory.graves@fieldmark.co.uk](mailto:rory.graves@fieldmark.co.uk))
 - **Co-mentor:** [Dmitry Mamonov](https://www.linkedin.com/in/dmamonov/) (Email: [dmitry.s.mamonov@gmail.com](mailto:dmitry.s.mamonov@gmail.com))
 - **Announcement:** [Official Acceptance Post](https://www.linkedin.com/posts/shubham-vish_gsoc2025-scalacenter-llm4s-activity-7326533865836068864-kQVf?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0)
-- **Contributor Blogs:** WIP
-- **Work log:** WIP
+- **Contributor Blogs:** [Cracking the Code: My GSoC 2025 Story](https://shubhams-gsoc-journey.hashnode.dev/cracking-the-code-my-gsoc-2025-story)
+- **Work log:** [GitHub Project Board](https://github.com/users/Vi-shub/projects/2/views/1)
   
 Feel free to reach out to the contributors or mentors listed for any guidance or questions related to **GSoC 2026**.
 
