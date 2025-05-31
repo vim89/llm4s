@@ -298,7 +298,7 @@ Want to be part of developing this and interact with other developers? Join our 
 <br>
 
 <p align="center">
-  <img src="assets/gsoc-llm4s-selection.png" alt="GSoC Logo" width="400"/>
+  <img src="assets/Cracking_GSoC_with_LLM4S.png" alt="GSoC Logo" width="400"/>
   <br>
   <em>LLM4S was selected for GSoC 2025 under the Scala Center Organisation.</em>
 </p>
@@ -314,7 +314,11 @@ To know everything about GSoC and how it works, check out this talk:
 
 🎥 **GSoC Process Explained:** [https://lnkd.in/e_dM57bZ](https://lnkd.in/e_dM57bZ)
 
-To learn about the experience of GSoC contributors, check out their blogs in the section below.
+To learn about the experience of GSoC contributors of LLM4S, check out their blogs in the section below.
+
+📚 **Explore Past GSoC Projects with Scala Center:** [https://www.gsocorganizations.dev/organization/scala-center/](https://www.gsocorganizations.dev/organization/scala-center/)  
+This page includes detailed information on all GSoC projects with Scala Center from past years — including project descriptions, code repositories, contributor blogs, and mentor details.
+
 
 ### 👥 GSoC Contributor Onboarding Resources
 
