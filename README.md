@@ -56,6 +56,21 @@ To get started with the LLM4S project, check out this teaser talk presented by *
 
 🎥 **Teaser Talk:** https://www.youtube.com/watch?v=SXybj2P3_DE&ab_channel=SalarRahmanian
 
+
+
+
+<br>
+
+<p align="center">
+  <img src="assets/talks/BayAreaScalaConference_tubiOffice.jpeg" alt="Bay Area Scala Conference at Tubi Office" width="400" style="margin-right: 10px;"/>
+  <img src="assets/talks/BayAreaScalaConference_GenAiSlide.jpeg" alt="Bay Area Scala Conference Generative AI Slide" width="400"/>
+  <br>
+  <em>LLM4S was officially introduced at the Bay Area Scala Conference in San Francisco on February 25, 2025.</em>
+</p>
+
+<br>
+
+
 ### Prerequisites
 
 - JDK 21+
@@ -258,6 +273,23 @@ See the talks being given by maintainers and open source developers globally and
 
 Stay updated with talks, workshops, and presentations about **LLM4S** happening globally. These sessions dive into the architecture, features, and future plans of the project.
 
+<br>
+
+<br>
+
+<p align="center">
+  <img src="assets/talks/BayAreaScalaConference_IntroSlide.JPG" alt="Bay Area Scala Conference Generative AI Slide" width="400" style="margin-right: 10px;"/>
+  <img src="assets/talks/Scalac_FunctionalWorld2025_Poland.png" alt="Functional World 2025 Poland Talk" width="400" style="margin-right: 10px;"/>
+  <img src="assets/talks/ScalaIndia_Talk_Banner.png" alt="Scala India Talk Banner" width="400"/>
+  
+  <br>
+  <em>Snapshots from LLM4S talks held around the world.</em>
+</p>
+
+<br>
+
+<br>
+
 ### Upcoming & Past Talks
 
 | Date           | Event/Conference               | Talk Title                                                       | Location                                                                                                                     | Speaker Name                | Details URL                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Recording Link URL                                                                                   |
@@ -272,6 +304,7 @@ Stay updated with talks, workshops, and presentations about **LLM4S** happening 
 
 
 > 📝 *Want to invite us for a talk or workshop? Reach out via our respective emails or connect on Discord: [https://discord.gg/4uvTPn6qww](https://discord.gg/4uvTPn6qww)*
+
 
 
 ### Why You Should Contribute to LLM4S?
