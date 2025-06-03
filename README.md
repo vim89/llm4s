@@ -78,7 +78,7 @@ sbt buildAll
 ### Setup your LLM Environment
 
 You will need an API key for either OpenAI (https://platform.openai.com/) or Anthropic (https://console.anthropic.com/)
-other LLMS may be supported in the future (see the backlog.
+other LLMS may be supported in the future (see the backlog).
 
 Set the environment variables:
 
@@ -94,7 +94,7 @@ LLM_MODEL=anthropic/claude-3-7-sonnet-latest
 ANTHROPIC_API_KEY=<your_anthropic_api_key>
 ```
 
-Thia will allow you to run the non-containerized examples.
+This will allow you to run the non-containerized examples.
 
 ### Running the Examples
 
@@ -171,7 +171,7 @@ Our goal is to implement Scala equivalents of popular Python LLM frameworks:
    - [ ] * examples of all use-cases
 - [ ] stable platform -tests etc
 - [ ] Scala Coding SWE Agent - an agent that can do SWE bench type tasks on Scala codebases.
-   - [ ]  codemaps 
+   - [ ]  code maps 
    - [ ]  generation 
    - [ ]  templates for library use?
 
