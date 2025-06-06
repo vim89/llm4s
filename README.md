@@ -386,6 +386,7 @@ This page includes detailed information on all GSoC projects with Scala Center f
 
 - **Contributor:** [Gopi Trinadh Maddikunta](https://github.com/GOPITRINADH3561)
 - **LinkedIn:** [https://www.linkedin.com/in/gopitrinadhmaddikunta/](https://www.linkedin.com/in/gopitrinadhmaddikunta/)
+- **Email:** [trinadh7341@gmail.com](mailto:trinadh7341@gmail.com)) 
 - **Discord:** g3nadh_58439
 - **Mentor:** [Kannupriya Kalra](https://www.linkedin.com/in/kannupriyakalra/) (Email: [kannupriyakalra@gmail.com](mailto:kannupriyakalra@gmail.com)m)
 - **Co-mentor:** [Rory Graves](https://www.linkedin.com/in/roryjgraves/) (Email: [rory.graves@fieldmark.co.uk](mailto:rory.graves@fieldmark.co.uk))
@@ -398,6 +399,7 @@ This page includes detailed information on all GSoC projects with Scala Center f
 
 - **Contributor:** [Anshuman Awasthi](https://github.com/AnshumanAI)
 - **LinkedIn:** [https://www.linkedin.com/in/let-me-try-to-fork-your-responsibilities/](https://www.linkedin.com/in/let-me-try-to-fork-your-responsibilities/)
+- **Email:** [mcs23026@iiitl.ac.in](mailto:mcs23026@iiitl.ac.in)) 
 - **Discord:** anshuman23026
 - **Mentor:** [Kannupriya Kalra](https://www.linkedin.com/in/kannupriyakalra/) (Email: [kannupriyakalra@gmail.com](mailto:kannupriyakalra@gmail.com))
 - **Co-mentor:** [Rory Graves](https://www.linkedin.com/in/roryjgraves/) (Email:[rory.graves@fieldmark.co.uk](mailto:rory.graves@fieldmark.co.uk))
@@ -409,6 +411,7 @@ This page includes detailed information on all GSoC projects with Scala Center f
 
 - **Contributor:** [Shubham Vishwakarma](https://github.com/Vi-shub)
 - **LinkedIn:** [https://www.linkedin.com/in/shubham-vish/](https://www.linkedin.com/in/shubham-vish/)
+- **Email:** [smsharma3121@gmail.com](mailto:smsharma3121@gmail.com))
 - **Discord:** oxygen4076
 - **Mentor:** [Kannupriya Kalra](https://www.linkedin.com/in/kannupriyakalra/) (Email: [kannupriyakalra@gmail.com](mailto:kannupriyakalra@gmail.com))
 - **Co-mentor:** [Rory Graves](https://www.linkedin.com/in/roryjgraves/) (Email: [rory.graves@fieldmark.co.uk](mailto:rory.graves@fieldmark.co.uk))
