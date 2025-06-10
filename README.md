@@ -314,7 +314,7 @@ Stay updated with talks, workshops, and presentations about **LLM4S** happening 
 - Learn modern LLM techniques like zero-shot prompting, tool calling, and agentic workflows.
 - Collaborate with experienced Scala engineers and open-source contributors.
 - Gain real-world experience working with Dockerized environments and multi-LLM providers.
-- Contribute to a Google Summer of Code (GSoC)-eligible project.
+- Contribute to a project that offers you the opportunity to become a mentor or contributor funded by Google through its [Google Summer of Code (GSoC)](https://summerofcode.withgoogle.com/) program.
 - Join a global developer community focused on type-safe, maintainable AI systems.
 
 ## Contributing
