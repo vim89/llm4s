@@ -284,7 +284,8 @@ Stay updated with talks, workshops, and presentations about **LLM4S** happening 
   <img src="assets/talks/DallasScalaEnthusiastsConference_Talk_Banner.png" alt="Dallas Scala Enthusiasts Talk Banner" width="400"/>
   
   <br>
-  <em>Snapshots from LLM4S talks held around the world.</em>
+  <br>
+  <em>Snapshots from LLM4S talks held around the world 🌍.</em>
 </p>
 
 <br>
