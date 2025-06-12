@@ -394,8 +394,14 @@ This page includes detailed information on all GSoC projects with Scala Center f
 - **Co-mentor:** [Rory Graves](https://www.linkedin.com/in/roryjgraves/) (Email: [rory.graves@fieldmark.co.uk](mailto:rory.graves@fieldmark.co.uk))
 - **Co-mentor:** [Dmitry Mamonov](https://www.linkedin.com/in/dmamonov/) (Email: [dmitry.s.mamonov@gmail.com](mailto:dmitry.s.mamonov@gmail.com))
 - **Announcement:** [Official Acceptance Post](https://www.linkedin.com/posts/gopitrinadhmaddikunta_gsoc-googlesummerofcode-scalacenter-activity-7328890778594803714-uP8t?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0)
-- **Contributor Blogs:** [gopitrinadh.site/blog](https://gopitrinadh.site/blog)
-- **Work log:** WIP
+- **Contributor Blogs:**  
+  📌 [Main Blog](https://gopitrinadh.site/blog)  
+  📌 [Scala at Light Speed – Part 1](https://gopitrinadh.site/scala-at-lightspeed-part1/)  
+  📌 [Scala at Light Speed – Part 2](https://gopitrinadh.site/scala-at-light-speed-gsoc-part2/)
+- **Work log:**  
+  📌 [Work Log → GitHub Project](https://github.com/users/GOPITRINADH3561/projects/1/views/1)
+
+
 
 ### LLM4S - Support image, voice and other LLM modalites
 
