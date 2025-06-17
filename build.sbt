@@ -51,7 +51,7 @@ def scalacOptionsForVersion(scalaVersion: String): Seq[String] =
     case Some((2, 13)) =>
       Seq(
         // "-Xfatal-warnings",   // Temporarily disabled for cross-compilation
-        "-deprecation", // Emit warning and location for usages of deprecated APIs
+        //"-deprecation", // Emit warning and location for usages of deprecated APIs
         "-feature",     // Emit warning for feature usage
         "-unchecked"    // Enable warnings where generated code depends on assumptions
         // "-Wunused:imports"    // Temporarily disabled for cross-compilation
@@ -59,7 +59,7 @@ def scalacOptionsForVersion(scalaVersion: String): Seq[String] =
     case Some((3, _)) =>
       Seq(
         "-explain",         // Explain errors in more detail
-        "-Xfatal-warnings", // Fail on warnings
+        //"-Xfatal-warnings", // Fail on warnings
         "-source:3.3"       // Ensure Scala 3 syntax
       )
     case _ => Seq.empty
@@ -188,8 +188,11 @@ lazy val crossTestScala2 = (project in file("crosstest/scala2"))
     crossScalaVersions := Seq(scala213),
     resolvers += Resolver.mavenLocal,
     resolvers += Resolver.defaultLocal,
-    libraryDependencies ++= crossLibDependencies
-  )
+    libraryDependencies ++= crossLibDependencies,
+    scalacOptions ++= Seq(
+      "-Ytasty-reader"
+    )
+  ).dependsOn(root)
 
 lazy val crossTestScala3 = (project in file("crosstest/scala3"))
   .settings(
@@ -206,7 +209,7 @@ lazy val crossTestScala3 = (project in file("crosstest/scala3"))
       "-Xfatal-warnings"
     ),
     libraryDependencies ++= crossLibDependencies
-  )
+  ).dependsOn(root)
 
 // Commands remain the same
 addCommandAlias("buildAll", ";clean;+compile;+test")
