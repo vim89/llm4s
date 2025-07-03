@@ -383,7 +383,7 @@ This page includes detailed information on all GSoC projects with Scala Center f
   👉 [https://github.com/orgs/llm4s/projects/3](https://github.com/orgs/llm4s/projects/3)
 
 
-## GSoC 2025: Funded Project Ideas from LLM4S
+## GSoC 2025: Google Open Source Funded Project Ideas from LLM4S
 
 ### LLM4S - Implement an agentic toolkit for Large Language Models
 
