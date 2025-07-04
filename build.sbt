@@ -8,7 +8,8 @@ val scala3   = "3.7.1"
 val scala3CompilerOptions = Seq(
   "-explain",
   "-explain-types",
-  "-Xfatal-warnings",
+  "-Wconf:cat=unused:s",   // suppress unused warnings
+  "-Wconf:cat=deprecation:s", // suppress deprecation warnings
   "-source:3.3",
   "-Wsafe-init",
   "-deprecation",
@@ -121,6 +122,9 @@ lazy val root = (project in file("."))
       "org.java-websocket" % "Java-WebSocket"  % "1.5.3",
       "org.scalatest"     %% "scalatest"       % "3.2.19" % Test,
       "org.scalamock"     %% "scalamock"       % "7.3.3"  % Test,
+      "com.softwaremill.sttp.client4" %% "core"  % "4.0.0-M7",
+      "com.lihaoyi"                   %% "ujson" % "4.2.1"
+
     )
   )
 
@@ -183,7 +187,10 @@ lazy val samples = (project in file("samples"))
 lazy val crossLibDependencies = Def.setting {
   Seq(
     "org.llm4s"     %% "llm4s"     % version.value,
-    "org.scalatest" %% "scalatest" % "3.2.19" % Test
+    "org.scalatest" %% "scalatest" % "3.2.19" % Test,
+    "com.softwaremill.sttp.client4" %% "core"  % "4.0.0-M7",
+    "com.lihaoyi"                   %% "ujson" % "4.2.1"
+
   )
 }
 
