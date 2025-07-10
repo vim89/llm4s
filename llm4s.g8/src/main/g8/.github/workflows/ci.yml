@@ -1,0 +1,49 @@
+name: CI for pre-configured project $name$ using llm4s
+
+on:
+  push:
+    branches: [ main, master, 'releases/**', 'feature/**' ]
+  pull_request:
+    branches: [ main, master, 'releases/**', 'feature/**' ]
+
+jobs:
+  lint-compile-and-test:
+    name: Build, run precommit checks, compile, and test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        scala: [ "$scala_version$" ]
+        java: [ 21 ]
+      fail-fast: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Java \${{ matrix.java }}
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: \${{ matrix.java }}
+          cache: sbt
+
+      - name: Set up sbt launcher
+        uses: sbt/setup-sbt@v1
+
+      - name: Precommit checks
+        uses: pre-commit/action@v3
+        with:
+          extra_args: --all-files
+
+      - name: Compile and test for Scala \${{ matrix.scala }}
+        run: |
+          sbt ++\${{ matrix.scala }} scalafmtCheckAll compile test
+
+      - name: Run coverage for Scala \${{ matrix.scala }}
+        run: |
+          sbt ++\${{ matrix.scala }} coverage test coverageReport
+
+      # - name: Upload coverage to Codecov
+      #   uses: codecov/codecov-action@v2
+      #   with:
+      #     fail_ci_if_error: true
