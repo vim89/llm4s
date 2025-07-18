@@ -8,4 +8,8 @@ class MainSpec extends munit.FunSuite {
   test("basic assertion") {
     assert(1 + 1 == 2)
   }
+
+  test("Test Prompt executor") {
+    assert(PromptExecutor.run("Explain what a Monad is in Scala"))
+  }
 }

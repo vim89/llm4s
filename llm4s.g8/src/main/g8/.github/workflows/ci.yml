@@ -20,23 +20,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Java ${{ matrix.java }}
+      - name: Set up Java \${{ matrix.java }}
         uses: actions/setup-java@v3
         with:
           distribution: temurin
-          java-version: ${{ matrix.java }}
+          java-version: \${{ matrix.java }}
           cache: sbt
 
       - name: Set up sbt launcher
         uses: sbt/setup-sbt@v1
 
-      - name: Compile and test for Scala ${{ matrix.scala }}
+      - name: Compile and test for Scala \${{ matrix.scala }}
         run: |
-          sbt ++${{ matrix.scala }} scalafmtCheckAll test
+          sbt ++\${{ matrix.scala }} scalafmtCheckAll test
 
-      - name: Run coverage for Scala ${{ matrix.scala }}
+      - name: Run coverage for Scala \${{ matrix.scala }}
         run: |
-          sbt ++${{ matrix.scala }} coverage test coverageReport
+          sbt ++\${{ matrix.scala }} coverage test coverageReport
 
       # - name: Upload coverage to Codecov
       #   uses: codecov/codecov-action@v2
