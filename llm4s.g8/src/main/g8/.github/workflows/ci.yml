@@ -2,23 +2,43 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master, 'releases/**', 'feature/**' ]
   pull_request:
+    branches: [ main, master, 'releases/**', 'feature/**' ]
 
 jobs:
-  build:
+  compile-and-test:
+    name: Build & Test
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        scala: [ "$scala_version$" ]
+        java: ["17"]
+      fail-fast: false
 
     steps:
-      - uses: actions/checkout@v3
-      - name: Setup Java
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Java ${{ matrix.java }}
         uses: actions/setup-java@v3
         with:
           distribution: temurin
-          java-version: 17
+          java-version: ${{ matrix.java }}
+          cache: sbt
 
-      - name: Cache Ivy and Coursier
-        uses: coursier/cache-action@v6
+      - name: Set up sbt launcher
+        uses: sbt/setup-sbt@v1
 
-      - name: Build and Test
-        run: sbt compile test
+      - name: Compile and test for Scala ${{ matrix.scala }}
+        run: |
+          sbt ++${{ matrix.scala }} scalafmtCheckAll test
+
+      - name: Run coverage for Scala ${{ matrix.scala }}
+        run: |
+          sbt ++${{ matrix.scala }} coverage test coverageReport
+
+      # - name: Upload coverage to Codecov
+      #   uses: codecov/codecov-action@v2
+      #   with:
+      #     fail_ci_if_error: true

@@ -66,7 +66,7 @@ Template usage (Local)
 ----------------------
 To use this template locally (e.g., during development or when unpublished), run:
 ```
-sbt new file:///<full-path-to-directory>/llm4s/llm4s.g8 --name=<name-of-your-project> --organization=<your.organization> --version=<0.1.0> --llm4sVersion=<0.10.0> --scalaVersion=<3.4.0>
+sbt new file:///<full-path-to-directory>/llm4s/llm4s.g8 --name=<name-of-your-project> --package=<your.organization/package> --version=<0.1.0> --llm4sVersion=<0.1.1> --scalaVersion=<3.4.0>
 ```
 Note: Do not use `~` as  ~/.. is not resolved correctly when passed to sbt new or other CLI tools — it must be expanded manually
 
