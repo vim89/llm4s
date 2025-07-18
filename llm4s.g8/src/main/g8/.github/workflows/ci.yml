@@ -7,7 +7,7 @@ on:
     branches: [ main, master, 'releases/**', 'feature/**' ]
 
 jobs:
-  compile-and-test:
+  lint-compile-and-test:
     name: Build & Test
     runs-on: ubuntu-latest
     strategy:
@@ -29,6 +29,11 @@ jobs:
 
       - name: Set up sbt launcher
         uses: sbt/setup-sbt@v1
+
+      - name: Precommit checks
+        uses: pre-commit/action@v3
+        with:
+          extra_args: --all-files
 
       - name: Compile and test for Scala \${{ matrix.scala }}
         run: |

@@ -1,3 +1,4 @@
-addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.7.5")
-addSbtPlugin("org.scalameta" % "sbt-munit" % "0.7.29")
-addSbtPlugin("org.scoverage" % "sbt-scoverage" % "2.2.5") // if using coverage
+addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "latest.release") // for code formatting
+addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "latest.release") // for code linting and refactoring
+addSbtPlugin("org.scalameta" % "sbt-munit" % "latest.release") // for testing with MUnit
+addSbtPlugin("org.scoverage" % "sbt-scoverage" % "latest.release") // for code coverage
