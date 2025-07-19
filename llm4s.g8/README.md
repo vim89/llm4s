@@ -4,25 +4,60 @@ llm4s.g8: sbt template for [llm4s], Scala 3 & Scala 2 cross-compiled
 
 A [Giter8][g8] template for a [Scala 3] / [Scala 2] cross-compiled project.
 
-Template usage
---------------
-Using `sbt`, do:
-```
-sbt new llm4s/llm4s.g8 --name=<name-of-your-project> --organization=<your.organization> --version=<0.1.0> --llm4sVersion=<0.10.0> --scalaVersion=<3.4.0>
-```
-in the folder where you want to clone the template.
-
 Quickstart
 ----------
 This template bootstraps a production-ready Scala project pre-configured to use the [LLM4S SDK](https://github.com/llm4s/llm4s).
 
 Features
 --------
-- ✅ Preconfigured with `OpenAI` integration via `LLM4S`
-- ✅ Tracing support via `org.llm4s.trace.Tracing`
-- ✅ Includes `Main.scala` + `PromptExecutor` for quick CLI interaction
-- ✅ Supports `sbt run`, `sbt test`, and format checking
-- ✅ Production-ready directory layout, CI hooks, formatting, and more
+- ✅ Preconfigured with `llm4s` for building AI-powered applications
+- ✅ Produces production-ready directory layout, CI hooks, formatting, and more
+- ✅ Uses [giter8][g8] project creation using `sbt new`,
+- ✅ Includes `Main.scala` + `PromptExecutor` for quick onboarding & getting started with [llm4s]
+
+Pre-configured prerequisites
+-----------
+- JDK 21+
+- SBT
+- OpenAI API key
+- [Scala 3][Scala 3] or [Scala 2][Scala 2]
+- [MUnit] for unit testing
+- [LLM4S SDK][llm4s]
+- Logging library [logback][logback], [scala-logging][scala-logging]
+
+
+Template usage: to create a project
+--------------
+Using `sbt`, do:
+```
+sbt new llm4s/llm4s.g8 \
+--name=llm4s-template \
+--package=org.llm4s.template \
+--version=0.1.0-SNAPSHOT \
+--llm4s_version=0.1.1 \
+--scala_version=2.13.16 \
+--munit_version=1.1.1 \
+--directory=org.llm4s.template \
+--force
+```
+in the folder where you want to clone the template.
+
+Template usage (with local template): to create a project
+--------------
+To use this template locally (e.g., during development or when unpublished),
+Using `sbt`, do:
+```
+sbt new file:///<absolute-path>/llm4s/llm4s.g8 \
+--name=llm4s-template \
+--package=org.llm4s.template \
+--version=0.1.0-SNAPSHOT \
+--llm4s_version=0.1.1 \
+--scala_version=2.13.16 \
+--munit_version=1.1.1 \
+--directory=org.llm4s.template \
+--force
+```
+Note: Do not use `~` as  ~/.. is not resolved correctly when passed to sbt new or other CLI tools — it must be expanded manually
 
 Run the app
 -----------
@@ -31,15 +66,41 @@ Run the app
    export OPENAI_API_KEY=sk-xxxxxx
    ```
 
-2. Create the project:
+2. Switch to the project directory:
    ```bash
-   sbt new file:///<full-path-to-directory>/llm4s/llm4s.g8 --name=my-llm4s-app
+   cd llm4s-template
+   ls -lta
    ```
-
-3. Run with default or custom prompt:
-   ```bash
-   sbt run
-   sbt "run Explain what a Monad is in Scala"
+   Structure should look like:
+   ```text
+   ├── .github  
+   │   └── workflows  
+   │       └── ci.yml  
+   ├── .gitignore  
+   ├── .pre-commit-config.yaml  
+   ├── .pre-commit-hooks.yaml  
+   ├── .scalafmt.conf  
+   ├── build.sbt  
+   ├── project  
+   │   ├── build.properties  
+   │   └── plugins.sbt  
+   ├── README.md  
+   ├── src  
+   │   ├── main  
+   │   │   ├── resources  
+   │   │   │   └── logback.xml  
+   │   │   └── scala  
+   │   │       └── org  
+   │   │           └── llm4s  
+   │   │               └── template  
+   │   │                   ├── Main.scala  
+   │   │                   └── PromptExecutor.scala  
+   │   └── test  
+   │       └── scala  
+   │           └── org  
+   │               └── llm4s  
+   │                   └── template  
+   │                       └── MainSpec.scala
    ```
 
 4. Format, compile, test:
@@ -48,29 +109,11 @@ Run the app
    sbt compile
    sbt test
    ```
-
-Structure
----------
-```
-.
-├── build.sbt
-├── src/
-│   ├── main/scala/Main.scala
-│   └── main/scala/PromptExecutor.scala
-├── .scalafmt.conf
-├── .github/workflows/ci.yml
-└── README.md
-```
-
-Template usage (Local)
-----------------------
-To use this template locally (e.g., during development or when unpublished), run:
-```
-sbt new file:///<full-path-to-directory>/llm4s/llm4s.g8 --name=<name-of-your-project> --package=<your.organization/package> --version=<0.1.0> --llm4sVersion=<0.1.1> --scalaVersion=<3.4.0>
-```
-Note: Do not use `~` as  ~/.. is not resolved correctly when passed to sbt new or other CLI tools — it must be expanded manually
-
-
+5. Run with default or custom prompt:
+   ```bash
+    sbt run
+    sbt run "Explain what a Monad is in scala"
+   ```
 ----------------
 Written in July 2025 by [Vitthal Mirji]
 
@@ -78,4 +121,7 @@ Written in July 2025 by [Vitthal Mirji]
 [llm4s]: https://github.com/llm4s/llm4s
 [Scala 3]: https://dotty.epfl.ch/
 [Scala 2]: https://www.scala-lang.org/
+[logback]: https://logback.qos.ch/
+[scala-logging]: https://github.com/lightbend-labs/scala-logging
+[MUnit]: https://scalameta.org/munit/
 [Vitthal Mirji]: https://github.com/vim89
