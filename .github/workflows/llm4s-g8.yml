@@ -1,0 +1,52 @@
+name: LLM4S Giter8 Template CI
+
+on:
+  push:
+    branches: [ main, vitthalmirji-issue-94]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate-template:
+    name: Validate llm4s.g8 Template
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install sbt
+        uses: coursier/setup-action@v1
+        with:
+          jvm: temurin:21
+
+      - name: Generate project from template
+        run: |
+          sbt new file://$GITHUB_WORKSPACE/llm4s.g8 --force <<< "\n"
+
+      - name: Run compile and test on generated template
+        run: |
+          cd llm4s-template-test
+          sbt compile test
+
+      - name: Check code formatting with scalafmt
+        run: |
+          cd llm4s-template-test
+          sbt scalafmtCheckAll
+
+      - name: Validate template build file contents
+        run: |
+          cd llm4s-template-test
+          grep -q "ThisBuild" build.sbt && echo "Template generated build.sbt is valid"
+
+#   - name: Tag release (optional)
+#     if: startsWith(github.ref, 'refs/tags/')
+#     run: |
+#       echo "Tag release logic could go here using sbt-release or git push --tags"
+#   # For future use: integrate with sbt-release plugin for automated versioning and tagging.
