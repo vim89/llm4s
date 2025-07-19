@@ -45,15 +45,15 @@ jobs:
           --directory=org.llm4s.template \
           --force <<< "\n"
 
-      - name: Run compile and test on generated template
-        run: |
-          cd llm4s-template
-          sbt compile test
-
       - name: Check code formatting with scalafmt
         run: |
           cd llm4s-template
           sbt scalafmtCheckAll
+
+      - name: Run compile and test on generated template
+        run: |
+          cd llm4s-template
+          sbt compile test
 
       - name: Validate template build file contents
         run: |
