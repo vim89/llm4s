@@ -1,4 +1,4 @@
-name: CI
+name: CI for pre-configured project $name$ using llm4s
 
 on:
   push:
@@ -8,12 +8,12 @@ on:
 
 jobs:
   lint-compile-and-test:
-    name: Build & Test
+    name: Build, run precommit checks, compile, and test
     runs-on: ubuntu-latest
     strategy:
       matrix:
         scala: [ "$scala_version$" ]
-        java: ["17"]
+        java: [ 21 ]
       fail-fast: false
 
     steps:
@@ -37,7 +37,7 @@ jobs:
 
       - name: Compile and test for Scala \${{ matrix.scala }}
         run: |
-          sbt ++\${{ matrix.scala }} scalafmtCheckAll test
+          sbt ++\${{ matrix.scala }} scalafmtCheckAll compile test
 
       - name: Run coverage for Scala \${{ matrix.scala }}
         run: |
