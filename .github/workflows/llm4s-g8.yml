@@ -52,7 +52,7 @@ jobs:
 
       - name: Check code formatting with scalafmt
         run: |
-          cd llm4s-template-test
+          cd llm4s-template
           sbt scalafmtCheckAll
 
       - name: Validate template build file contents
