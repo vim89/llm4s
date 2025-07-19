@@ -9,7 +9,14 @@ on:
 jobs:
   validate-template:
     name: Validate llm4s.g8 Template
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest]
+        scala: [ 2.13.10 ]
+        java: [ 21 ]
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout repository
@@ -18,21 +25,28 @@ jobs:
       - name: Set up Java
         uses: actions/setup-java@v3
         with:
-          distribution: temurin
-          java-version: 21
+          distribution: 'temurin'
+          java-version: ${{ matrix.java }}
+          cache: 'sbt'
 
-      - name: Install sbt
-        uses: coursier/setup-action@v1
-        with:
-          jvm: temurin:21
+      - name: Setup sbt launcher
+        uses: sbt/setup-sbt@v1
 
       - name: Generate project from template
         run: |
-          sbt new file://$GITHUB_WORKSPACE/llm4s.g8 --name=llm4s-template-test --force <<< "\n"
+          sbt new file://$GITHUB_WORKSPACE/llm4s.g8 \
+          --name=llm4s-template \
+          --package=org.llm4s.template \
+          --version=0.1.0-SNAPSHOT \
+          --llm4s_version=0.1.1 \
+          --scala_version=2.13.16 \
+          --munit_version=1.1.1 \
+          --directory=org.llm4s.template \
+          --force <<< "\n"
 
       - name: Run compile and test on generated template
         run: |
-          cd llm4s-template-test
+          cd llm4s-template
           sbt compile test
 
       - name: Check code formatting with scalafmt
@@ -42,8 +56,8 @@ jobs:
 
       - name: Validate template build file contents
         run: |
-          cd llm4s-template-test
-          grep -q "ThisBuild" build.sbt && echo "Template generated build.sbt is valid"
+          cd llm4s-template
+          grep -q "ThisBuild / organization :=\"org.llm4s.template\" " build.sbt && echo "Template generated build.sbt is valid"
 
 #   - name: Tag release (optional)
 #     if: startsWith(github.ref, 'refs/tags/')
