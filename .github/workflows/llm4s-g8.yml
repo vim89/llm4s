@@ -2,9 +2,10 @@ name: LLM4S Giter8 Template CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ vitthalmirji-issue-94 ]
   pull_request:
-    branches: [ main ]
+    branches: [ vitthalmirji-issue-94 ]
+  workflow_dispatch:  # Allows manual triggering
 
 jobs:
   validate-template:
