@@ -3,12 +3,11 @@ $name$
 
 Quickstart
 ----------
-This is a production-ready Scala project pre-configured to use the [llm4s SDK](https://github.com/llm4s/llm4s).
+This is a production-ready scala project pre-configured to use the [llm4s SDK](https://github.com/llm4s/llm4s).
 
 Features
 --------
 - ✅ Preconfigured with `OpenAI` integration via `LLM4S`
-- ✅ Tracing support via `org.llm4s.trace.Tracing`
 - ✅ Includes `Main.scala` + `PromptExecutor` for quick CLI interaction
 - ✅ Supports `sbt run`, `sbt test`, and format checking
 - ✅ Production-ready directory layout, CI hooks, formatting, and more
@@ -20,24 +19,28 @@ Run the app
    export OPENAI_API_KEY=sk-xxxxxx
    ```
 
-2. Create the project:
-   ```bash
-   sbt new file:///<full-path-to-directory>/llm4s/llm4s.g8 --name=my-llm4s-app
-   ```
-
-3. Run with default or custom prompt:
+2. Run with default or custom prompt:
    ```bash
    sbt run
    sbt "run Explain what a Monad is in Scala"
    ```
 
-4. Format, compile, test:
+3. Format & compile (afte making any changes):
    ```bash
    sbt scalafmtAll
    sbt compile
-   sbt test
    ```
+4. Running Tests: This template comes with [MUnit](https://scalameta.org/munit/) preconfigured for testing.
 
+- Included setup:
+  - `munit` version `$munit_version$` is added as a test dependency. 
+  - Sample test is located in: `src/test/scala/MainSpec.scala`
+
+- To run tests:
+  - Use SBT:
+  - ```bash 
+    sbt test
+    ```
 
 [g8]: http://www.foundweekends.org/giter8/
 [llm4s]: https://github.com/llm4s/llm4s
