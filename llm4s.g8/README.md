@@ -10,10 +10,21 @@ This template bootstraps a production-ready Scala project pre-configured to use 
 
 Features
 --------
-- ✅ Preconfigured with `OpenAI` integration via `LLM4S`
-- ✅ Includes `Main.scala` + `PromptExecutor` for quick CLI interaction
-- ✅ Supports giter8 project creation using `sbt new`,
-- ✅ Production-ready directory layout, CI hooks, formatting, logger/logging, pre-configured test framework and more
+- ✅ Preconfigured with `llm4s` for building AI-powered applications
+- ✅ Produces production-ready directory layout, CI hooks, formatting, and more
+- ✅ Uses [giter8][g8] project creation using `sbt new`,
+- ✅ Includes `Main.scala` + `PromptExecutor` for quick onboarding & getting started with [llm4s]
+
+Pre-configured prerequisites
+-----------
+- JDK 21+
+- SBT
+- OpenAI API key
+- [Scala 3][Scala 3] or [Scala 2][Scala 2]
+- [MUnit] for unit testing
+- [LLM4S SDK][llm4s]
+- Logging library [logback][logback], [scala-logging][scala-logging]
+
 
 Template usage: to create a project
 --------------
@@ -31,7 +42,7 @@ sbt new llm4s/llm4s.g8 \
 ```
 in the folder where you want to clone the template.
 
-Template usage (local): to create a project
+Template usage (with local template): to create a project
 --------------
 To use this template locally (e.g., during development or when unpublished),
 Using `sbt`, do:
@@ -62,8 +73,6 @@ Run the app
    ```
    Structure should look like:
    ```text
-   <pre>
-   .  
    ├── .github  
    │   └── workflows  
    │       └── ci.yml  
@@ -91,10 +100,8 @@ Run the app
    │           └── org  
    │               └── llm4s  
    │                   └── template  
-   │                       └── MainSpec.scala  
-   </pre>
+   │                       └── MainSpec.scala
    ```
-
 
 4. Format, compile, test:
    ```bash
@@ -114,4 +121,7 @@ Written in July 2025 by [Vitthal Mirji]
 [llm4s]: https://github.com/llm4s/llm4s
 [Scala 3]: https://dotty.epfl.ch/
 [Scala 2]: https://www.scala-lang.org/
+[logback]: https://logback.qos.ch/
+[scala-logging]: https://github.com/lightbend-labs/scala-logging
+[MUnit]: https://scalameta.org/munit/
 [Vitthal Mirji]: https://github.com/vim89
