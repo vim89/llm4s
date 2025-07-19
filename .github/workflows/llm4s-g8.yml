@@ -7,9 +7,16 @@ on:
     branches: [ main ]
 
 jobs:
-  validate-template:
+  test-giter8-template:
     name: Validate llm4s.g8 Template
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest ]
+        scala: [ 2.13.10 ]
+        java: [ 21 ]
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout repository
