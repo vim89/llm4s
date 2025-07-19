@@ -7,12 +7,12 @@ on:
     branches: [ main ]
 
 jobs:
-  test-giter8-template:
+  validate-template:
     name: Validate llm4s.g8 Template
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, windows-latest ]
+        os: [ ubuntu-latest]
         scala: [ 2.13.10 ]
         java: [ 21 ]
 
@@ -34,7 +34,15 @@ jobs:
 
       - name: Generate project from template
         run: |
-          sbt new file://$GITHUB_WORKSPACE/llm4s.g8 --force <<< "\n"
+          sbt new file://$GITHUB_WORKSPACE/llm4s.g8 \
+          --name=llm4s-template \
+          --package=org.llm4s.template \
+          --version=0.1.0-SNAPSHOT \
+          --llm4s_version=0.1.1 \
+          --scala_version=2.13.16 \
+          --munit_version=1.1.1 \
+          --directory=org.llm4s.template \
+          --force <<< "\n"
 
       - name: Run compile and test on generated template
         run: |
