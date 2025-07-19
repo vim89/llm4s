@@ -1,4 +1,4 @@
-name: Giter8 template test
+name: llm4s project giter8 template test
 
 on:
   push:
