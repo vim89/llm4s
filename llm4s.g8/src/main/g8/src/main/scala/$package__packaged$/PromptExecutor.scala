@@ -1,7 +1,11 @@
-package $package;format="package"$
+package org.llm4s.template
 
-import org.llm4s.openai.OpenAI
-import org.llm4s.trace.Tracing
+
+import org.llm4s.llmconnect.LLM
+import org.llm4s.llmconnect.config.OpenAIConfig
+import org.llm4s.llmconnect.model.{Conversation, SystemMessage, UserMessage}
+import org.llm4s.llmconnect.provider.LLMProvider
+
 /**
  * This code is part of the Giter8 template llm4s.g8 in llm4s project, which provides a set standard template/archetype
  * for improve developer onboarding, creating new projects using the llm4s library.
@@ -9,20 +13,31 @@ import org.llm4s.trace.Tracing
 object PromptExecutor {
 
   def run(prompt: String): Boolean = {
-    val tracer = Tracing.create()
-    tracer.traceEvent(s"Executing prompt: " + prompt)
+    // Log the prompt execution
+    // Create the provider config
+    val config = OpenAIConfig(
+      apiKey = sys.env.getOrElse("OPENAI_API_KEY", "your-api-key-here"),
+      model = "gpt-3.5-turbo",
+      baseUrl = sys.env.getOrElse("OPENAI_BASE_URL", "https://api.openai.com/v1")
+    )
 
-    val model = OpenAI.fromEnv()
-    val response = model.chat(prompt)
+    // Build the client via LLM factory using provider enum
+    val client = LLM.client(LLMProvider.OpenAI, config)
 
-    println(s"LLM Response:\n" + response.content)
-    tracer.traceCompletion(response.content, model)
+    // Build a conversation
+    val conversation = Conversation(Seq(
+      SystemMessage("You are a helpful assistant."),
+      UserMessage(prompt)
+    ))
 
-    response.usage.foreach { usage =>
-      tracer.traceTokenUsage(usage, model, "chat-completion")
+    // Perform synchronous completion
+    client.complete(conversation) match {
+      case Right(completion) =>
+        println("✅ Assistant response: " + completion.message.content)
+        true
+      case Left(err) =>
+        println("❌ Error: " + err)
+        false
     }
-
-    tracer.traceEvent("Prompt execution finished")
-    true // Indicating successful execution
   }
 }

@@ -4,10 +4,8 @@
 ThisBuild / organization := "$package$"
 ThisBuild / version := "$version$"
 ThisBuild / scalaVersion := "$scala_version$"
-ThisBuild / llm4sVersion := "$llm4s_version$"
-
-// Optional: central place for library versions
-lazy val scalaMuniteTestVersion = "$munit_version$"
+val llm4sVersion = "$llm4s_version$"
+val scalaMuniteTestVersion = "$munit_version$"
 
 // Enable SemanticDB for Scalafix semantic rules
 ThisBuild / semanticdbEnabled  := true
@@ -30,7 +28,7 @@ ThisBuild / scalacOptions ++= Seq(
   "-Xlint",               // recommended additional warnings
   "-Ywarn-dead-code",     // warn when dead code is identified
   "-Ywarn-unused",        // warn when local defs unused
-  "-encoding", "UTF-8"    // specify character encoding
+  "-encoding", "UTF-8",    // specify character encoding
   {
     if (scalaVersion.value.startsWith("2.12"))
       "-Ywarn-unused-import"
@@ -43,7 +41,7 @@ ThisBuild / scalacOptions ++= Seq(
 lazy val root = (project in file("."))
   .settings(
     name := "$name$",
-    Compile / mainClass := Some($package$), // optional
+    Compile / mainClass := Some(organization.value), // optional
     Compile / scalafmtOnCompile := false // turn off automatic formatting on compile
   )
   .enablePlugins() // Add plugins as needed
