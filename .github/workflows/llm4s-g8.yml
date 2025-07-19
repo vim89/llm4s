@@ -34,6 +34,7 @@ jobs:
 
       - name: Generate project from template
         run: |
+          ls -lta
           sbt new file://$GITHUB_WORKSPACE/llm4s.g8 \
           --name=llm4s-template \
           --package=org.llm4s.template \
