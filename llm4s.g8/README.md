@@ -1,8 +1,8 @@
-llm4s.g8: sbt template for [llm4s], Scala 3 & Scala 2 cross-compiled
+llm4s.g8: sbt template for [llm4s]
 =================
-[![CI](https://github.com/llm4s/llm4s/actions/workflows/release.yml/badge.svg)](https://github.com/llm4s/llm4s/actions/workflows/release.yml)
+[![CI](https://github.com/llm4s/llm4s/actions/workflows/llm4s-g8-template.yml/badge.svg)](https://github.com/llm4s/llm4s/actions/workflows/llm4s-g8-template.yml)
 
-A [Giter8][g8] template for a [Scala 3] / [Scala 2] cross-compiled project.
+A [Giter8][g8] template for [llm4s] project.
 
 Quickstart
 ----------
@@ -14,6 +14,7 @@ Features
 - ✅ Produces production-ready directory layout, CI hooks, formatting, and more
 - ✅ Uses [giter8][g8] project creation using `sbt new`,
 - ✅ Includes `Main.scala` + `PromptExecutor` for quick onboarding & getting started with [llm4s]
+- ✅ Supports [Scala 3] and [Scala 2]
 
 Pre-configured prerequisites
 -----------
@@ -25,6 +26,7 @@ Pre-configured prerequisites
 - [LLM4S SDK][llm4s]
 - Logging library [logback][logback], [scala-logging][scala-logging]
 
+# Usage
 
 Template usage: to create a project
 --------------
@@ -103,17 +105,29 @@ Run the app
    │                       └── MainSpec.scala
    ```
 
-4. Format, compile, test:
+3. Format, compile, test:
+   The template integrates [MUnit] by default.
+   A sample test is provided in `src/test/scala/MainSpec.scala`.
    ```bash
    sbt scalafmtAll
    sbt compile
    sbt test
    ```
-5. Run with default or custom prompt:
+4. Run with default or custom prompt:
    ```bash
     sbt run
     sbt run "Explain what a Monad is in scala"
    ```
+   
+5. Development:
+   - Add your own prompts in `Main.scala`
+   - Implement additional functionality in `PromptExecutor.scala`
+   - Write more tests in `MainSpec.scala`
+
+6. CI
+   - The template includes a GitHub Actions workflow for CI.
+   - It runs tests and checks formatting on every push and pull request.
+
 ----------------
 Written in July 2025 by [Vitthal Mirji]
 

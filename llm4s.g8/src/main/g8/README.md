@@ -52,6 +52,17 @@ Run the app
   - ```bash 
     sbt test
     ```
+1. Development:
+    - Add your own prompts in `Main.scala`
+    - Implement additional functionality in `PromptExecutor.scala`
+    - Write more tests in `MainSpec.scala`
+
+2. CI
+    - The template includes a GitHub Actions workflow for CI.
+    - It runs tests and checks formatting on every push and pull request.
+
+----------------
+Written in July 2025 by [Vitthal Mirji]
 
 [g8]: http://www.foundweekends.org/giter8/
 [llm4s]: https://github.com/llm4s/llm4s
@@ -60,3 +71,4 @@ Run the app
 [logback]: https://logback.qos.ch/
 [scala-logging]: https://github.com/lightbend-labs/scala-logging
 [MUnit]: https://scalameta.org/munit/
+[Vitthal Mirji]: https://github.com/vim89
