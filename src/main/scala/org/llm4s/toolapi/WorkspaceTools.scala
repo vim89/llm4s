@@ -3,7 +3,6 @@ package org.llm4s.toolapi
 import org.llm4s.shared._
 import org.llm4s.workspace.ContainerisedWorkspace
 import upickle.default._
-import ujson._
 
 import scala.util.{ Failure, Success, Try }
 
@@ -15,6 +14,7 @@ import scala.util.{ Failure, Success, Try }
 object WorkspaceTools {
 
   private val logger = org.slf4j.LoggerFactory.getLogger(getClass)
+
   /**
    * Create an explore files tool that lists files and directories.
    *
@@ -409,10 +409,12 @@ object WorkspaceTools {
     try {
       logger.info(s"Executing command: $command in directory: $workingDir with timeout: $timeout")
       val execResult = workspace.executeCommand(command, workingDirectory = Some(workingDir), timeout = timeout)
-      logger.info("Command execution complete - exitCode: " + execResult.exitCode +
-        " stdout: " + execResult.stdout.length + " stderr: " + execResult.stderr.length + "b")
+      logger.info(
+        "Command execution complete - exitCode: " + execResult.exitCode +
+          " stdout: " + execResult.stdout.length + " stderr: " + execResult.stderr.length + "b"
+      )
       println(execResult.stdout)
-        println(execResult.stderr)
+      println(execResult.stderr)
       Right(
         ujson.Obj(
           "exit_code" -> execResult.exitCode,
@@ -457,7 +459,7 @@ object WorkspaceTools {
           workspace.modifyFile(path, operations) match {
             case response if response.success =>
               Right(ujson.Obj("success" -> true))
-            case response =>
+            case _ =>
               Left(s"Failed to modify file")
           }
         } catch {

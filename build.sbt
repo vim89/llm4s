@@ -4,19 +4,37 @@ import sbt.Keys.{libraryDependencies, *}
 
 // Define supported Scala versions
 val scala213 = "2.13.16"
-val scala3   = "3.3.6"
+val scala3   = "3.7.1"
+val scala3CompilerOptions = Seq(
+  "-explain",
+  "-explain-types",
+  "-Wconf:cat=unused:s",   // suppress unused warnings
+  "-Wconf:cat=deprecation:s", // suppress deprecation warnings
+  "-source:3.3",
+  "-Wsafe-init",
+  "-deprecation",
+  "-Wunused:all"
+)
+val scala2CompilerOptions = Seq(
+  "-Xfatal-warnings",
+  "-feature",
+  "-unchecked",
+  "-deprecation",
+  "-Wunused:imports",
+  "-Wunused:privates",
+  "-Wunused:locals",
+  "-Wunused:patvars",
+  "-Wunused:params",
+  "-Wunused:linted"
+)
 
 inThisBuild(
   List(
     crossScalaVersions := List(scala213, scala3),
     scalaVersion       := scala3,
-//    version            := "0.1.6",
     organization       := "org.llm4s",
     organizationName   := "llm4s",
     versionScheme      := Some("early-semver"),
-    // Scalafmt configuration
-//    scalafmtOnCompile := true,
-    // Maven central repository deployment
     homepage := Some(url("https://github.com/llm4s/")),
     licenses := List("MIT" -> url("https://mit-license.org/")),
     developers := List(
@@ -42,34 +60,31 @@ inThisBuild(
         "scm:git:git@github.com:llm4s/llm4s.git"
       )
     ),
+    version := {
+      dynverGitDescribeOutput.value match {
+        case Some(out) if !out.isSnapshot() =>
+          out.ref.value
+        case Some(out) =>
+          s"${out.ref.value}+${out.commitSuffix.mkString("", "", "")}-SNAPSHOT"
+        case None =>
+          "0.0.0-UNKNOWN"
+      }
+    }
   )
 )
 
-// Scala options based on Scala version
 def scalacOptionsForVersion(scalaVersion: String): Seq[String] =
   CrossVersion.partialVersion(scalaVersion) match {
     case Some((2, 13)) =>
-      Seq(
-        // "-Xfatal-warnings",   // Temporarily disabled for cross-compilation
-        "-deprecation", // Emit warning and location for usages of deprecated APIs
-        "-feature",     // Emit warning for feature usage
-        "-unchecked"    // Enable warnings where generated code depends on assumptions
-        // "-Wunused:imports"    // Temporarily disabled for cross-compilation
-      )
+      scala2CompilerOptions
     case Some((3, _)) =>
-      Seq(
-        "-explain",         // Explain errors in more detail
-        "-Xfatal-warnings", // Fail on warnings
-        "-source:3.3"       // Ensure Scala 3 syntax
-      )
+      scala3CompilerOptions
     case _ => Seq.empty
   }
 
-// Common settings that apply to both Scala versions
 lazy val commonSettings = Seq(
   Compile / scalacOptions := scalacOptionsForVersion(scalaVersion.value),
 
-  // Source directories for cross-compilation
   Compile / unmanagedSourceDirectories ++= {
     val sourceDir = (Compile / sourceDirectory).value
     CrossVersion.partialVersion(scalaVersion.value) match {
@@ -85,7 +100,12 @@ lazy val commonSettings = Seq(
       case Some((3, _))  => Seq(sourceDir / "scala-3")
       case _             => Nil
     }
-  }
+  },
+  libraryDependencies ++= List(
+    "com.lihaoyi"   %% "upickle"         % "4.2.1",
+    "ch.qos.logback" % "logback-classic" % "1.5.18",
+    "org.scalatest" %% "scalatest"       % "3.2.19" % Test
+  )
 )
 
 lazy val root = (project in file("."))
@@ -97,24 +117,25 @@ lazy val root = (project in file("."))
     libraryDependencies ++= List(
       "com.azure"          % "azure-ai-openai" % "1.0.0-beta.16",
       "com.anthropic"      % "anthropic-java"  % "1.1.0",
-      "ch.qos.logback"     % "logback-classic" % "1.5.18",
       "com.knuddels"       % "jtokkit"         % "1.1.0",
-      "com.lihaoyi"       %% "upickle"         % "4.1.0",
       "com.lihaoyi"       %% "requests"        % "0.9.0",
       "org.java-websocket" % "Java-WebSocket"  % "1.5.3",
-      "org.scalatest"     %% "scalatest"       % "3.2.19" % Test
+      "org.scalatest"     %% "scalatest"       % "3.2.19" % Test,
+      "org.scalamock"     %% "scalamock"       % "7.3.3"  % Test,
+      "com.softwaremill.sttp.client4" %% "core"  % "4.0.0-M7",
+      "com.lihaoyi"                   %% "ujson" % "4.2.1",
+      "org.apache.pdfbox" % "pdfbox" % "2.0.27",
+      "org.apache.poi" % "poi-ooxml" % "5.2.3",
+      "com.lihaoyi" %% "requests" % "0.8.0",
+      "org.jsoup" % "jsoup" % "1.17.2"
+
     )
   )
 
 lazy val shared = (project in file("shared"))
   .settings(
     name := "shared",
-    commonSettings,
-    libraryDependencies ++= List(
-      "com.lihaoyi"   %% "upickle"         % "4.1.0",
-      "ch.qos.logback" % "logback-classic" % "1.5.18",
-      "org.scalatest" %% "scalatest"       % "3.2.19" % Test
-    )
+    commonSettings
   )
 
 lazy val workspaceRunner = (project in file("workspaceRunner"))
@@ -129,17 +150,13 @@ lazy val workspaceRunner = (project in file("workspaceRunner"))
     name                := "workspace-runner",
     commonSettings,
     libraryDependencies ++= List(
-      "ch.qos.logback" % "logback-classic" % "1.5.18",
-      "com.lihaoyi"   %% "upickle"         % "4.2.1",
       "com.lihaoyi"   %% "cask"            % "0.9.7",
       "com.lihaoyi"   %% "requests"        % "0.9.0",
-      "org.scalatest" %% "scalatest"       % "3.2.19" % Test
     ),
     Docker / dockerBuildOptions := Seq("--platform=linux/amd64"),
     dockerCommands ++= Seq(
       Cmd("USER", "root"),
       Cmd("RUN", "apt-get update && apt-get install -y curl gnupg apt-transport-https ca-certificates zip unzip"),
-      // Install SBT
       Cmd(
         "RUN",
         "echo 'deb https://repo.scala-sbt.org/scalasbt/debian all main' | tee /etc/apt/sources.list.d/sbt.list"
@@ -149,7 +166,6 @@ lazy val workspaceRunner = (project in file("workspaceRunner"))
         "curl -sL 'https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89B84B2DF73499E82A75642AC823' | apt-key add"
       ),
       Cmd("RUN", "apt-get update && apt-get install -y sbt"),
-      // Install SDKMAN and use it to install Scala
       Cmd("RUN", "curl -s 'https://get.sdkman.io' | bash"),
       Cmd(
         "RUN",
@@ -166,58 +182,52 @@ lazy val samples = (project in file("samples"))
   .dependsOn(shared, root)
   .settings(
     name := "samples",
-    commonSettings,
-    libraryDependencies ++= List(
-      "ch.qos.logback" % "logback-classic" % "1.5.18",
-      "org.scalatest" %% "scalatest"       % "3.2.19" % Test
-    )
+    commonSettings
   )
   .settings(
     publish / skip := true
   )
 
-val crossLibDependencies = Seq(
-//  "org.llm4s"     %% "llm4s"     % "0.1.6",
-  "org.scalatest" %% "scalatest" % "3.2.19" % Test
-)
+lazy val crossLibDependencies = Def.setting {
+  Seq(
+    "org.llm4s"     %% "llm4s"     % version.value,
+    "org.scalatest" %% "scalatest" % "3.2.19" % Test,
+    "com.softwaremill.sttp.client4" %% "core"  % "4.0.0-M7",
+    "com.lihaoyi"                   %% "ujson" % "4.2.1",
+    "org.apache.pdfbox" % "pdfbox" % "2.0.27",
+    "org.apache.poi" % "poi-ooxml" % "5.2.3",
+    "com.lihaoyi" %% "requests" % "0.8.0",
+    "org.jsoup" % "jsoup" % "1.17.2"
+
+  )
+}
 
 lazy val crossTestScala2 = (project in file("crosstest/scala2"))
   .settings(
     name               := "crosstest-scala2",
     scalaVersion       := scala213,
-    crossScalaVersions := Seq(scala213),
     resolvers += Resolver.mavenLocal,
     resolvers += Resolver.defaultLocal,
-    libraryDependencies ++= crossLibDependencies
+    libraryDependencies ++= crossLibDependencies.value
   )
 
 lazy val crossTestScala3 = (project in file("crosstest/scala3"))
   .settings(
     name               := "crosstest-scala3",
     scalaVersion       := scala3,
-    crossScalaVersions := Seq(scala3),
     resolvers += Resolver.mavenLocal,
     resolvers += Resolver.defaultLocal,
-    scalacOptions ++= Seq(
-      "-language:strictEquality",
-      "-Ysafe-init",
-      "-deprecation",
-      "-Wunused:imports",
-      "-Xfatal-warnings"
-    ),
-    libraryDependencies ++= crossLibDependencies
+    libraryDependencies ++= crossLibDependencies.value,
+    scalacOptions ++= scala3CompilerOptions
   )
 
-// Commands remain the same
 addCommandAlias("buildAll", ";clean;+compile;+test")
 addCommandAlias("publishAll", ";clean;+publish")
 addCommandAlias("testAll", ";+test")
 addCommandAlias("compileAll", ";+compile")
 addCommandAlias("testCross", ";crossTestScala2/test;crossTestScala3/test")
-// Add this to your build.sbt
 addCommandAlias("fullCrossTest", ";clean ;crossTestScala2/clean ;crossTestScala3/clean ;+publishLocal ;testCross")
 
-// MiMa settings remain the same
 mimaPreviousArtifacts := Set(
-  organization.value %% "llm4s" % "0.0.1"
+  organization.value %% "llm4s" % "0.1.4"
 )

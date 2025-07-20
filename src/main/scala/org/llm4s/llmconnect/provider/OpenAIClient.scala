@@ -1,6 +1,5 @@
 package org.llm4s.llmconnect.provider
 
-import com.azure.ai.openai.{ OpenAIClient => AzureOpenAIClient }
 import com.azure.ai.openai.OpenAIClientBuilder
 import com.azure.ai.openai.models._
 import com.azure.core.credential.KeyCredential
@@ -73,7 +72,7 @@ class OpenAIClient(config: OpenAIConfig) extends LLMClient {
       case SystemMessage(content) =>
         messages.add(new ChatRequestSystemMessage(content))
       case AssistantMessage(content, toolCalls) =>
-        val msg = new ChatRequestAssistantMessage(content)
+        val msg = new ChatRequestAssistantMessage(content.getOrElse(""))
         // Add tool calls if needed
         if (toolCalls.nonEmpty) {
           val azureToolCalls = new java.util.ArrayList[ChatCompletionsToolCall]()
@@ -104,7 +103,7 @@ class OpenAIClient(config: OpenAIConfig) extends LLMClient {
       id = completions.getId,
       created = completions.getCreatedAt.toEpochSecond,
       message = AssistantMessage(
-        content = message.getContent,
+        contentOpt = Some(message.getContent),
         toolCalls = toolCalls
       ),
       usage = Option(completions.getUsage).map(u =>

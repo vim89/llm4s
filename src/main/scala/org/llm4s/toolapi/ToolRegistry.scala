@@ -1,8 +1,5 @@
 package org.llm4s.toolapi
 
-import upickle.default._
-import ujson._
-
 /**
  * Request model for tool calls
  */
@@ -24,7 +21,10 @@ object ToolCallError {
 /**
  * Registry for tool functions with execution capabilities
  */
-class ToolRegistry(val tools: Seq[ToolFunction[_, _]]) {
+class ToolRegistry(initialTools: Seq[ToolFunction[_, _]]) {
+
+  def tools: Seq[ToolFunction[_, _]] = initialTools
+
   // Get a specific tool by name
   def getTool(name: String): Option[ToolFunction[_, _]] = tools.find(_.name == name)
 

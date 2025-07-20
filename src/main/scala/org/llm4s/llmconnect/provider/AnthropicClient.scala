@@ -1,17 +1,12 @@
 package org.llm4s.llmconnect.provider
-import scala.jdk.CollectionConverters._
 import com.anthropic.client.okhttp.AnthropicOkHttpClient
-import com.anthropic.core.{ JsonObject, JsonString, JsonValue, ObjectMappers }
+import com.anthropic.core.{ JsonObject, ObjectMappers }
 import com.anthropic.models.messages
-import com.anthropic.models.messages.Message
-import com.anthropic.models.messages.MessageCreateParams
+import com.anthropic.models.messages.{ Message, MessageCreateParams, Tool }
 import org.llm4s.llmconnect.LLMClient
 import org.llm4s.llmconnect.config.AnthropicConfig
 import org.llm4s.llmconnect.model._
 import org.llm4s.toolapi.{ ObjectSchema, ToolFunction }
-import com.anthropic.models.messages.Tool
-import com.fasterxml.jackson.core.JsonParser
-import com.fasterxml.jackson.databind.JsonDeserializer
 
 import scala.jdk.CollectionConverters._
 
@@ -123,7 +118,7 @@ curl https://api.anthropic.com/v1/messages \
 
       case AssistantMessage(content, _) =>
         println("\n\nXXXXAdding assistant message: " + content)
-        paramsBuilder.addAssistantMessage(content)
+        paramsBuilder.addAssistantMessage(content.getOrElse(""))
 
       case ToolMessage(toolCallId, content) =>
         println("\n\nXXXXAdding tool response message: " + content)
@@ -165,13 +160,15 @@ curl https://api.anthropic.com/v1/messages \
   // Convert Anthropic response to our model
   private def convertFromAnthropicResponse(response: Message): Completion = {
     // Extract content
-    val content = response
-      .content()
-      .asScala
-      .toList
-      .filter(_.isText)
-      .map(_.asText().text())
-      .mkString
+    val content: Option[String] = Some(
+      response
+        .content()
+        .asScala
+        .toList
+        .filter(_.isText)
+        .map(_.asText().text())
+        .mkString
+    )
 
     // Extract tool calls if present
     val toolCalls = extractToolCalls(response)
@@ -181,7 +178,7 @@ curl https://api.anthropic.com/v1/messages \
       id = response.id(),
       created = System.currentTimeMillis() / 1000, // Use current time as created timestamp
       message = AssistantMessage(
-        content = content,
+        contentOpt = content,
         toolCalls = toolCalls
       ),
       usage = Some(

@@ -1,7 +1,6 @@
 package org.llm4s.toolapi
 
 import upickle.default._
-import ujson._
 
 /**
  * Core model for tool function definitions
@@ -33,7 +32,7 @@ case class ToolFunction[T, R: ReadWriter](
   def execute(args: ujson.Value): Either[ToolCallError, ujson.Value] = {
     val extractor = SafeParameterExtractor(args)
     handler(extractor) match {
-      case Right(result) => Right(ujson.read(upickle.default.write(result)))
+      case Right(result) => Right(writeJs(result))
       case Left(error)   => Left(ToolCallError.InvalidArguments(List(error)))
     }
   }
