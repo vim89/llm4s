@@ -128,7 +128,7 @@ Run the app
    - The template includes a GitHub Actions workflow for CI.
    - It runs tests and checks formatting on every push and pull request.
 
-----------------
+---------------
 Written in July 2025 by [Vitthal Mirji]
 
 [g8]: http://www.foundweekends.org/giter8/
