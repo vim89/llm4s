@@ -281,7 +281,8 @@ tracer.traceCompletion(completion, model)
 tracer.traceTokenUsage(tokenUsage, model, "chat-completion")
 tracer.traceAgentState(agentState)
 ```
-### `llm4s.g8`: A carefully crafted starter kit to unlock the power of llm4s
+### Usage using starter kit `llm4s.g8`
+#### A carefully crafted starter kit to unlock the power of llm4s
 llm4s.g8 is a starter kit for building AI-powered applications using [llm4s].
 Improved SDK usability and developer ergonomics. You can now spin up a fully working scala project with a single `sbt` command.
 The starter kit comes pre-configured with best practices, prompt execution examples, CI, formatting hooks, unit testing, documentation, and cross-platform support.
@@ -300,6 +301,7 @@ sbt new llm4s/llm4s.g8 \
 ```
 in the folder where you want to create your project.
 Use the comprehensive [documentation](docs/llm4s-g8-starter-kit.md) to get started with the project using started kit.
+---
 
 ## 📢 Talks & Presentations
 
