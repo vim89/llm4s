@@ -301,7 +301,7 @@ sbt new llm4s/llm4s.g8 \
 ```
 in the folder where you want to create your project.
 Use the comprehensive [documentation](docs/llm4s-g8-starter-kit.md) to get started with the project using started kit.
----
+----
 
 ## 📢 Talks & Presentations
 
