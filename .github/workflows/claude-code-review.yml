@@ -149,13 +149,13 @@ jobs:
           echo "Automated Claude review is disabled for security reasons." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### For Maintainers:" >> $GITHUB_STEP_SUMMARY
-          echo "To get Claude review for this PR, run:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To get Claude review for this PR, comment \`@claude\` to trigger manual review via the regular workflow." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Or, run:" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
           echo "gh workflow run claude-code-review.yml -f pr_number=${{ github.event.pull_request.number }}" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Or comment \`@claude\` to trigger manual review via the regular workflow." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
           echo "### PR Summary:" >> $GITHUB_STEP_SUMMARY
           echo "- **Files changed:** ${{ github.event.pull_request.changed_files }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Additions:** +${{ github.event.pull_request.additions }}" >> $GITHUB_STEP_SUMMARY
