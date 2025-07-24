@@ -122,7 +122,7 @@ jobs:
   # Job for external/forked PRs (no OIDC available, limited permissions)
   claude-review-external:
     if: |
-      github.event_name == 'pull_request' && (
+      github.event_name == 'pull_request_target' && (
         github.event.pull_request.head.repo.full_name != github.repository &&
         github.event.pull_request.author_association != 'COLLABORATOR' &&
         github.event.pull_request.author_association != 'MEMBER' &&
@@ -132,73 +132,50 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read
+      pull-requests: write
+      issues: write
 
     steps:
-      - name: Checkout repository
+      # SECURITY: Only checkout the target branch, not the PR code
+      # This prevents malicious code execution while still allowing comments
+      - name: Checkout target branch (security)
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-
-      - name: Log External PR Info
-        run: |
-          echo "::notice::External PR detected - Claude review skipped for security"
-          echo "## 🔒 External PR - Claude Review Skipped" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "This PR is from an external repository (\`${{ github.event.pull_request.head.repo.full_name }}\`)." >> $GITHUB_STEP_SUMMARY
-          echo "Automated Claude review is disabled for security reasons." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### For Maintainers:" >> $GITHUB_STEP_SUMMARY
-          echo "To get Claude review for this PR, run:" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "gh workflow run claude-code-review.yml -f pr_number=${{ github.event.pull_request.number }}" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Or comment \`@claude\` to trigger manual review via the regular workflow." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### PR Summary:" >> $GITHUB_STEP_SUMMARY
-          echo "- **Files changed:** ${{ github.event.pull_request.changed_files }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Additions:** +${{ github.event.pull_request.additions }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Deletions:** -${{ github.event.pull_request.deletions }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Author:** @${{ github.event.pull_request.user.login }}" >> $GITHUB_STEP_SUMMARY
+          ref: ${{ github.event.repository.default_branch }}
 
       - name: Comment on External PR
         uses: actions/github-script@v7
-        continue-on-error: true
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            try {
-              const comment = `## 🔒 Claude Code Review Status
+            const comment = `## 🔒 Claude Code Review Status
             
-              Thank you for your contribution! This PR is from an external repository, so automated Claude review is disabled for security reasons.
+            Thank you for your contribution! This PR is from an external repository (\`${{ github.event.pull_request.head.repo.full_name }}\`), so automated Claude review is disabled for security reasons.
             
-              **For maintainers:** To get Claude review for this PR, run:
-              \`\`\`bash
-              gh workflow run claude-code-review.yml -f pr_number=${{ github.event.pull_request.number }}
-              \`\`\`
+            **For maintainers:** To get Claude review for this PR, run:
+            \`\`\`bash
+            gh workflow run claude-code-review.yml -f pr_number=${{ github.event.pull_request.number }}
+            \`\`\`
             
-              Or comment \`@claude\` in the regular workflow to trigger manual review.
+            Or comment \`@claude\` to trigger manual review via the regular workflow.
             
-              **PR Summary:**
-              - Files changed: ${{ github.event.pull_request.changed_files }}
-              - Additions: +${{ github.event.pull_request.additions }}
-              - Deletions: -${{ github.event.pull_request.deletions }}
-              - Author: @${{ github.event.pull_request.user.login }}
-              `;
+            **PR Summary:**
+            - Files changed: ${{ github.event.pull_request.changed_files }}
+            - Additions: +${{ github.event.pull_request.additions }}
+            - Deletions: -${{ github.event.pull_request.deletions }}
+            - Author: @${{ github.event.pull_request.user.login }}
             
-              await github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: comment
-              });
+            ---
+            *This comment was posted automatically to inform about the review status.*
+            `;
             
-              console.log('✅ Successfully commented on external PR');
-            } catch (error) {
-              console.log('⚠️ Could not comment on PR (expected for external PRs):', error.message);
-              console.log('📝 External contributors can still see the workflow status and maintainers have the workflow summary');
-            }
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
 
   # Manual trigger job for maintainers to review external PRs
   claude-review-manual:
