@@ -2,7 +2,7 @@ name: Claude Code Review
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [ opened, synchronize ]
     # Optional: Only run on specific file changes
     # paths:
     #   - "src/**/*.ts"
@@ -97,10 +97,10 @@ jobs:
             echo "🔒 Trusted PR detected - will run full Claude review"
           else
             echo "trusted=false" >> $GITHUB_OUTPUT
-            echo "⚠️ External PR detected - will post notification only"
+            echo "⚠️ External PR detected - will post notification comment"
           fi
 
-      # For trusted PRs: checkout the PR branch and run Claude review
+      # For trusted PRs: checkout PR branch and run full Claude review
       - name: Checkout PR (Trusted)
         if: steps.pr-type.outputs.trusted == 'true'
         uses: actions/checkout@v4
@@ -114,6 +114,9 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
+          # Optional: Specify model (defaults to Claude Sonnet 4)
+          # model: "claude-opus-4-20250514"
+
           direct_prompt: |
             Please review this pull request and provide feedback on:
             - Code quality and best practices
@@ -126,8 +129,8 @@ jobs:
 
           use_sticky_comment: true
 
-      # For external PRs: checkout main branch only (security) and post comment
-      - name: Checkout Main Branch (External)
+      # For external PRs: checkout main branch only (security) and post notification
+      - name: Checkout Main Branch (External - Security)
         if: steps.pr-type.outputs.trusted == 'false'
         uses: actions/checkout@v4
         with:
@@ -136,38 +139,29 @@ jobs:
 
       - name: Comment on External PR
         if: steps.pr-type.outputs.trusted == 'false'
-        uses: actions/github-script@v7
+        uses: thollander/actions-comment-pull-request@v2
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const comment = `## 🔒 Claude Code Review Status
+          message: |
+            ## 🔒 Claude Code Review Status
             
-            Thank you for your contribution! This PR is from an external repository (\`${{ github.event.pull_request.head.repo.full_name }}\`), so automated Claude review is disabled for security reasons.
+            Thank you for your contribution! This PR is from an external repository (`${{ github.event.pull_request.head.repo.full_name }}`), so automated Claude review is disabled for security reasons.
             
             **For maintainers:** To get Claude review for this PR, run:
-            \`\`\`bash
+            ```bash
             gh workflow run "Claude Code Review" -f pr_number=${{ github.event.pull_request.number }}
-            \`\`\`
+            ```
             
-            Or comment \`@claude\` to trigger manual review via the regular workflow.
+            Or comment `@claude` to trigger manual review via the regular workflow.
             
             **PR Summary:**
             - Files changed: ${{ github.event.pull_request.changed_files }}
             - Additions: +${{ github.event.pull_request.additions }}
             - Deletions: -${{ github.event.pull_request.deletions }}
             - Author: @${{ github.event.pull_request.user.login }}
-            - Source: \`${{ github.event.pull_request.head.repo.full_name }}:${{ github.event.pull_request.head.ref }}\`
+            - Source: `${{ github.event.pull_request.head.repo.full_name }}:${{ github.event.pull_request.head.ref }}`
             
             ---
-            *This comment was posted automatically to inform about the review status.*
-            `;
-            
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
+            *This comment was posted automatically.*
 
   # Manual trigger job for maintainers to review external PRs
   claude-review-manual:
