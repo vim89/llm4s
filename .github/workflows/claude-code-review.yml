@@ -143,7 +143,7 @@ jobs:
       - name: Log External PR Info
         run: |
           echo "::notice::External PR detected - Claude review skipped for security"
-          echo "## 🔒 External PR - Claude Review Skipped" >> $GITHUB_STEP_SUMMARY
+          echo "## 🔒 External PR - Claude review skipped for security reasons" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "This PR is from an external repository (\`${{ github.event.pull_request.head.repo.full_name }}\`)." >> $GITHUB_STEP_SUMMARY
           echo "Automated Claude review is disabled for security reasons." >> $GITHUB_STEP_SUMMARY
@@ -173,12 +173,12 @@ jobs:
             
               Thank you for your contribution! This PR is from an external repository, so automated Claude review is disabled for security reasons.
             
-              **For maintainers:** To get Claude review for this PR, run:
+              **For maintainers:** To get Claude review for this PR:
+              Comment \`@claude\` in the regular workflow to trigger manual review.
+              Or run:
               \`\`\`bash
               gh workflow run claude-code-review.yml -f pr_number=${{ github.event.pull_request.number }}
               \`\`\`
-            
-              Or comment \`@claude\` in the regular workflow to trigger manual review.
             
               **PR Summary:**
               - Files changed: ${{ github.event.pull_request.changed_files }}
