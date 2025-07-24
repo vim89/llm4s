@@ -17,7 +17,7 @@ jobs:
     #   github.event.pull_request.user.login == 'external-contributor' ||
     #   github.event.pull_request.user.login == 'new-developer' ||
     #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
-    
+    if: false # Just temporary to skip this job as we want to test the below jobs
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -75,4 +75,132 @@ jobs:
           # if: |
           #   !contains(github.event.pull_request.title, '[skip-review]') &&
           #   !contains(github.event.pull_request.title, '[WIP]')
+
+  # Job for trusted PRs (from same repo or collaborators)
+  claude-code-review-trusted-oidc:
+    if: |
+      github.event_name == 'pull_request' && (
+        github.event.pull_request.head.repo.full_name == github.repository ||
+        github.event.pull_request.author_association == 'COLLABORATOR' ||
+        github.event.pull_request.author_association == 'MEMBER' ||
+        github.event.pull_request.author_association == 'OWNER'
+      )
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run claude code review (OIDC)
+        uses: anthropics/claude-code-action@beta
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+          # Optional: Specify model (defaults to Claude Sonnet 4, uncomment for Claude Opus 4)
+          # model: "claude-opus-4-20250514"
+
+          direct_prompt: |
+            Please review this pull request and provide feedback on:
+            - Code quality and best practices
+            - Potential bugs or issues
+            - Performance considerations
+            - Security concerns
+            - Test coverage
+            
+            Be constructive and helpful in your feedback.
+
+          use_sticky_comment: true
+
+  # Job for external/forked PRs (no OIDC available)
+  claude-review-external:
+    if: |
+      github.event_name == 'pull_request' && (
+        github.event.pull_request.head.repo.full_name != github.repository &&
+        github.event.pull_request.author_association != 'COLLABORATOR' &&
+        github.event.pull_request.author_association != 'MEMBER' &&
+        github.event.pull_request.author_association != 'OWNER'
+      )
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Comment on External PR
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const comment = `## 🤖 Claude code review status
+            
+            Thank you for your contribution! This PR is from an external repository, so automated claude review is disabled for security reasons.
+            
+            **For maintainers:** To get Claude review for this PR, run:
+            comment \`@claude\` in the regular workflow to trigger manual review.
+            Or use the manual trigger workflow:
+            \`\`\`
+            gh workflow run claude-code-review.yml -f pr_number=${{ github.event.pull_request.number }}
+            \`\`\`
+            
+            
+            **PR Summary:**
+            - Files changed: ${{ github.event.pull_request.changed_files }}
+            - Additions: +${{ github.event.pull_request.additions }}
+            - Deletions: -${{ github.event.pull_request.deletions }}
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  # Manual trigger job for maintainers to review external PRs
+  claude-review-manual:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          ref: refs/pull/${{ github.event.inputs.pr_number }}/merge
+
+      - name: Run Claude Code Review (Manual)
+        uses: anthropics/claude-code-action@beta
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+          direct_prompt: |
+            Please review this external contributor's pull request with extra attention to:
+            - Security implications of the changes
+            - Code quality and best practices
+            - Potential bugs or issues
+            - Performance considerations
+            - Test coverage
+            
+            This is from an external contributor, so be thorough but welcoming in your feedback.
+
 
