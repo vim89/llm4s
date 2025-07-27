@@ -1,145 +1,48 @@
-name: Claude Code Review
+name: Claude code review (Main)
 
 on:
   pull_request:
     types: [ opened, synchronize ]
-    # Optional: Only run on specific file changes
-    # paths:
-    #   - "src/**/*.ts"
-    #   - "src/**/*.tsx"
-    #   - "src/**/*.js"
-    #   - "src/**/*.jsx"
+  issue_comment:
+    types: [ created ]
 
 jobs:
-  claude-review:
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
-    if: false # Just temporary to skip this job as we want to test the below jobs
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
-      issues: read
-      id-token: write
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-
-      - name: Run Claude Code Review
-        id: claude-review
-        uses: anthropics/claude-code-action@beta
-        with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-
-          # Optional: Specify model (defaults to Claude Sonnet 4, uncomment for Claude Opus 4)
-          # model: "claude-opus-4-20250514"
-          
-          # Direct prompt for automated review (no @claude mention needed)
-          direct_prompt: |
-            Please review this pull request and provide feedback on:
-            - Code quality and best practices
-            - Potential bugs or issues
-            - Performance considerations
-            - Security concerns
-            - Test coverage
-            
-            Be constructive and helpful in your feedback.
-
-          # Optional: Use sticky comments to make Claude reuse the same comment on subsequent pushes to the same PR
-          # use_sticky_comment: true
-          
-          # Optional: Customize review based on file types
-          # direct_prompt: |
-          #   Review this PR focusing on:
-          #   - For TypeScript files: Type safety and proper interface usage
-          #   - For API endpoints: Security, input validation, and error handling
-          #   - For React components: Performance, accessibility, and best practices
-          #   - For tests: Coverage, edge cases, and test quality
-          
-          # Optional: Different prompts for different authors
-          # direct_prompt: |
-          #   ${{ github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR' && 
-          #   'Welcome! Please review this PR from a first-time contributor. Be encouraging and provide detailed explanations for any suggestions.' ||
-          #   'Please provide a thorough code review focusing on our coding standards and best practices.' }}
-          
-          # Optional: Add specific tools for running tests or linting
-          # allowed_tools: "Bash(npm run test),Bash(npm run lint),Bash(npm run typecheck)"
-          
-          # Optional: Skip review for certain conditions
-          # if: |
-          #   !contains(github.event.pull_request.title, '[skip-review]') &&
-          #   !contains(github.event.pull_request.title, '[WIP]')
-
-  # Job for trusted PRs (from same repo or collaborators)
+  # Auto-review for trusted PRs
   claude-review-trusted:
     if: |
-      github.event_name == 'pull_request' && (
+      github.event_name == 'pull_request' && 
+      github.event.pull_request.draft == false && 
+      (
         github.event.pull_request.head.repo.full_name == github.repository ||
         github.event.pull_request.author_association == 'COLLABORATOR' ||
         github.event.pull_request.author_association == 'MEMBER' ||
         github.event.pull_request.author_association == 'OWNER'
       )
 
+    uses: ./.github/workflows/claude.yml
+    with:
+      pr_head_sha: ${{ github.event.pull_request.head.sha }}
+      review_type: 'trusted'
+      pr_number: ${{ github.event.pull_request.number }}
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+  # Info comment for external PRs
+  claude-review-external-info:
+    if: |
+      github.event_name == 'pull_request' && 
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name != github.repository &&
+      github.event.pull_request.author_association != 'COLLABORATOR' &&
+      github.event.pull_request.author_association != 'MEMBER' &&
+      github.event.pull_request.author_association != 'OWNER'
+
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
-      issues: read
-      id-token: write
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-
-      - name: Run Claude Code Review (OIDC)
-        uses: anthropics/claude-code-action@beta
-        with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-
-          # Optional: Specify model (defaults to Claude Sonnet 4, uncomment for Claude Opus 4)
-          # model: "claude-opus-4-20250514"
-
-          direct_prompt: |
-            Please review this pull request and provide feedback on:
-            - Code quality and best practices
-            - Potential bugs or issues
-            - Performance considerations
-            - Security concerns
-            - Test coverage
-            
-            Be constructive and helpful in your feedback.
-
-          use_sticky_comment: true
-
-  # Job for external/forked PRs (no OIDC available, limited permissions)
-  claude-review-external:
-    if: |
-      github.event_name == 'pull_request' && (
-        github.event.pull_request.head.repo.full_name != github.repository &&
-        github.event.pull_request.author_association != 'COLLABORATOR' &&
-        github.event.pull_request.author_association != 'MEMBER' &&
-        github.event.pull_request.author_association != 'OWNER'
-      )
-
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-
       - name: Log External PR Info
         run: |
           echo "::notice::External PR detected - Claude review skipped for security"
@@ -168,41 +71,40 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            try {
-              const comment = `## 🔒 Claude Code Review Status
+            const comment = `## 🔒 Claude Code Review Status
             
-              Thank you for your contribution! This PR is from an external repository, so automated Claude review is disabled for security reasons.
+            Thank you for your contribution! This PR is from an external repository, so automated Claude review is disabled for security reasons.
             
-              **For maintainers:** To get Claude review for this PR:
-              Comment \`@claude\` in the regular workflow to trigger manual review.
-              Or run:
-              \`\`\`bash
-              gh workflow run claude-code-review.yml -f pr_number=${{ github.event.pull_request.number }}
-              \`\`\`
+            **For maintainers:** To get Claude review for this PR, comment \`@claude\` and I'll trigger a manual review.
             
-              **PR Summary:**
-              - Files changed: ${{ github.event.pull_request.changed_files }}
-              - Additions: +${{ github.event.pull_request.additions }}
-              - Deletions: -${{ github.event.pull_request.deletions }}
-              - Author: @${{ github.event.pull_request.user.login }}
-              `;
+            **PR Summary:**
+            - Files changed: ${{ github.event.pull_request.changed_files }}
+            - Additions: +${{ github.event.pull_request.additions }}
+            - Deletions: -${{ github.event.pull_request.deletions }}
+            - Author: @${{ github.event.pull_request.user.login }}
+            `;
             
-              await github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: comment
-              });
-            
-              console.log('✅ Successfully commented on external PR');
-            } catch (error) {
-              console.log('⚠️ Could not comment on PR (expected for external PRs):', error.message);
-              console.log('📝 External contributors can still see the workflow status and maintainers have the workflow summary');
-            }
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
 
-  # Manual trigger job for maintainers to review external PRs
+
+  # Manual review via @claude comment
   claude-review-manual:
-    if: github.event_name == 'workflow_dispatch'
+    if: |
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, '@claude') &&
+      github.event.comment.user.login != 'github-actions[bot]' &&
+      (
+        github.event.comment.author_association == 'COLLABORATOR' ||
+        github.event.comment.author_association == 'MEMBER' ||
+        github.event.comment.author_association == 'OWNER'
+      )
+
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -210,24 +112,52 @@ jobs:
       issues: read
       id-token: write
 
+    outputs:
+      pr_head_sha: ${{ steps.pr-info.outputs.head_sha }}
+      pr_number: ${{ github.event.issue.number }}
+
     steps:
-      - name: Checkout PR
-        uses: actions/checkout@v4
+      - name: Get PR details
+        id: pr-info
+        uses: actions/github-script@v7
         with:
-          fetch-depth: 1
-          ref: refs/pull/${{ github.event.inputs.pr_number }}/merge
-
-      - name: Run Claude Code Review (Manual)
-        uses: anthropics/claude-code-action@beta
-        with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-
-          direct_prompt: |
-            Please review this external contributor's pull request with extra attention to:
-            - Security implications of the changes
-            - Code quality and best practices
-            - Potential bugs or issues
-            - Performance considerations
-            - Test coverage
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
             
-            This is from an external contributor, so be thorough but welcoming in your feedback.
+            core.setOutput('head_sha', pr.data.head.sha);
+            core.setOutput('is_external', pr.data.head.repo.full_name !== pr.data.base.repo.full_name);
+            
+            return pr.data;
+
+      - name: React to comment
+        uses: actions/github-script@v7
+        continue-on-error: true
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'rocket'
+            });
+
+
+
+  # Call reusable workflow for manual review
+  claude-review-manual-execute:
+    needs: claude-review-manual
+    if: needs.claude-review-manual.result == 'success'
+    
+    uses: ./.github/workflows/claude.yml
+    with:
+      pr_head_sha: ${{ needs.claude-review-manual.outputs.pr_head_sha }}
+      review_type: 'manual'
+      pr_number: ${{ needs.claude-review-manual.outputs.pr_number }}
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
