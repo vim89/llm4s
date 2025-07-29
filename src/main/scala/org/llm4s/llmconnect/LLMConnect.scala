@@ -12,6 +12,7 @@ import org.llm4s.llmconnect.provider.{
   AzureOpenAIClient => AzureClient
 }
 
+@deprecated("Use LLMConnectV2 for enhanced error handling", "0.1.1")
 object LLMConnect {
   private def readEnv(key: String): Option[String] =
     sys.env.get(key)
