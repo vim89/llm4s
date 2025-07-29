@@ -1,12 +1,8 @@
-// ============================================================================
-// COMPREHENSIVE TYPE ALIASES FOR LLM4S - org.llm4s.types
-// ============================================================================
-
 package org.llm4s
 
 import org.llm4s.llmconnect.model.StreamedChunk
 import org.llm4s.toolapi.ToolFunction
-import org.llm4s.types.{ AgentId, ApiKey, AsyncResult, ImagePrompt, ModelName, ProviderName, Result, WorkflowId }
+import org.llm4s.types.{ AsyncResult, Result }
 
 import java.time.Instant
 import scala.concurrent.Future
@@ -15,28 +11,25 @@ import scala.util.Try
 /**
  * Comprehensive type aliases and newtypes for the LLM4S library.
  *
- * This package provides:
+ * Key Features:
  * - Core result types and error handling
  * - ID newtypes for type safety
  * - Async and streaming type aliases
  * - Configuration and metadata types
  * - Tool and MCP related types
  * - Future extensibility for various domains
- *
- * Design Principles:
+ * - Consistent and clear type definitions
  * - Type safety without performance cost (AnyVal newtypes)
  * - Consistent naming patterns across the library
  * - Clear distinction between sync/async operations
  * - Extensible for future requirements
- *
- * @author LLM4S Team
- * @since 1.0.0
+ * - Backwards compatibility with legacy types
  */
 package object types {
 
-  // ============================================================================
-  // CORE RESULT TYPES & ERROR HANDLING
-  // ============================================================================
+  /**
+   * Core result types and error handling.
+   */
 
   /** Standard synchronous result type used throughout the library */
   type Result[+A] = Either[error.LLMError, A]
@@ -63,11 +56,12 @@ package object types {
   type StreamResult[+A] = Result[Iterator[A]]
 
   // Legacy compatibility (will be removed in later versions)
+  @deprecated("Use org.llm4s.types.Result instead", "0.1.1")
   type LegacyResult[+A] = Either[org.llm4s.llmconnect.model.LLMError, A]
 
-  // ============================================================================
-  // IDENTIFIER NEWTYPES (Type-safe IDs)
-  // ============================================================================
+  /**
+   * Identifiers and newtypes for type safety.
+   */
 
   /**
    * Type-safe wrapper for LLM model names
@@ -173,9 +167,10 @@ package object types {
     override def toString: String = value
   }
 
-  // ============================================================================
-  // STREAMING & ASYNC TYPES
-  // ============================================================================
+  /**
+   * Streaming and async types for real-time data handling.
+   * These types are used for streaming completions, callbacks, and async operations.
+   */
 
   /** Type alias for streaming completion chunks */
   type CompletionStream = Iterator[StreamedChunk]
@@ -198,9 +193,10 @@ package object types {
   /** Type alias for cancellation token */
   type CancellationToken = () => Boolean
 
-  // ============================================================================
-  // CONFIGURATION TYPES
-  // ============================================================================
+  /**
+   * Configuration and metadata types.
+   * These types are used for environment configuration, secrets management,
+   */
 
   /** Type alias for environment variable map */
   type EnvironmentConfig = Map[String, String]
@@ -217,9 +213,10 @@ package object types {
   /** Type alias for configuration section */
   type ConfigSection = Map[String, Any]
 
-  // ============================================================================
-  // HTTP & NETWORK TYPES
-  // ============================================================================
+  /**
+   * HTTP and networking types.
+   * These types are used for HTTP requests, responses, and endpoints.
+   */
 
   /** Type alias for HTTP headers */
   type HttpHeaders = Map[String, String]
@@ -242,9 +239,10 @@ package object types {
   /** Type alias for endpoint configuration */
   type EndpointConfig = (Url, HttpHeaders)
 
-  // ============================================================================
-  // TOOL SYSTEM TYPES
-  // ============================================================================
+  /**
+   * Tool system types.
+   * These types are used for defining and executing tools, including validation and execution contexts.
+   */
 
   /** Type alias for tool parameter validation */
   type ParameterValidation = Either[List[String], ujson.Value]
@@ -264,9 +262,10 @@ package object types {
   /** Type alias for tool execution context */
   type ToolExecutionContext = Map[String, Any]
 
-  // ============================================================================
-  // MCP (Model Context Protocol) TYPES
-  // ============================================================================
+  /**
+   * Model context protocol (MCP) types.
+   * These types are used for defining and managing model context protocols, including server and client names
+   */
 
   /** Type-safe wrapper for MCP server names */
   final case class MCPServerName(value: String) extends AnyVal {
@@ -289,9 +288,10 @@ package object types {
   /** Type alias for MCP server configuration */
   type MCPServerConfig = Map[String, Any]
 
-  // ============================================================================
-  // CODE GENERATION TYPES
-  // ============================================================================
+  /**
+   * Code generation types.
+   * These types are used for generating code from templates, including task IDs and template names.
+   */
 
   /** Type-safe wrapper for code task IDs */
   final case class CodeTaskId(value: String) extends AnyVal {
@@ -312,9 +312,11 @@ package object types {
   /** Type alias for generated code result */
   type GeneratedCodeResult = Result[String]
 
-  // ============================================================================
-  // METRICS & OBSERVABILITY TYPES
-  // ============================================================================
+  /**
+   * Metrics and observability types.
+   * These types are used for collecting and reporting metrics, including metric names, values, and tags.
+   * They also include timing measurements for performance tracking.
+   */
 
   /** Type alias for metric name */
   final case class MetricName(value: String) extends AnyVal {
@@ -333,9 +335,12 @@ package object types {
   /** Type alias for timing measurement */
   type TimingResult[A] = (A, Long) // (result, durationMillis)
 
-  // ============================================================================
-  // AUTHENTICATION & SECURITY TYPES
-  // ============================================================================
+  /**
+   * Authentication and security types.
+   * These types are used for authentication credentials, permissions, and roles.
+   * They include type-safe wrappers for API keys, JWT tokens, and OAuth tokens.
+   * They also define type aliases for authentication credentials and permission sets.
+   */
 
   /** Type-safe wrapper for JWT tokens */
   final case class JwtToken(private val value: String) extends AnyVal {
@@ -358,9 +363,12 @@ package object types {
   /** Type alias for role definition */
   type Role = (String, Permissions)
 
-  // ============================================================================
-  // FILE & WORKSPACE TYPES
-  // ============================================================================
+  /**
+   * File system and workspace types.
+   * These types are used for file paths, directory paths, file content, and metadata.
+   * They include type-safe wrappers for file and directory paths,
+   * as well as type aliases for file content, text content, and file metadata.
+   */
 
   /** Type-safe wrapper for file paths */
   final case class FilePath(value: String) extends AnyVal {
@@ -385,9 +393,12 @@ package object types {
   /** Type alias for file metadata */
   type FileMetadata = Map[String, String]
 
-  // ============================================================================
-  // PAGINATION & SEARCH TYPES
-  // ============================================================================
+  /**
+   * Pagination and search types.
+   * These types are used for paginated results, search queries, and search filters.
+   * They include type-safe wrappers for search queries and pagination information.
+   * They also define type aliases for search results and search filters.
+   */
 
   /** Pagination information for large result sets */
   final case class PaginationInfo(
@@ -410,9 +421,13 @@ package object types {
   /** Type alias for search result */
   type SearchResult[A] = PaginatedResult[A]
 
-  // ============================================================================
-  // CACHING TYPES
-  // ============================================================================
+  /**
+   * Caching and metadata types.
+   * These types are used for caching results, cache keys, and cache configurations.
+   * They include type-safe wrappers for cache keys and type aliases for cached values and cache configurations.
+   * They also define type aliases for cache TTL (time to live) and cached value metadata.
+   * They are designed to be extensible for future caching requirements.
+   */
 
   /** Type-safe wrapper for cache keys */
   final case class CacheKey(value: String) extends AnyVal {
@@ -428,9 +443,10 @@ package object types {
   /** Type alias for cache configuration */
   type CacheConfig = Map[String, Any]
 
-  // ============================================================================
-  // FUTURE EXTENSIBILITY TYPES
-  // ============================================================================
+  /**
+   * Future extensibility types.
+   * These types are placeholders for future extensibility.
+   */
 
   // Image Generation Types (for future image generation support)
   final case class ImagePrompt(value: String) extends AnyVal {
@@ -512,9 +528,17 @@ package object types {
   type WorkflowStep      = Map[String, Any]
   type WorkflowResult[A] = Result[Map[StepId, A]]
 
-  // ============================================================================
-  // VALIDATION & SMART CONSTRUCTORS
-  // ============================================================================
+  /**
+   * Validation and smart constructors for type-safe IDs and names.
+   * These objects provide methods to create and validate type-safe IDs and names,
+   * ensuring they meet specific criteria.
+   * They also provide common constants for frequently used models and providers.
+   * These methods return `Result` types for error handling,
+   * allowing users to create type-safe IDs and names
+   * with confidence that they are valid.
+   * This approach ensures type safety without runtime overhead,
+   * and provides a clear and consistent API for creating and validating IDs and names.
+   */
 
   object ModelName {
     def create(value: String): Result[ModelName] =
@@ -582,9 +606,10 @@ package object types {
       }
   }
 
-  // ============================================================================
-  // UTILITY TYPE ALIASES
-  // ============================================================================
+  /**
+   * Utility types for common data structures.
+   * These types provide type-safe wrappers for common data structures.
+   */
 
   /** Type alias for JSON values */
   type Json = ujson.Value
@@ -619,23 +644,34 @@ package object types {
   /** Type alias for percentage (0.0 to 100.0) */
   type Percentage = Double
 
-  // ============================================================================
-  // BACKWARDS COMPATIBILITY ALIASES (TO BE REMOVED IN v2.0.0)
-  // ============================================================================
+  /**
+   * Backwards compatibility types.
+   */
 
-  @deprecated("Use Result instead", "1.9.0")
+  @deprecated("Use Result instead", "0.1.1")
   type LLMResult[+A] = Result[A]
 
-  @deprecated("Use AsyncResult instead", "1.9.0")
+  @deprecated("Use AsyncResult instead", "0.1.1")
   type FutureResult[+A] = AsyncResult[A]
 
-  @deprecated("Use CompletionStream instead", "1.9.0")
+  @deprecated("Use CompletionStream instead", "0.1.1")
   type StreamingResult = CompletionStream
 }
 
-// ============================================================================
-// COMPANION OBJECTS FOR RESULT TYPES
-// ============================================================================
+/**
+ * Companion object for Result types.
+ * Provides utility methods for creating and manipulating Result types.
+ * Includes methods for success, failure, fromTry, fromOption, sequence, traverse, and combine.
+ * These methods allow users to easily create and handle Result types,
+ * providing a consistent and type-safe way to work with results in the LLM4S.
+ * Provides a clear and concise API for error handling and result manipulation.
+ * Provides methods for creating success and failure results,
+ * converting from Try and Option types, sequencing and traversing lists of results,
+ * and combining two results into a tuple.
+ * This object is designed to be extensible for future requirements,
+ * allowing users to add additional utility methods as needed.
+ * It provides a consistent and type-safe way to handle results and errors in the LLM4S.
+ */
 
 object Result {
   def success[A](value: A): Result[A]                        = Right(value)
@@ -678,49 +714,4 @@ object AsyncResult {
 
   def fromResult[A](result: Result[A]): AsyncResult[A] =
     Future.successful(result)
-}
-
-// ============================================================================
-// EXAMPLES AND USAGE PATTERNS
-// ============================================================================
-
-object TypeUsageExamples {
-
-  // Example: Using type-safe IDs
-  def exampleTypeSafeIds(): Unit = {
-    val modelName = ModelName.GPT_4
-    val provider  = ProviderName.OPENAI
-    val apiKey    = ApiKey.create("sk-...").getOrElse(throw new RuntimeException("Invalid API key"))
-
-    println(s"Using model $modelName from provider $provider")
-    println(s"API key: $apiKey") // Safely prints masked version
-  }
-
-  // Example: Using Result types
-  def exampleResultTypes(): Result[String] =
-    for {
-      modelName <- ModelName.create("gpt-4")
-      provider  <- ProviderName.create("openai")
-      apiKey    <- ApiKey.fromEnvironment("OPENAI_API_KEY")
-    } yield s"Configuration: $provider/$modelName with key ${apiKey.masked}"
-
-  // Example: Using async patterns
-  def exampleAsyncPatterns()(implicit ec: scala.concurrent.ExecutionContext): AsyncResult[String] = {
-    val futureResult = Future {
-      // Some async operation
-      "Hello from async operation"
-    }
-
-    AsyncResult.fromFuture(futureResult)
-  }
-
-  // Example: Future extensibility
-  def exampleFutureTypes(): Unit = {
-    val imagePrompt = ImagePrompt("A sunset over mountains")
-    val agentId     = AgentId("agent-123")
-    val workflowId  = WorkflowId("workflow-456")
-
-    println(s"Future features: image generation with prompt '$imagePrompt'")
-    println(s"Agent system with agent $agentId in workflow $workflowId")
-  }
 }

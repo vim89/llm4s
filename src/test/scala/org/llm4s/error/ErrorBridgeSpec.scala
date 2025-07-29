@@ -4,9 +4,12 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.llm4s.{ error, llmconnect }
 
+import scala.annotation.nowarn
+
 /**
  * Compatibility tests ensuring error bridge works correctly
  */
+@nowarn
 class ErrorBridgeSpec extends AnyFlatSpec with Matchers {
 
   "ErrorBridge" should "convert legacy AuthenticationError to core error" in {

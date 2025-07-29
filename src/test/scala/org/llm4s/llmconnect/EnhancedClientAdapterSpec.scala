@@ -1,14 +1,16 @@
 package org.llm4s.llmconnect
 
+import org.llm4s.error.LLMError
+import org.llm4s.llmconnect.LLMClient
+import org.llm4s.llmconnect.model.AssistantMessage
+import org.scalamock.scalatest.MockFactory
+import org.scalatest.EitherValues.{ convertEitherToValuable, convertLeftProjectionToValuable }
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalamock.scalatest.MockFactory
-import org.llm4s.llmconnect.{ LLMClient, model }
-import org.llm4s.error.LLMError
-import org.llm4s.llmconnect.model.AssistantMessage
-import org.scalatest.EitherValues.convertLeftProjectionToValuable
-import org.scalatest.EitherValues.convertEitherToValuable
 
+import scala.annotation.nowarn
+
+@nowarn
 class EnhancedClientAdapterSpec extends AnyFlatSpec with Matchers with MockFactory {
 
   "LLMClientAdapter" should "convert legacy client errors to enhanced errors" in {

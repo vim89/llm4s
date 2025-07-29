@@ -86,7 +86,7 @@ object LLMError {
     requestId: Option[String] = None
   ) extends LLMError {
     override val isRecoverable: Boolean   = httpStatus >= 500
-    override val retryDelay: Option[Long] = Some(1000) // 1 second base delay
+    override val retryDelay: Option[Long] = Some(1000) // 1-second base delay
     override val context: Map[String, String] = Map(
       "provider"   -> provider,
       "httpStatus" -> httpStatus.toString
@@ -158,13 +158,13 @@ object LLMError {
 
   def fromThrowable(throwable: Throwable): LLMError = throwable match {
     case _: java.net.SocketTimeoutException =>
-      NetworkError("Request timeout", Some(throwable), "unknown")
+      NetworkError("Network error", Some(throwable), endpoint = "Unknown")
     case _: java.net.ConnectException =>
-      NetworkError("Connection failed", Some(throwable), "unknown")
+      NetworkError("Connection failed", Some(throwable), "Unknown")
     case ex if ex.getMessage != null && ex.getMessage.contains("401") =>
-      AuthenticationError("Authentication failed", "unknown")
+      AuthenticationError("Authentication failed", "Unknown Provider", Some("000"))
     case ex if ex.getMessage != null && ex.getMessage.contains("429") =>
-      RateLimitError("Rate limited", None, "unknown")
+      RateLimitError("Rate limited", None, "Unknown Provider")
     case ex =>
       UnknownError(Option(ex.getMessage).getOrElse("Unknown error"), ex)
   }
