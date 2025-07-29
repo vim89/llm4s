@@ -350,6 +350,16 @@ sbt +test
 sbt buildAll
 ```
 
+## 🧪 Hands-On Sessions & Live Collaboration
+
+Stay hands-on with **LLM4S**! Join us for interactive **mob programming** sessions, live debugging, and open-source collaboration. These events are great for developers, contributors, and anyone curious about Scala + GenAI.
+
+| Date                      | Session Title                                           | Description                                                                                                                                                          | Location       | Hosts                                | Links                                                                 | Featured In                                        |
+|---------------------------|--------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|---------------------------------------|------------------------------------------------------------------------|----------------------------------------------------|
+| **20-Jul-2025 onwards (Weekly Sundays)** | 🗓️ LLM4S Dev Hour — Weekly Live Coding & Collaboration | A weekly **mob programming** session where we code, debug, and learn together — open to all! <br>📌 *Link to join is shared by the host in the `#general` Discord channel before each session.* | London, UK (9am local time) | Kannupriya Kalra, Rory Graves        | [LinkedIn](https://www.linkedin.com/posts/kannupriyakalra_ai-llms-scala-activity-7352669046288384000-av_n) <br> [Reddit](https://www.reddit.com/r/scala/comments/1m4oxf6/llm4s_dev_hour_sundays_9am_london_time) <br> [Bluesky](https://bsky.app/profile/kannupriyakalra.bsky.social/post/3lufjgszijk2o) <br> [Mastodon](https://functional.cafe/@kannupriyakalra/114885664201722837) <br> [X/Twitter](https://x.com/KannupriyaKalra/status/1946915693644890537) | [Scala Times – Issue #537](https://scalatimes.com/15edab7583) |
+
+
+
 ## 📢 Talks & Presentations
 
 See the talks being given by maintainers and open source developers globally and witness the engagement by developers around the world.
