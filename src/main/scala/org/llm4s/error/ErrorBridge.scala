@@ -6,7 +6,7 @@ import org.llm4s.{ error, llmconnect }
  * Compatibility bridge between old and new error types.
  * Allows gradual migration without breaking existing code.
  *
- * This bridge will be removed in v2.0.0 when migration is complete.
+ * This bridge will be removed in later versions when migration is complete.
  */
 object ErrorBridge {
 
