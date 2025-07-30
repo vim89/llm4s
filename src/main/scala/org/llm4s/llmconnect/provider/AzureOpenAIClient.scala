@@ -9,7 +9,6 @@ import org.llm4s.toolapi.{ AzureToolHelper, ToolRegistry }
 
 import scala.jdk.CollectionConverters._
 
-@SuppressWarnings(Array("deprecation"))
 class AzureOpenAIClient(config: AzureConfig, client: OpenAIClient) extends LLMClient {
 
   override def complete(

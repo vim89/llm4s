@@ -12,7 +12,6 @@ import org.llm4s.llmconnect.provider.{
   AzureOpenAIClient => AzureClient
 }
 
-@SuppressWarnings(Array("deprecation"))
 object LLMConnect {
   private def readEnv(key: String): Option[String] =
     sys.env.get(key)

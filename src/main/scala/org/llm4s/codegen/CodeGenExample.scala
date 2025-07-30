@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory
 /**
  * Example demonstrating how to use the CodeWorker to perform code tasks.
  */
-@SuppressWarnings(Array("deprecation"))
 object CodeGenExample {
   private val logger = LoggerFactory.getLogger(getClass)
 

@@ -8,7 +8,6 @@ import org.llm4s.toolapi.ToolRegistry
 import java.net.URI
 import java.net.http.{ HttpClient, HttpRequest, HttpResponse }
 
-@SuppressWarnings(Array("deprecation"))
 class OpenRouterClient(config: OpenAIConfig) extends LLMClient {
   private val httpClient = HttpClient.newHttpClient()
 

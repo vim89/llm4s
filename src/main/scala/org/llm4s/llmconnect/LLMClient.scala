@@ -2,7 +2,6 @@ package org.llm4s.llmconnect
 
 import org.llm4s.llmconnect.model._
 
-@SuppressWarnings(Array("deprecation"))
 trait LLMClient {
 
   /** Complete a conversation and get a response */

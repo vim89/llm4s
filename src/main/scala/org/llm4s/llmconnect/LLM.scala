@@ -4,7 +4,6 @@ import org.llm4s.llmconnect.config.ProviderConfig
 import org.llm4s.llmconnect.model._
 import org.llm4s.llmconnect.provider.LLMProvider
 
-@SuppressWarnings(Array("deprecation"))
 object LLM {
 
   /** Factory method for getting a client with the right configuration */

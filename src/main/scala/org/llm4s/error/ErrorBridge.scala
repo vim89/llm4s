@@ -8,7 +8,6 @@ import org.llm4s.{ error, llmconnect }
  *
  * This bridge will be removed in v2.0.0 when migration is complete.
  */
-@SuppressWarnings(Array("deprecation"))
 object ErrorBridge {
 
   /**
