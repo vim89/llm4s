@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory
  *
  * @param sourceDirectory The directory containing the codebase to work with
  */
+@SuppressWarnings(Array("deprecation"))
 class CodeWorker(sourceDirectory: String) {
   private val logger    = LoggerFactory.getLogger(getClass)
   private val workspace = new ContainerisedWorkspace(sourceDirectory)

@@ -10,6 +10,7 @@ import org.llm4s.toolapi.{ ObjectSchema, ToolFunction }
 
 import scala.jdk.CollectionConverters._
 
+@SuppressWarnings(Array("deprecation"))
 class AnthropicClient(config: AnthropicConfig) extends LLMClient {
   // Initialize Anthropic client
   private val client = AnthropicOkHttpClient

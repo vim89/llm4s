@@ -11,6 +11,7 @@ import scala.util.{ Failure, Success, Try }
 /**
  * Basic Agent implementation.
  */
+@SuppressWarnings(Array("deprecation"))
 class Agent(client: LLMClient) {
   private val logger = LoggerFactory.getLogger(getClass)
 

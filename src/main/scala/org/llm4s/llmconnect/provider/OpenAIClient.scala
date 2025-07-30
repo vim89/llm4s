@@ -10,6 +10,7 @@ import org.llm4s.toolapi.{ AzureToolHelper, ToolRegistry }
 
 import scala.jdk.CollectionConverters._
 
+@SuppressWarnings(Array("deprecation"))
 class OpenAIClient(config: OpenAIConfig) extends LLMClient {
   // Initialize Azure OpenAI client with OpenAI credentials
   private val client = new OpenAIClientBuilder()
