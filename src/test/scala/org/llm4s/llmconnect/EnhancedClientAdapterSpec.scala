@@ -8,9 +8,6 @@ import org.scalatest.EitherValues.{ convertEitherToValuable, convertLeftProjecti
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import scala.annotation.nowarn
-
-@nowarn
 class EnhancedClientAdapterSpec extends AnyFlatSpec with Matchers with MockFactory {
 
   "LLMClientAdapter" should "convert legacy client errors to enhanced errors" in {
