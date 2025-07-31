@@ -144,6 +144,7 @@ lazy val workspaceRunner = (project in file("workspaceRunner"))
   .enablePlugins(DockerPlugin)
   .settings(
     Docker / maintainer := "llm4s",
+    Docker / packageName := "llm4s/workspace-runner",
     dockerExposedPorts  := Seq(8080),
     dockerBaseImage     := "eclipse-temurin:21-jdk",
     Compile / mainClass := Some("org.llm4s.runner.RunnerMain"),
