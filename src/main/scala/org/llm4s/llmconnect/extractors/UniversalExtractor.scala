@@ -11,7 +11,7 @@ import scala.util.{ Try, Success, Failure, Using }
 
 import org.apache.tika.Tika
 import org.apache.poi.xwpf.usermodel.XWPFDocument
-import org.apache.pdfbox.pdmodel.PDDocument
+import org.apache.pdfbox.Loader
 import org.apache.pdfbox.text.PDFTextStripper
 
 object UniversalExtractor {
@@ -75,7 +75,7 @@ object UniversalExtractor {
   }
 
   private def extractPDF(file: File): Try[String] = Try {
-    val document = PDDocument.load(file)
+    val document = Loader.loadPDF(file)
     try
       new PDFTextStripper().getText(document)
     finally
