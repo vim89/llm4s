@@ -10,6 +10,7 @@ val scala3CompilerOptions = Seq(
   "-explain-types",
   "-Wconf:cat=unused:s",   // suppress unused warnings
   "-Wconf:cat=deprecation:s", // suppress deprecation warnings
+  "-Wunused:nowarn",
   "-source:3.3",
   "-Wsafe-init",
   "-deprecation",
@@ -20,6 +21,7 @@ val scala2CompilerOptions = Seq(
   "-feature",
   "-unchecked",
   "-deprecation",
+  "-Wunused:nowarn",
   "-Wunused:imports",
   "-Wunused:privates",
   "-Wunused:locals",
