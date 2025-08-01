@@ -4,7 +4,7 @@ import sbt.Keys.{libraryDependencies, *}
 
 // Define supported Scala versions
 val scala213 = "2.13.16"
-val scala3   = "3.7.2"
+val scala3   = "3.7.1"
 val scala3CompilerOptions = Seq(
   "-explain",
   "-explain-types",
