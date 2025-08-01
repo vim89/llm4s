@@ -65,9 +65,12 @@ inThisBuild(
     version := {
       dynverGitDescribeOutput.value match {
         case Some(out) if !out.isSnapshot() =>
-          out.ref.value
+          // Strip the 'v' prefix if present
+          out.ref.value.stripPrefix("v")
         case Some(out) =>
-          s"${out.ref.value}+${out.commitSuffix.mkString("", "", "")}-SNAPSHOT"
+          // Strip the 'v' prefix from snapshot versions too
+          val baseVersion = out.ref.value.stripPrefix("v")
+          s"${baseVersion}+${out.commitSuffix.mkString("", "", "")}-SNAPSHOT"
         case None =>
           "0.0.0-UNKNOWN"
       }
