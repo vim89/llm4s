@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - "v*"
+      - "v[0-9]*"
 
 jobs:
   # Run CI checks first
@@ -59,7 +59,7 @@ jobs:
       
       - name: Build and push Docker image
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
+          VERSION=${GITHUB_REF#refs/tags/}
           sbt "workspaceRunner/Docker/publishLocal"
           docker tag llm4s/workspace-runner:latest ghcr.io/${{ github.repository_owner }}/workspace-runner:latest
           docker tag llm4s/workspace-runner:latest ghcr.io/${{ github.repository_owner }}/workspace-runner:$VERSION

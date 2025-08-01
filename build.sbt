@@ -65,9 +65,12 @@ inThisBuild(
     version := {
       dynverGitDescribeOutput.value match {
         case Some(out) if !out.isSnapshot() =>
-          out.ref.value
+          // Strip the 'v' prefix if present
+          out.ref.value.stripPrefix("v")
         case Some(out) =>
-          s"${out.ref.value}+${out.commitSuffix.mkString("", "", "")}-SNAPSHOT"
+          // Strip the 'v' prefix from snapshot versions too
+          val baseVersion = out.ref.value.stripPrefix("v")
+          s"${baseVersion}+${out.commitSuffix.mkString("", "", "")}-SNAPSHOT"
         case None =>
           "0.0.0-UNKNOWN"
       }
@@ -104,6 +107,7 @@ lazy val commonSettings = Seq(
     }
   },
   libraryDependencies ++= List(
+    "org.typelevel" %% "cats-core"       % "2.12.0",
     "com.lihaoyi"   %% "upickle"         % "4.2.1",
     "ch.qos.logback" % "logback-classic" % "1.5.18",
     "org.scalatest" %% "scalatest"       % "3.2.19" % Test
@@ -127,11 +131,12 @@ lazy val root = (project in file("."))
       "com.softwaremill.sttp.client4" %% "core"  % "4.0.0-M7",
       "com.lihaoyi"                   %% "ujson" % "4.2.1",
       "org.apache.pdfbox" % "pdfbox" % "2.0.27",
+      "org.apache.tika" % "tika-core" % "2.9.0",
       "org.apache.poi" % "poi-ooxml" % "5.2.3",
       "com.lihaoyi" %% "requests" % "0.8.0",
       "org.jsoup" % "jsoup" % "1.17.2"
-
     )
+
   )
 
 lazy val shared = (project in file("shared"))
@@ -146,6 +151,7 @@ lazy val workspaceRunner = (project in file("workspaceRunner"))
   .enablePlugins(DockerPlugin)
   .settings(
     Docker / maintainer := "llm4s",
+    Docker / packageName := "llm4s/workspace-runner",
     dockerExposedPorts  := Seq(8080),
     dockerBaseImage     := "eclipse-temurin:21-jdk",
     Compile / mainClass := Some("org.llm4s.runner.RunnerMain"),
@@ -198,9 +204,9 @@ lazy val crossLibDependencies = Def.setting {
     "com.lihaoyi"                   %% "ujson" % "4.2.1",
     "org.apache.pdfbox" % "pdfbox" % "2.0.27",
     "org.apache.poi" % "poi-ooxml" % "5.2.3",
+    "org.apache.tika" % "tika-core" % "2.9.0",
     "com.lihaoyi" %% "requests" % "0.8.0",
     "org.jsoup" % "jsoup" % "1.17.2"
-
   )
 }
 
