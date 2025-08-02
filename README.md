@@ -19,7 +19,7 @@ LLM4S provides a simple, robust, and scalable framework for building LLM applica
 <br>
 
 <p align="center">
-  <img src="assets/llm4s-overview.jpeg" alt="LLM4S Overview" width="600"/>
+  <img src="assets/talks/LondonScalaTalks_LLM4S_talk_2025_Banner.png" alt="LLM4S Overview" width="600"/>
   <br>
   <em></em>
 </p>
