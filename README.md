@@ -350,9 +350,19 @@ sbt +test
 sbt buildAll
 ```
 
-## 🧪 Hands-On Sessions & Live Collaboration
+## Hands-On Sessions & Live Collaboration
 
 Stay hands-on with **LLM4S**! Join us for interactive **mob programming** sessions, live debugging, and open-source collaboration. These events are great for developers, contributors, and anyone curious about Scala + GenAI.
+
+<br>
+
+<p align="center">
+  <img src="assets/llm4s-dev-hour-banner.png" alt="LLM4S Dev Hour Banner" width="800"/>
+  <br>
+  <em>🗓️ Weekly live coding and collaboration during LLM4S Dev Hour — join us every Sunday on Discord!</em>
+</p>
+
+<br>
 
 | Date                      | Session Title                                           | Description                                                                                                                                                          | Location       | Hosts                                | Details URL                                                                 | Featured In                                        |
 |---------------------------|--------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|---------------------------------------|------------------------------------------------------------------------|----------------------------------------------------|
