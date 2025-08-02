@@ -19,7 +19,7 @@ LLM4S provides a simple, robust, and scalable framework for building LLM applica
 <br>
 
 <p align="center">
-  <img src="assets/talks/LondonScalaTalks_LLM4S_talk_2025_Banner.png" alt="LLM4S Overview" width="600"/>
+  <img src="assets/llm4s-overview.jpeg" alt="LLM4S Overview" width="600"/>
   <br>
   <em></em>
 </p>
@@ -373,7 +373,7 @@ Stay updated with talks, workshops, and presentations about **LLM4S** happening 
   <img src="assets/talks/BayAreaScalaConference_IntroSlide.JPG" alt="Bay Area Scala Conference Generative AI Slide" width="400" style="margin-right: 10px;"/>
   <img src="assets/talks/ScalaIndia_Talk_Banner.png" alt="Scala India Talk Banner" width="400" style="margin-right: 10px;"/>
   <img src="assets/talks/DallasScalaEnthusiastsConference_Talk_Banner.png" alt="Dallas Scala Enthusiasts Talk Banner" width="400" style="margin-right: 10px;"/>
-  <img src="assets/talks/LondonScalaTalks_2025_Banner.jpg" alt="London Scala Talks 2025 Banner" width="400" style="margin-right: 10px;"/>
+  <img src="assets/talks/LondonScalaTalks_LLM4S_talk_2025_Banner.png" alt="London Scala Talks 2025 Banner" width="400" style="margin-right: 10px;"/>
   <img src="assets/talks/ScalaDays2025_Talk_Banner.jpg" alt="Scala Days 2025 Talk Banner" width="400" style="margin-right: 10px;"/>
   <img src="assets/talks/ZurichScalaEnthusiasts_2025_Banner.jpg" alt="Zurich Scala Enthusiasts 2025 Banner" width="400"/>
 
