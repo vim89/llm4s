@@ -520,6 +520,42 @@ This page includes detailed information on all GSoC projects with Scala Center f
   
 Feel free to reach out to the contributors or mentors listed for any guidance or questions related to **GSoC 2026**.
 
+## 🚧 Behind the Build: Blogs & Series
+
+We’ve got exciting news to share — **Scalac**, one of the leading Scala development companies, has officially partnered with **LLM4S** for a dedicated **AI-focused blog series**!
+
+This collaboration was initiated after our talk at **Functional World 2025**, and it’s now evolving into a full-fledged multi-part series and an upcoming eBook hosted on Scalac’s platform. The series will combine practical Scala code, GenAI architecture, and reflections from the LLM4S team — making it accessible for Scala developers everywhere who want to build with LLMs.
+
+📝 The first post is already drafted and under review by the Scalac editorial team. We’re working together to ensure this content is both technically insightful and visually engaging.
+
+> 🎉 Thanks to Matylda Kamińska, Rafał Kruczek, and the Scalac marketing team for this opportunity and collaboration!
+
+Stay tuned — the series will be published soon on [scalac.io/blog](https://scalac.io/blog/), and we’ll link it here as it goes live.
+
+<br>
+
+<p align="center">
+  <img src="assets/LLM4s_x_Scalac_Collab_9.png" alt="LLM4S x Scalac Collaboration" width="600"/>
+</p>
+
+<br>
+
+---
+
+### ✍️ Blogs Powered by GSoC
+
+Our **Google Summer of Code (GSoC) 2025** contributors have actively documented their journeys, sharing insights and implementation deep-dives from their projects. These blog posts offer valuable perspectives on how LLM4S is evolving from a contributor-first lens.
+
+| Contributor | Blog(s) | Project |
+|-------------|---------|---------|
+| **Elvan Konukseven** | [elvankonukseven.com/blog](https://www.elvankonukseven.com/blog) | Agentic Toolkit for LLMs |
+| **Gopi Trinadh Maddikunta** | [Main Blog](https://gopitrinadh.site/blog) <br> [Scala at Light Speed – Part 1](https://gopitrinadh.site/scala-at-lightspeed-part1/) <br> [Scala at Light Speed – Part 2](https://gopitrinadh.site/scala-at-light-speed-gsoc-part2/) | RAG in a Box |
+| **Anshuman Awasthi** | [Anshuman's GSoC Journey](https://awesomegsoc.hashnode.dev/) | Multimodal LLM Support |
+| **Shubham Vishwakarma** | [Cracking the Code: My GSoC 2025 Story](https://shubhams-gsoc-journey.hashnode.dev/cracking-the-code-my-gsoc-2025-story) | Tracing and Observability |
+
+> 💡 These blogs reflect first-hand experience in building real-world AI tools using Scala, and are great resources for future contributors and researchers alike.
+
+
 ## Maintainers
 
 Want to connect with maintainers? The LLM4S project is maintained by:
