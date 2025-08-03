@@ -555,7 +555,45 @@ Our **Google Summer of Code (GSoC) 2025** contributors have actively documented 
 
 > 💡 These blogs reflect first-hand experience in building real-world AI tools using Scala, and are great resources for future contributors and researchers alike.
 
+### 📚 Where Innovation Speaks: Articles by GSoC's Brightest
 
+#### **Elvan Konukseven**
+- 🌐 [Main Blog](https://www.elvankonukseven.com/blog)
+- 📝 Articles:
+  - [The Application](https://elvankonukseven.com/blog/gsoc-application)
+  - [First Task](https://elvankonukseven.com/blog/first-task)
+
+#### **Gopi Trinadh Maddikunta**
+- 🌐 [Main Blog](https://gopitrinadh.site/blog)
+- 📝 Articles:
+  - [Spark of Curiosity](https://gopitrinadh.site/spark-of-curiosity/)
+  - [The Hunt Begins](https://gopitrinadh.site/the-hunt-begins/)
+  - [Enter Scala Center](https://gopitrinadh.site/enter-scala-center/)
+  - [Understanding the Mission](https://gopitrinadh.site/understanding-the-mission/)
+  - [Locking the Vision](https://gopitrinadh.site/locking-the-vision/)
+  - [The Proposal Sprint](https://gopitrinadh.site/the-proposal-sprint/))
+  - [The Acceptance Moment](https://gopitrinadh.site/the-acceptance-moment/)
+  - [Stepping In](https://gopitrinadh.site/stepping-in/)
+  - [Fiel for the Mission](https://gopitrinadh.site/fuel-for-the-mission/)
+  - [Scala at Light Speed – Part 1](https://gopitrinadh.site/scala-at-lightspeed-part1/)
+  - [Scala at Light Speed – Part 2](https://gopitrinadh.site/scala-at-light-speed-gsoc-part2/)
+  - [From Documents to Embeddings](https://gopitrinadh.site/diving-into-llmclient/)
+  - [Universal Extraction + Embedding Client = One step closer to RAG](https://gopitrinadh.site/embedding-anything/)
+  - [Midterm Milestone- Modular RAG in Motion](https://gopitrinadh.site/blog/#)
+
+
+#### **Anshuman Awasthi**
+- 🌐 [Main Blog : Anshuman's GSoC Journey](https://awesomegsoc.hashnode.dev/)
+- 📝 Articles:
+  - [My Journey to Google Summer of Code 2025](https://awesomegsoc.hashnode.dev/my-journey-to-google-summer-of-code-2025)
+  - [Community Bonding Experience at GSoC 2025](https://awesomegsoc.hashnode.dev/community-bonding-experience-at-gsoc-2025)
+  - [Milestone 1 : Successfully Added Image Generation Capabilities into the LLM4S Library](https://awesomegsoc.hashnode.dev/milestone-1-successfully-added-image-generation-capabilities-into-the-llm4s-library)
+
+#### **Shubham Vishwakarma**
+- 🌐 [Main Blog : Shubham's GSoC Journey](https://shubhams-gsoc-journey.hashnode.dev)
+- 📝 Articles:
+  - [Cracking the Code: My GSoC 2025 Story](https://shubhams-gsoc-journey.hashnode.dev/cracking-the-code-my-gsoc-2025-story)
+  - [My Scala Sprint: JVM to Poland Insights](https://shubhams-gsoc-journey.hashnode.dev/my-scala-sprint-jvm-to-poland-insights)
 ## Maintainers
 
 Want to connect with maintainers? The LLM4S project is maintained by:
