@@ -357,7 +357,7 @@ Stay hands-on with **LLM4S**! Join us for interactive **mob programming** sessio
 <br>
 
 <p align="center">
-  <img src="assets/llm4s-dev-hour-banner.png" alt="LLM4S Dev Hour Banner" width="800"/>
+  <img src="assets/llm4s_dev_hour/banner/llm4s-dev-hour-banner.png" alt="LLM4S Dev Hour Banner" width="800"/>
   <br>
   <em>🗓️ Weekly live coding and collaboration during LLM4S Dev Hour — join us every Sunday on Discord!</em>
 </p>
