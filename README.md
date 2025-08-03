@@ -535,7 +535,7 @@ Stay tuned — the series will be published soon on [scalac.io/blog](https://sca
 <br>
 
 <p align="center">
-  <img src="assets/LLM4s_x_Scalac_Collab_9.png" alt="LLM4S x Scalac Collaboration" width="600"/>
+  <img src="assets/blogging_with_scalac/LLM4s_x_Scalac_Collab_Banner.png" alt="LLM4S x Scalac Collaboration" width="600"/>
 </p>
 
 <br>
