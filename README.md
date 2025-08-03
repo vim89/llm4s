@@ -555,7 +555,7 @@ Our **Google Summer of Code (GSoC) 2025** contributors have actively documented 
 
 > 💡 These blogs reflect first-hand experience in building real-world AI tools using Scala, and are great resources for future contributors and researchers alike.
 
-### 📚 GSoC Contributors and Their Blogs
+### 📚 Where Innovation Speaks: Articles by GSoC's Brightest
 
 #### **Elvan Konukseven**
 - 🌐 [Main Blog](https://www.elvankonukseven.com/blog)
