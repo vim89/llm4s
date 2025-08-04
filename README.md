@@ -443,7 +443,7 @@ Want to be part of developing this and interact with other developers? Join our 
 <br>
 
 <p align="center">
-  <img src="assets/gsoc_assets/Cracking_GSoC_with_LLM4S.png" alt="GSoC Logo" width="400"/>
+  <img src="assets/gsoc_assets/gsoc_2025/gsoc_llm4s_images/Cracking_GSoC_with_LLM4S_banner_1.png" alt="GSoC Logo" width="400"/>
   <br>
   <em>LLM4S was selected for GSoC 2025 under the Scala Center Organisation.</em>
 </p>
