@@ -386,6 +386,7 @@ Stay updated with talks, workshops, and presentations about **LLM4S** happening 
   <img src="assets/talks/LondonScalaTalks_LLM4S_talk_2025_Banner.png" alt="London Scala Talks 2025 Banner" width="400" style="margin-right: 10px;"/>
   <img src="assets/talks/ScalaDays2025_Talk_Banner.jpg" alt="Scala Days 2025 Talk Banner" width="400" style="margin-right: 10px;"/>
   <img src="assets/talks/ZurichScalaEnthusiasts_2025_Banner.jpg" alt="Zurich Scala Enthusiasts 2025 Banner" width="400"/>
+  <img src="assets/gsoc_assets/gsoc_2025/gsoc_llm4s_images/main logo.png" alt="GSoC x LLM4S Mentor Summit Talk 2025 Banner" width="400"/>
 
   <br>
   <br>
