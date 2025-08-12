@@ -18,7 +18,6 @@
 [![Star History Chart](https://api.star-history.com/svg?repos=llm4s/llm4s&type=Date)](https://star-history.com/#llm4s/llm4s&Date)
 
 <br>
-
 ## Project Momentum
 
 ![GitHub Repo stars](https://img.shields.io/github/stars/llm4s/llm4s?style=for-the-badge&label=Stars&color=yellow)
@@ -30,7 +29,6 @@
 ## Overview
 
 LLM4S provides a simple, robust, and scalable framework for building LLM applications in Scala. While most LLM work is done in Python, we believe that Scala offers a fundamentally better foundation for building reliable, maintainable AI-powered applications.
-
 <br>
 
 <p align="center">
@@ -537,6 +535,17 @@ This page includes detailed information on all GSoC projects with Scala Center f
   
 Feel free to reach out to the contributors or mentors listed for any guidance or questions related to **GSoC 2026**.
 
+<br>
+
+<p align="center">
+ <img src="assets/gsoc_assets/gsoc_2025/gsoc_2025_contributors_shoutout.png" alt="Contributors_banner_shoutout" width="600"/>
+  <br>
+  <em>Contributors selected across the globe for GSoC 2025 program.</em>
+</p>
+
+<br>
+
+
 ## 🚧 Behind the Build: Blogs & Series
 
 We’ve got exciting news to share — **Scalac**, one of the leading Scala development companies, has officially partnered with **LLM4S** for a dedicated **AI-focused blog series**!
@@ -553,6 +562,8 @@ Stay tuned — the series will be published soon on [scalac.io/blog](https://sca
 
 <p align="center">
   <img src="assets/blogging_with_scalac/LLM4s_x_Scalac_Collab_Banner.png" alt="LLM4S x Scalac Collaboration" width="600"/>
+  <br>
+  <em>LLM4S blogs powered by Scalac.</em>
 </p>
 
 <br>
