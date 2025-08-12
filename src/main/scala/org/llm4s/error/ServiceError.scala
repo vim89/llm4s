@@ -1,0 +1,43 @@
+package org.llm4s.error
+
+/**
+ * Service-level errors from LLM providers
+ */
+final case class ServiceError private (
+  override val message: String,
+  httpStatus: Int,
+  provider: String,
+  requestId: Option[String] = None
+) extends LLMError {
+  override val context: Map[String, String] = Map(
+    "httpStatus" -> httpStatus.toString,
+    "provider"   -> provider
+  ) ++ requestId.map("requestId" -> _).toMap
+}
+
+object ServiceError {
+  def apply(httpStatus: Int, provider: String, details: String): ServiceError =
+    new ServiceError(s"Service error from $provider: $details (HTTP $httpStatus)", httpStatus, provider, None)
+
+  def apply(httpStatus: Int, provider: String, details: String, requestId: String): ServiceError =
+    new ServiceError(
+      s"Service error from $provider: $details (HTTP $httpStatus)",
+      httpStatus,
+      provider,
+      Some(requestId)
+    )
+
+  /** Unapply extractor for pattern matching */
+  def unapply(error: ServiceError): Option[(String, Int, String, Option[String])] =
+    Some((error.message, error.httpStatus, error.provider, error.requestId))
+
+  // Make ServiceError recoverable or non-recoverable based on HTTP status
+  implicit class ServiceErrorOps(error: ServiceError) {
+    def isRecoverableStatus: Boolean = error.httpStatus match {
+      case status if status >= 500 => true  // Server errors are typically recoverable
+      case 429                     => true  // Rate limiting is recoverable
+      case 408                     => true  // Timeout is recoverable
+      case _                       => false // Client errors (4xx) are typically not recoverable
+    }
+  }
+}

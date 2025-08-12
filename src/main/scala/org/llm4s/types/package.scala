@@ -543,7 +543,7 @@ package object types {
   object ModelName {
     def create(value: String): Result[ModelName] =
       if (value.trim.nonEmpty) Right(ModelName(value.trim))
-      else Left(error.LLMError.ValidationError("Model name cannot be empty", "modelName"))
+      else Left(error.ValidationError("Model name cannot be empty", "modelName"))
 
     def fromString(value: String): ModelName = ModelName(value)
 
@@ -559,7 +559,7 @@ package object types {
   object ProviderName {
     def create(value: String): Result[ProviderName] =
       if (value.trim.nonEmpty) Right(ProviderName(value.trim.toLowerCase))
-      else Left(error.LLMError.ValidationError("Provider name cannot be empty", "providerName"))
+      else Left(error.ValidationError("Provider name cannot be empty", "providerName"))
 
     // Common provider constants
     val OPENAI: ProviderName    = ProviderName("openai")
@@ -572,12 +572,12 @@ package object types {
   object ApiKey {
     def create(value: String): Result[ApiKey] =
       if (value.trim.nonEmpty) Right(ApiKey(value.trim))
-      else Left(error.LLMError.ValidationError("API key cannot be empty", "apiKey"))
+      else Left(error.ValidationError("API key cannot be empty", "apiKey"))
 
     def fromEnvironment(envVar: String): Result[ApiKey] =
       sys.env.get(envVar) match {
         case Some(key) => create(key)
-        case None => Left(error.LLMError.ConfigurationError(s"Environment variable $envVar not found", List(envVar)))
+        case None => Left(error.ConfigurationError(s"Environment variable $envVar not found", List(envVar)))
       }
   }
 
@@ -588,7 +588,7 @@ package object types {
         Right(ToolName(trimmed))
       else
         Left(
-          error.LLMError.ValidationError(
+          error.ValidationError(
             "Tool name must be non-empty and contain only alphanumeric characters, underscores, and hyphens",
             "toolName"
           )
@@ -602,7 +602,7 @@ package object types {
         new java.net.URI(value) // Validate URL format
         Right(Url(value))
       } catch {
-        case _: Exception => Left(error.LLMError.ValidationError(s"Invalid URL: $value", "url"))
+        case _: Exception => Left(error.ValidationError(s"Invalid URL: $value", "url"))
       }
   }
 
