@@ -1,7 +1,6 @@
 package org.llm4s.error
 
 import cats.Show
-import cats.syntax.show._
 
 /**
  * Enhanced comprehensive error hierarchy for LLM operations using ADTs.
