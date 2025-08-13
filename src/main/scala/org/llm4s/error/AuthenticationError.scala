@@ -3,10 +3,10 @@ package org.llm4s.error
 /**
  * Authentication-related errors
  */
-sealed abstract class AuthenticationError private (
-  val message: String,
-  val provider: String,
-  val code: Option[String]
+final case class AuthenticationError private (
+  override val message: String,
+  provider: String,
+  override val code: Option[String]
 ) extends LLMError
     with NonRecoverableError {
   override val context: Map[String, String] = Map("provider" -> provider) ++
@@ -17,7 +17,7 @@ object AuthenticationError {
 
   /** Create authentication error with auto-generated message */
   def apply(provider: String, details: String): AuthenticationError =
-    new AuthenticationError(s"Authentication failed for $provider: $details", provider, None) {}
+    AuthenticationError(s"Authentication failed for $provider: $details", provider, None)
 
   /** Unapply extractor for pattern matching */
   def unapply(error: AuthenticationError): Option[(String, String, Option[String])] =
@@ -25,7 +25,7 @@ object AuthenticationError {
 
   /** Create authentication error with specific code */
   def apply(provider: String, details: String, code: String): AuthenticationError =
-    new AuthenticationError(s"Authentication failed for $provider: $details", provider, Some(code)) {}
+    AuthenticationError(s"Authentication failed for $provider: $details", provider, code)
 
   /** Create from HTTP 401 response */
   def unauthorized(provider: String): AuthenticationError =

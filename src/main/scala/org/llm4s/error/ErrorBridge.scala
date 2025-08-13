@@ -52,7 +52,7 @@ object ErrorBridge {
       llmconnect.model.ValidationError(message)
     case error.NetworkError(message, _, _) =>
       llmconnect.model.UnknownError(new java.net.ConnectException(message))
-    case error.UnknownError(message, cause) =>
+    case error.UnknownError(_, cause) =>
       llmconnect.model.UnknownError(cause)
     case other =>
       llmconnect.model.UnknownError(new RuntimeException(other.message))

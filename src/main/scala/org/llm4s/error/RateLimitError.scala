@@ -18,11 +18,11 @@ object RateLimitError {
 
   /** Create basic rate limit error */
   def apply(provider: String): RateLimitError =
-    RateLimitError(s"Rate limited by $provider", None, provider) {}
+    RateLimitError(s"Rate limited by $provider", None, provider)
 
   /** Create rate limit error with retry delay */
   def apply(provider: String, retryAfter: Long): RateLimitError =
-    new RateLimitError(s"Rate limited by $provider. Retry after $retryAfter seconds", Some(retryAfter), provider) {}
+    RateLimitError(s"Rate limited by $provider. Retry after $retryAfter seconds", Some(retryAfter), provider)
 
   /** Unapply extractor for pattern matching */
   def unapply(error: RateLimitError): Option[(String, Option[Long], String)] =
