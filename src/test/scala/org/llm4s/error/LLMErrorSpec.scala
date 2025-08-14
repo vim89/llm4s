@@ -35,21 +35,21 @@ class LLMErrorSpec extends AnyWordSpec with Matchers {
 
       // Test pattern matching works for all types
       rateError match {
-        case RateLimitError(message, retryAfter, provider) =>
+        case RateLimitError(_, retryAfter, provider) =>
           provider shouldBe "anthropic"
           retryAfter shouldBe Some(30L)
         case _ => fail("RateLimitError pattern matching failed")
       }
 
       validationError match {
-        case ValidationError(message, field, violations) =>
+        case ValidationError(_, field, violations) =>
           field shouldBe "email"
           violations should contain("too short")
         case _ => fail("ValidationError pattern matching failed")
       }
 
       networkError match {
-        case NetworkError(message, cause, endpoint) =>
+        case NetworkError(_, cause, endpoint) =>
           endpoint shouldBe "https://api.example.com"
           cause shouldBe None
         case _ => fail("NetworkError pattern matching failed")

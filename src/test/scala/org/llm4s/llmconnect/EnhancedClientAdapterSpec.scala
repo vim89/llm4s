@@ -1,6 +1,6 @@
 package org.llm4s.llmconnect
 
-import org.llm4s.error.{ AuthenticationError, LLMError }
+import org.llm4s.error.AuthenticationError
 import org.llm4s.llmconnect.LLMClient
 import org.llm4s.llmconnect.model.AssistantMessage
 import org.scalamock.scalatest.MockFactory
