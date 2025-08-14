@@ -43,18 +43,51 @@ LLM4S provides a simple, robust, and scalable framework for building LLM applica
 
 ## Why Scala for LLMs?
 
-- **Type Safety**: Catch errors at compile time rather than runtime
-- **Functional Programming**: Immutable data structures and pure functions for more predictable code
-- **JVM Ecosystem**: Access to a vast array of libraries and tools
-- **Concurrency**: Better handling of concurrent operations with Scala's actor model
-- **Performance**: JVM performance with functional programming elegance
+- **Type Safety**: Catch errors at compile time, not in production.
+- **Functional Programming**: Immutable data and pure functions for predictable, maintainable systems.
+- **JVM Ecosystem**: Access to mature, production-grade libraries and tooling.
+- **Concurrency**: Advanced models for safe, efficient parallelism.
+- **Performance**: JVM speed with functional elegance.
+- **Ecosystem Interoperability**: Seamless integration with enterprise JVM systems and cloud-native tooling.
 
 ## Features
 
-- **Containerized Workspace**: Secure execution environment for LLM-driven operations
-- **Workspace Agent Interface**: Standardized protocol for file operations and command execution
-- **Multi-Provider Support**: Planned support for multiple LLM providers (OpenAI, Anthropic, etc.)
-- **Agent Trace Logging**: Detailed markdown logs of agent execution for debugging and analysis
+- **Multi-Provider Support**: Connect seamlessly to multiple LLM providers (OpenAI, Anthropic, etc.) with planned expansion.
+- **Execution Environments**: Run LLM-driven operations in secure, containerized or non-containerized setups.
+- **Error Handling**: Robust mechanisms to catch, log, and recover from failures gracefully.
+- **MCP Support**: Integration with Model Context Protocol for richer context management.
+- **Agent Framework**: Build single or multi-agent workflows with standardized interfaces.
+- **Multimodal Generation**: Support for text, image, voice, and other LLM modalities.
+- **RAG (Retrieval-Augmented Generation)**: Built-in tools for search, embedding, and retrieval workflows.
+- **Observability**: Detailed trace logging, monitoring, and analytics for debugging and performance insights.
+
+##  Architecture
+
+```text
+        ┌───────────────────────────┐
+        │    LLM4S API Layer        │
+        └──────────┬────────────────┘
+                   │
+          Multi-Provider Connector
+       (OpenAI | Anthropic | Future...)
+                   │
+         ┌─────────┴─────────┐
+         │ Execution Manager │
+         └─────────┬─────────┘
+                   │
+        ┌──────────┴──────────┐
+        │   Agent Framework   │
+        └──────────┬──────────┘
+                   │
+      ┌────────────┴────────────┐
+      │  RAG Engine + Tooling   │
+      └────────────┬────────────┘
+                   │
+     ┌─────────────┴─────────────┐
+     │   Observability Layer     │
+     └───────────────────────────┘
+
+```
 
 ## Project Structure
 
@@ -206,30 +239,32 @@ sbt fullCrossTest
 
 ## Roadmap
 
-Our goal is to implement Scala equivalents of popular Python LLM frameworks:
+Our goal is to implement Scala equivalents of popular Python LLM frameworks, with **multi-provider, multimodal, and observability-first design** as core principles:
 
-- [ ] * Single API access to multiple LLM providers (like LiteLLM) - llmconnect
-- [ ] A comprehensive toolchain for building LLM apps (like LangChain/LangGraph) 
-  - [ ] * RAG search
-  - [ ] * tool calling
-  - [ ] * logging/tracking/monitoring
-- [ ] * An agentic framework (like PydanticAI, CrewAI)
-  - [ ] Single agent
-  - [ ] Multi-agent
-- [ ] Tokenization utilities (port of tiktoken)
-- [ ] Examples/ support
-   - [ ] * Standard tool calling libraries
-   - [ ] * examples of all use-cases
-- [ ] stable platform -tests etc
-- [ ] Scala Coding SWE Agent - an agent that can do SWE bench type tasks on Scala codebases.
-   - [ ]  code maps 
-   - [ ]  generation 
-   - [ ]  templates for library use?
+- [ ] Single API access to multiple LLM providers (like LiteLLM) — **llmconnect**
+- [ ] Comprehensive toolchain for building LLM apps (LangChain/LangGraph equivalent)
+  - [ ] RAG search & retrieval
+  - [ ] Tool calling
+  - [ ] Logging, tracking, and monitoring
+- [ ] Agentic framework (like PydanticAI, CrewAI)
+  - [ ] Single-agent and multi-agent orchestration
+- [ ] Tokenization utilities (Scala port of tiktoken)
+- [ ] Examples for all supported modalities and workflows
+- [ ] Stable platform with extensive test coverage
+- [ ] Scala Coding SWE Agent — perform SWE Bench–type tasks on Scala codebases
+  - [ ] Code maps, code generation, and library templates
 
 
 ## Tool Calling
 
-Tool calling is a critical integration - we aim to make it as simple as possible:
+Tool calling is a critical integration — designed to work seamlessly with **multi-provider support** and **agent frameworks**.  
+We use ScalaMeta to auto-generate tool definitions, support dynamic mapping, and run in **secure execution environments**.
+
+Tools can run:
+
+- In **containerized sandboxes** for isolation and safety.
+- In **multi-modal pipelines** where LLMs interact with text, images, and voice.
+- With **observability hooks** for trace analysis.
 
 ### Tool Signature Generation
 
@@ -259,9 +294,15 @@ Mapping LLM tool call requests to actual method invocations through:
 
 Tools run in a protected Docker container environment to prevent accidental system damage or data leakage.
 
-## Comprehensive Tracing System
+## Comprehensive Tracing & Observability
 
-LLM4S provides a powerful, configurable tracing system for monitoring, debugging, and analyzing your LLM applications with support for multiple backends.
+Tracing isn’t just for debugging — it’s the backbone of understanding model behavior.  
+LLM4S’s observability layer includes:
+
+- Detailed token usage reporting
+- Multi-backend trace output (Langfuse, console, none)
+- Agent state visualization
+- Integration with monitoring dashboards
 
 ### Tracing Modes
 
