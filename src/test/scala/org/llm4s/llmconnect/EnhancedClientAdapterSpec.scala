@@ -25,7 +25,7 @@ class EnhancedClientAdapterSpec extends AnyFlatSpec with Matchers with MockFacto
 
     result should be(a[Left[_, _]])
     result.left.value shouldBe a[AuthenticationError]
-    result.left.value.message shouldBe "auth failed"
+    result.left.value.message shouldBe "Authentication failed for auth failed: provider"
   }
 
   it should "pass through successful responses unchanged" in {

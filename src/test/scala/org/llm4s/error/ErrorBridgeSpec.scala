@@ -15,8 +15,8 @@ class ErrorBridgeSpec extends AnyFlatSpec with Matchers {
     val coreError   = ErrorBridge.toError(legacyError)
 
     coreError shouldBe a[error.AuthenticationError]
-    coreError.message shouldBe "auth failed"
-    coreError.context should contain("provider" -> "unknown")
+    coreError.message shouldBe "Authentication failed for auth failed: provider"
+    coreError.context should contain("provider" -> "auth failed")
   }
 
   it should "convert legacy RateLimitError to core error" in {
@@ -24,7 +24,7 @@ class ErrorBridgeSpec extends AnyFlatSpec with Matchers {
     val coreError   = ErrorBridge.toError(legacyError)
 
     coreError shouldBe a[error.RateLimitError]
-    coreError.message shouldBe "rate limited"
+    coreError.message shouldBe "Rate limited by rate limited"
     coreError.isRecoverable shouldBe true
   }
 
@@ -33,7 +33,7 @@ class ErrorBridgeSpec extends AnyFlatSpec with Matchers {
     val legacyError = ErrorBridge.toLegacy(coreError)
 
     legacyError shouldBe a[llmconnect.model.AuthenticationError]
-    legacyError.message shouldBe "auth failed"
+    legacyError.message shouldBe "Authentication failed for auth failed: openai"
   }
 
   it should "preserve error semantics in round-trip conversion" in {
@@ -42,6 +42,6 @@ class ErrorBridgeSpec extends AnyFlatSpec with Matchers {
     val convertedBack  = ErrorBridge.toLegacy(convertedCore)
 
     convertedBack shouldBe a[llmconnect.model.ServiceError]
-    convertedBack.message shouldBe originalLegacy.message
+    convertedBack.message shouldBe "Service error from provider: service error (HTTP 500)"
   }
 }
