@@ -18,6 +18,7 @@ import cats.Show
  */
 
 trait LLMError extends Product with Serializable {
+
   /** Human-readable error message */
   def message: String
 
@@ -30,15 +31,16 @@ trait LLMError extends Product with Serializable {
   /** DEPRECATED: Use type-level markers instead */
   @deprecated("Use pattern matching on RecoverableError/NonRecoverableError traits", "0.1.9")
   def isRecoverable: Boolean = this match {
-    case _: RecoverableError => true
+    case _: RecoverableError    => true
     case _: NonRecoverableError => false
   }
 
   /** Formatted error message with context */
   def formatted: String = {
-    val contextStr = if (context.nonEmpty)
-      s" [${context.map { case (k, v) => s"$k=$v" }.mkString(", ")}]"
-    else ""
+    val contextStr =
+      if (context.nonEmpty)
+        s" [${context.map { case (k, v) => s"$k=$v" }.mkString(", ")}]"
+      else ""
     s"${getClass.getSimpleName}: $message$contextStr"
   }
 }
@@ -48,7 +50,7 @@ object LLMError {
   /**
    * Smart constructors: Use smart constructors directly
    */
-    
+
   def authenticationFailed(provider: String, details: String): LLMError =
     AuthenticationError(provider, details)
 
@@ -80,12 +82,12 @@ object LLMError {
   /**
    * Type-safe recoverability checks
    * @param error LLMError
-   * @return 
+   * @return
    */
 
   def isRecoverable(error: LLMError): Boolean = error match {
-    case _: RecoverableError => true
-    case _: NonRecoverableError => false
+    case _: RecoverableError        => true
+    case _: NonRecoverableError     => false
     case serviceError: ServiceError => serviceError.isRecoverableStatus
   }
 
