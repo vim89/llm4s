@@ -1,6 +1,6 @@
 package org.llm4s.llmconnect
 
-import org.llm4s.error.LLMError
+import org.llm4s.error.AuthenticationError
 import org.llm4s.llmconnect.LLMClient
 import org.llm4s.llmconnect.model.AssistantMessage
 import org.scalamock.scalatest.MockFactory
@@ -24,8 +24,8 @@ class EnhancedClientAdapterSpec extends AnyFlatSpec with Matchers with MockFacto
     val result = adapter.complete(conversation)
 
     result should be(a[Left[_, _]])
-    result.left.value shouldBe a[LLMError.AuthenticationError]
-    result.left.value.message shouldBe "auth failed"
+    result.left.value shouldBe a[AuthenticationError]
+    result.left.value.message shouldBe "Authentication failed for auth failed: provider"
   }
 
   it should "pass through successful responses unchanged" in {
