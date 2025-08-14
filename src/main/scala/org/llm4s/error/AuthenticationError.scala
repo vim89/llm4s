@@ -25,7 +25,7 @@ object AuthenticationError {
 
   /** Create authentication error with specific code */
   def apply(provider: String, details: String, code: String): AuthenticationError =
-    AuthenticationError(s"Authentication failed for $provider: $details", provider, code)
+    new AuthenticationError(s"Authentication failed for $provider: $details", provider, code)
 
   /** Create from HTTP 401 response */
   def unauthorized(provider: String): AuthenticationError =
