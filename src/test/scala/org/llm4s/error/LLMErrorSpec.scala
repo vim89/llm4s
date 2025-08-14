@@ -125,7 +125,7 @@ class LLMErrorSpec extends AnyWordSpec with Matchers {
 
       shown should include("AuthenticationError")
       shown should include("Authentication failed for openai")
-      shown should include("provider=openai")
+      shown should include("invalid key(provider,openai)")
     }
 
     "maintain backward compatibility" in {
@@ -137,7 +137,7 @@ class LLMErrorSpec extends AnyWordSpec with Matchers {
 
       // Formatted method should work
       error.formatted should include("ValidationError")
-      error.formatted should include("field=field")
+      error.formatted should include("Invalid field: reason(field,field), (violations,reason)")
     }
 
     "create AuthenticationError with smart constructors" in {

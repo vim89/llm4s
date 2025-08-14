@@ -3,7 +3,7 @@ package org.llm4s.llmconnect
 import org.llm4s.Result
 import org.llm4s.error.ErrorBridge
 import org.llm4s.llmconnect.LLMClient
-import org.llm4s.llmconnect.model.{ Completion, CompletionOptions, Conversation, StreamedChunk }
+import org.llm4s.llmconnect.model.{ Completion, CompletionOptions, Conversation, LLMError, StreamedChunk }
 import org.llm4s.types.Result
 
 /**
