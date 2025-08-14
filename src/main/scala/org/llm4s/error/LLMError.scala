@@ -37,7 +37,7 @@ trait LLMError extends Product with Serializable {
 
   /** Formatted error message with context */
   def formatted: String = {
-    val contextStr = context.toList.mkString(", ")
+    val contextStr = context.toList.map { case (k, v) => s"$k=$v" }.mkString("[", ",", "]")
     s"${getClass.getSimpleName}: $message$contextStr"
   }
 }
