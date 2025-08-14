@@ -37,34 +37,12 @@ trait LLMError extends Product with Serializable {
 
   /** Formatted error message with context */
   def formatted: String = {
-    val contextStr =
-      if (context.nonEmpty)
-        s" [${context.map { case (k, v) => s"$k=$v" }.mkString(", ")}]"
-      else ""
+    val contextStr = context.toList.map { case (k, v) => s"$k=$v" }.mkString("[", ",", "]")
     s"${getClass.getSimpleName}: $message$contextStr"
   }
 }
 
 object LLMError {
-
-  /**
-   * Smart constructors: Use smart constructors directly
-   */
-
-  def authenticationFailed(provider: String, details: String): LLMError =
-    AuthenticationError(provider, details)
-
-  def rateLimited(provider: String): LLMError =
-    RateLimitError(provider)
-
-  def rateLimited(provider: String, retryAfter: Long): LLMError =
-    RateLimitError(provider, retryAfter)
-
-  def invalidField(field: String, reason: String): LLMError =
-    ValidationError(field, reason)
-
-  def missingConfig(keys: List[String]): LLMError =
-    ConfigurationError(s"Missing configuration: ${keys.mkString(", ")}", keys)
 
   def fromThrowable(throwable: Throwable): LLMError = throwable match {
     case _: java.net.SocketTimeoutException =>

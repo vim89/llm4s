@@ -33,11 +33,6 @@ object ServiceError {
 
   // Make ServiceError recoverable or non-recoverable based on HTTP status
   implicit class ServiceErrorOps(error: ServiceError) {
-    def isRecoverableStatus: Boolean = error.httpStatus match {
-      case status if status >= 500 => true  // Server errors are typically recoverable
-      case 429                     => true  // Rate limiting is recoverable
-      case 408                     => true  // Timeout is recoverable
-      case _                       => false // Client errors (4xx) are typically not recoverable
-    }
+    def isRecoverableStatus: Boolean = error.httpStatus >= 500 || error.httpStatus == 429 || error.httpStatus == 408
   }
 }
