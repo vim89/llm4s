@@ -101,5 +101,14 @@ object LLMError {
    * Cats integration
    */
 
+  /** Static show method - always works */
+  def show(error: LLMError): String = error.formatted
+
+  /** Extension methods for ergonomic usage */
+  implicit class LLMErrorDisplayOps(error: LLMError) {
+    def show: String    = error.formatted
+    def display: String = error.formatted
+  }
+
   implicit val llmErrorShow: Show[LLMError] = Show.show(_.formatted)
 }
