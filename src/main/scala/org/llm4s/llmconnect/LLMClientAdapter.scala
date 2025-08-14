@@ -18,14 +18,14 @@ class LLMClientAdapter(underlying: LLMClient) extends LLMClientV2 {
     conversation: Conversation,
     options: CompletionOptions = CompletionOptions()
   ): Result[Completion] =
-    underlying.complete(conversation, options).left.map(ErrorBridge.toCore)
+    underlying.complete(conversation, options).left.map(ErrorBridge.toError)
 
   def streamComplete(
     conversation: Conversation,
     options: CompletionOptions = CompletionOptions(),
     onChunk: StreamedChunk => Unit
   ): Result[Completion] =
-    underlying.streamComplete(conversation, options, onChunk).left.map(ErrorBridge.toCore)
+    underlying.streamComplete(conversation, options, onChunk).left.map(ErrorBridge.toError)
 
   def validate(): Result[Unit] =
     // Basic validation - can be enhanced later

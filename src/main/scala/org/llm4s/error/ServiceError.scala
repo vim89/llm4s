@@ -21,7 +21,7 @@ object ServiceError {
 
   def apply(httpStatus: Int, provider: String, details: String, requestId: String): ServiceError =
     new ServiceError(
-      s"Service error from $provider: $details (HTTP $httpStatus)",
+      s"Service error from $provider: $details (HTTP $httpStatus) (Request ID $requestId)",
       httpStatus,
       provider,
       Some(requestId)
