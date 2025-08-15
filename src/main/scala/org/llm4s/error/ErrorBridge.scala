@@ -19,7 +19,7 @@ object ErrorBridge {
     case llmconnect.model.RateLimitError(provider)     => error.RateLimitError(provider)
     case llmconnect.model.ServiceError(message, code)  => error.ServiceError(code, "provider", message)
     case llmconnect.model.ValidationError(message)     => error.ValidationError("", message)
-    case llmconnect.model.UnknownError(throwable)      => error.UnknownError("Unknow error", throwable)
+    case llmconnect.model.UnknownError(throwable)      => error.UnknownError("Unknown error", throwable)
     case llmconnect.model.ProcessingError(message)     => error.ValidationError("", message)
     case llmconnect.model.InvalidInput(message)        => error.ValidationError("", message)
     case llmconnect.model.APIError(message) => error.NetworkError(message, Some(new HttpException(message)), "endpoint")

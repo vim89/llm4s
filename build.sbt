@@ -17,8 +17,8 @@ val scala3CompilerOptions = Seq(
   "-Wunused:all"
 )
 val scala2CompilerOptions = Seq(
-  // "-Xfatal-warnings",
-  // "-Wconf:deprecation:w", // suppress deprecation warnings
+  // "-Xfatal-warnings", Commented to allow deprecation warnings
+  // "-Wconf:deprecation:w", // suppress deprecation warnings - Commented to allow deprecation warnings
   "-feature",
   "-unchecked",
   "-deprecation",
