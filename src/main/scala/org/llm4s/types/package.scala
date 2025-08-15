@@ -588,10 +588,11 @@ package object types {
       if (value.trim.nonEmpty && value.length >= 8) Right(new ApiKey(value))
       else Left(error.ValidationError("apiKey", "Must be at least 8 characters"))
 
-    def fromEnvironment(envVar: String): Result[ApiKey] = sys.env
-      .get(envVar)
-      .map(apply)
-      .getOrElse(Left(error.ConfigurationError(s"Environment variable $envVar not found", List(envVar))))
+    def fromEnvironment(envVar: String): Result[ApiKey] =
+      sys.env
+        .get(envVar)
+        .toRight(ConfigurationError(s"Environment variable '$envVar' not found", List(envVar)))
+        .flatMap(apply)
 
     def unsafe(value: String): ApiKey = new ApiKey(value)
   }
