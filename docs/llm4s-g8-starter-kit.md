@@ -36,10 +36,10 @@ sbt new llm4s/llm4s.g8 \
 --name=llm4s-template \
 --package=org.llm4s.template \
 --version=0.1.0-SNAPSHOT \
---llm4s_version=0.1.1 \
+--llm4s_version=0.1.9 \
 --scala_version=2.13.16 \
+--java_version=21 \
 --munit_version=1.1.1 \
---directory=org.llm4s.template \
 --force
 ```
 in the folder where you want to clone the template.
@@ -49,14 +49,14 @@ Template usage (with local template): to create a project
 To use this template locally (e.g., during development or when unpublished),
 Using `sbt`, do:
 ```
-sbt new file:///<absolute-path>/llm4s/llm4s.g8 \
+sbt new file:///<your-cloned-llm4s-project-absolute-path>/llm4s.g8 \
 --name=llm4s-template \
 --package=org.llm4s.template \
 --version=0.1.0-SNAPSHOT \
 --llm4s_version=0.1.1 \
 --scala_version=2.13.16 \
+--java_version=21 \
 --munit_version=1.1.1 \
---directory=org.llm4s.template \
 --force
 ```
 Note: Do not use `~` as  ~/.. is not resolved correctly when passed to sbt new or other CLI tools — it must be expanded manually

@@ -343,14 +343,14 @@ The starter kit comes pre-configured with best practices, prompt execution examp
 
 Using `sbt`, do:
 ```
-sbt new llm4s/llm4s.g8 \
+sbt new file:///<your-cloned-llm4s-project-absolute-path>/llm4s.g8 \
 --name=<your.project.name> \
 --package=<your.organization> \
 --version=0.1.0-SNAPSHOT \
---llm4s_version=<llm4s.version> \ # 0.1.1 is the latest version at the time of writing
+--llm4s_version=<llm4s.version> \ # 0.1.9 is the latest version at the time of writing
 --scala_version=<scala.version> \ # 2.x.x or Scala 3.x.x
+--java_version=<java.version> \ # 21
 --munit_version=<munit.version> \ # 1.1.1 is the latest version at the time of writing
---directory=<your.project.name> \
 --force
 ```
 to create new project.
