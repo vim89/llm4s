@@ -1,5 +1,6 @@
 package org.llm4s
 
+import org.llm4s.error.{ ConfigurationError, ValidationError }
 import org.llm4s.llmconnect.model.StreamedChunk
 import org.llm4s.toolapi.ToolFunction
 import org.llm4s.types.{ AsyncResult, Result }
@@ -86,7 +87,7 @@ package object types {
   final case class ApiKey(private val value: String) extends AnyVal {
     override def toString: String = "ApiKey(***)"
     def reveal: String            = value
-    def masked: String            = if (value.length > 8) s"${value.take(4)}...${value.takeRight(4)}" else "***"
+    def masked: String            = s"${value.take(4)}${"*" * (value.length - 4)}"
   }
 
   /**
@@ -101,6 +102,14 @@ package object types {
    */
   final case class CompletionId(value: String) extends AnyVal {
     override def toString: String = value
+  }
+
+  object CompletionId {
+    def apply(value: String): Result[CompletionId] =
+      if (value.trim.nonEmpty) Right(new CompletionId(value.trim))
+      else Left(error.ValidationError("completionId", "Cannot be empty"))
+
+    def generate(): CompletionId = new CompletionId(java.util.UUID.randomUUID().toString)
   }
 
   /**
@@ -541,25 +550,30 @@ package object types {
    */
 
   object ModelName {
-    def create(value: String): Result[ModelName] =
-      if (value.trim.nonEmpty) Right(ModelName(value.trim))
-      else Left(error.LLMError.ValidationError("Model name cannot be empty", "modelName"))
 
-    def fromString(value: String): ModelName = ModelName(value)
+    private val validModelPattern = """^[a-zA-Z0-9\-_./:]+$""".r
+
+    def apply(value: String): Result[ModelName] =
+      if (validModelPattern.matches(value.trim)) Right(new ModelName(value.trim))
+      else Left(error.ValidationError("modelName", "Invalid model name format"))
+
+    def fromString(value: String): ModelName = new ModelName(value)
+
+    def unsafe(value: String): ModelName = new ModelName(value)
 
     // Common model name constants
-    val GPT_4: ModelName           = ModelName("gpt-4")
-    val GPT_4_TURBO: ModelName     = ModelName("gpt-4-turbo")
-    val GPT_3_5_TURBO: ModelName   = ModelName("gpt-3.5-turbo")
-    val CLAUDE_3_OPUS: ModelName   = ModelName("claude-3-opus-20240229")
-    val CLAUDE_3_SONNET: ModelName = ModelName("claude-3-sonnet-20240229")
-    val CLAUDE_3_HAIKU: ModelName  = ModelName("claude-3-haiku-20240307")
+    val GPT_4: ModelName           = new ModelName("gpt-4")
+    val GPT_4_TURBO: ModelName     = new ModelName("gpt-4-turbo")
+    val GPT_3_5_TURBO: ModelName   = new ModelName("gpt-3.5-turbo")
+    val CLAUDE_3_OPUS: ModelName   = new ModelName("claude-3-opus-20240229")
+    val CLAUDE_3_SONNET: ModelName = new ModelName("claude-3-sonnet-20240229")
+    val CLAUDE_3_HAIKU: ModelName  = new ModelName("claude-3-haiku-20240307")
   }
 
   object ProviderName {
     def create(value: String): Result[ProviderName] =
       if (value.trim.nonEmpty) Right(ProviderName(value.trim.toLowerCase))
-      else Left(error.LLMError.ValidationError("Provider name cannot be empty", "providerName"))
+      else Left(error.ValidationError("Provider name cannot be empty", "providerName"))
 
     // Common provider constants
     val OPENAI: ProviderName    = ProviderName("openai")
@@ -570,15 +584,17 @@ package object types {
   }
 
   object ApiKey {
-    def create(value: String): Result[ApiKey] =
-      if (value.trim.nonEmpty) Right(ApiKey(value.trim))
-      else Left(error.LLMError.ValidationError("API key cannot be empty", "apiKey"))
+    def apply(value: String): Result[ApiKey] =
+      if (value.trim.nonEmpty && value.length >= 8) Right(new ApiKey(value))
+      else Left(error.ValidationError("apiKey", "Must be at least 8 characters"))
 
     def fromEnvironment(envVar: String): Result[ApiKey] =
-      sys.env.get(envVar) match {
-        case Some(key) => create(key)
-        case None => Left(error.LLMError.ConfigurationError(s"Environment variable $envVar not found", List(envVar)))
-      }
+      sys.env
+        .get(envVar)
+        .toRight(ConfigurationError(s"Environment variable '$envVar' not found", List(envVar)))
+        .flatMap(apply)
+
+    def unsafe(value: String): ApiKey = new ApiKey(value)
   }
 
   object ToolName {
@@ -588,7 +604,7 @@ package object types {
         Right(ToolName(trimmed))
       else
         Left(
-          error.LLMError.ValidationError(
+          error.ValidationError(
             "Tool name must be non-empty and contain only alphanumeric characters, underscores, and hyphens",
             "toolName"
           )
@@ -602,7 +618,7 @@ package object types {
         new java.net.URI(value) // Validate URL format
         Right(Url(value))
       } catch {
-        case _: Exception => Left(error.LLMError.ValidationError(s"Invalid URL: $value", "url"))
+        case _: Exception => Left(error.ValidationError(s"Invalid URL: $value", "url"))
       }
   }
 

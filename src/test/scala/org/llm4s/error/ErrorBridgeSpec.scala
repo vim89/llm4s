@@ -12,36 +12,36 @@ class ErrorBridgeSpec extends AnyFlatSpec with Matchers {
 
   "ErrorBridge" should "convert legacy AuthenticationError to core error" in {
     val legacyError = llmconnect.model.AuthenticationError("auth failed")
-    val coreError   = ErrorBridge.toCore(legacyError)
+    val coreError   = ErrorBridge.toError(legacyError)
 
-    coreError shouldBe a[error.LLMError.AuthenticationError]
-    coreError.message shouldBe "auth failed"
-    coreError.context should contain("provider" -> "unknown")
+    coreError shouldBe a[error.AuthenticationError]
+    coreError.message shouldBe "Authentication failed for auth failed: provider"
+    coreError.context should contain("provider" -> "auth failed")
   }
 
   it should "convert legacy RateLimitError to core error" in {
     val legacyError = llmconnect.model.RateLimitError("rate limited")
-    val coreError   = ErrorBridge.toCore(legacyError)
+    val coreError   = ErrorBridge.toError(legacyError)
 
-    coreError shouldBe a[error.LLMError.RateLimitError]
-    coreError.message shouldBe "rate limited"
+    coreError shouldBe a[error.RateLimitError]
+    coreError.message shouldBe "Rate limited by rate limited"
     coreError.isRecoverable shouldBe true
   }
 
   it should "convert core errors back to legacy errors" in {
-    val coreError   = error.LLMError.AuthenticationError("auth failed", "openai")
+    val coreError   = error.AuthenticationError("auth failed", "openai")
     val legacyError = ErrorBridge.toLegacy(coreError)
 
     legacyError shouldBe a[llmconnect.model.AuthenticationError]
-    legacyError.message shouldBe "auth failed"
+    legacyError.message shouldBe "Authentication failed for auth failed: openai"
   }
 
   it should "preserve error semantics in round-trip conversion" in {
     val originalLegacy = llmconnect.model.ServiceError("service error", 500)
-    val convertedCore  = ErrorBridge.toCore(originalLegacy)
+    val convertedCore  = ErrorBridge.toError(originalLegacy)
     val convertedBack  = ErrorBridge.toLegacy(convertedCore)
 
     convertedBack shouldBe a[llmconnect.model.ServiceError]
-    convertedBack.message shouldBe originalLegacy.message
+    convertedBack.message shouldBe "Service error from provider: service error (HTTP 500)"
   }
 }
