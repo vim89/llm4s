@@ -3,7 +3,8 @@ package org.llm4s.llmconnect.provider
 import org.llm4s.llmconnect.LLMClient
 import org.llm4s.llmconnect.config.OpenAIConfig
 import org.llm4s.llmconnect.model._
-import org.llm4s.llmconnect.streaming._
+import org.llm4s.llmconnect.serialization.OpenRouterToolCallDeserializer
+import org.llm4s.llmconnect.streaming.{ SSEParser, StreamingAccumulator }
 import org.llm4s.toolapi.ToolRegistry
 import org.llm4s.types.Result
 import org.llm4s.error.{ LLMError, AuthenticationError, RateLimitError, ServiceError }
@@ -186,7 +187,7 @@ class OpenRouterClient(config: OpenAIConfig) extends LLMClient {
               "type" -> "function",
               "function" -> ujson.Obj(
                 "name"      -> tc.name,
-                "arguments" -> tc.arguments
+                "arguments" -> tc.arguments.render()
               )
             )
           })
@@ -225,15 +226,7 @@ class OpenRouterClient(config: OpenAIConfig) extends LLMClient {
 
     // Extract tool calls if present
     val toolCalls = Option(message.obj.get("tool_calls"))
-      .map { tc =>
-        tc.arr.map { call =>
-          ToolCall(
-            id = call("id").str,
-            name = call("function")("name").str,
-            arguments = call("function")("arguments")
-          )
-        }.toSeq
-      }
+      .map(tc => OpenRouterToolCallDeserializer.deserializeToolCalls(tc))
       .getOrElse(Seq.empty)
 
     val usage = Option(json.obj.get("usage")).flatMap { u =>
