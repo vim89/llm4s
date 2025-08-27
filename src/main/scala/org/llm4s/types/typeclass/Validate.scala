@@ -15,9 +15,7 @@ object Validate {
   def validate[A: Validate](a: A): Result[A] = Validate[A].validate(a)
 
   // Smart constructor
-  def fromFunction[A](f: A => Result[A]): Validate[A] = new Validate[A] {
-    def validate(a: A): Result[A] = f(a)
-  }
+  def fromFunction[A](f: A => Result[A]): Validate[A] = (a: A) => f(a)
 
   // Extension methods
   implicit class ValidateOps[A: Validate](a: A) {

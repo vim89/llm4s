@@ -15,9 +15,7 @@ object Encoder {
   def encode[A: Encoder](a: A): JsonValue = Encoder[A].encode(a)
 
   // Smart constructor
-  def fromFunction[A](f: A => JsonValue): Encoder[A] = new Encoder[A] {
-    def encode(a: A): JsonValue = f(a)
-  }
+  def fromFunction[A](f: A => JsonValue): Encoder[A] = (a: A) => f(a)
 
   // Extension methods
   implicit class EncoderOps[A: Encoder](a: A) {
