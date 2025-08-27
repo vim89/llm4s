@@ -772,6 +772,13 @@ object Result {
     val successes = results.collect { case Right(value) => value }
     if (errors.nonEmpty) Left(errors) else Right(successes)
   }
+
+  // Resource management
+  def bracket[A, B](acquire: => Result[A])(release: A => Result[Unit])(use: A => Result[B]): Result[B] =
+    acquire.flatMap { resource =>
+      val result = use(resource)
+      release(resource).flatMap(_ => result)
+    }
 }
 
 object AsyncResult {

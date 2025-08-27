@@ -27,6 +27,12 @@ object ValidationError {
   def apply(field: String, violations: List[String]): ValidationError =
     new ValidationError(s"Invalid $field: ${violations.mkString(", ")}", field, violations)
 
+  def required(field: String): ValidationError =
+    apply(s"Field '$field' is required", field, List("required"))
+
+  def invalid(field: String, reason: String): ValidationError =
+    apply(s"Field '$field' is invalid: $reason", field, List(reason))
+
   /** Unapply extractor for pattern matching */
   def unapply(error: ValidationError): Option[(String, String, List[String])] =
     Some((error.message, error.field, error.violations))
