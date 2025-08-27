@@ -10,6 +10,14 @@ final case class RateLimitError private (
   provider: String
 ) extends LLMError
     with RecoverableError {
+
+  override val maxRetries: Int = 5
+
+  // Intelligent retry delay calculation
+  override def retryDelay: Option[Long] = retryDelay.orElse {
+    Some(Math.min(30000, 1000 * Math.pow(2, maxRetries).toLong)) // Exponential backoff, max 30s
+  }
+
   override val context: Map[String, String] = Map("provider" -> provider) ++
     retryAfter.map(r => Map("retryAfter" -> r.toString)).getOrElse(Map.empty)
 }

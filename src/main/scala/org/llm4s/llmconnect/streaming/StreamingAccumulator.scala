@@ -113,8 +113,10 @@ class StreamingAccumulator {
 
       Right(
         Completion(
-          id = messageId.getOrElse(java.util.UUID.randomUUID().toString),
+          id = messageId.getOrElse(""),
           created = System.currentTimeMillis() / 1000,
+          content = contentBuilder.toString(),
+          model = "unknown", // Model info not tracked here
           message = message,
           usage = usage
         )

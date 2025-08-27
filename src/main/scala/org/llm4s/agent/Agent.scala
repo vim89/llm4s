@@ -182,18 +182,18 @@ class Agent(client: LLMClient) {
       val step = index + 1
 
       message.role match {
-        case "system" =>
+        case MessageRole.System =>
           sb.append(s"### Step $step: System Message\n\n")
           sb.append("```\n")
           sb.append(message.content)
           sb.append("\n```\n\n")
 
-        case "user" =>
+        case MessageRole.User =>
           sb.append(s"### Step $step: User Message\n\n")
           sb.append(message.content)
           sb.append("\n\n")
 
-        case "assistant" =>
+        case MessageRole.Assistant =>
           sb.append(s"### Step $step: Assistant Message\n\n")
 
           message match {
@@ -221,7 +221,7 @@ class Agent(client: LLMClient) {
               sb.append("\n\n")
           }
 
-        case "tool" =>
+        case MessageRole.Tool =>
           message match {
             case msg: ToolMessage =>
               sb.append(s"### Step $step: Tool Response\n\n")
@@ -239,7 +239,7 @@ class Agent(client: LLMClient) {
           }
 
         case _ =>
-          sb.append(s"### Step $step: ${message.role.capitalize} Message\n\n")
+          sb.append(s"### Step $step: ${message.role} Message\n\n")
           sb.append("```\n")
           sb.append(message.content)
           sb.append("\n```\n\n")

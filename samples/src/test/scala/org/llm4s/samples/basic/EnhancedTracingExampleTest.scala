@@ -96,6 +96,8 @@ class EnhancedTracingExampleTest extends AnyFunSuite with Matchers {
     val completion = org.llm4s.llmconnect.model.Completion(
       id = "test-id",
       created = System.currentTimeMillis(),
+      content = "Test response",
+      model = "tracing",
       message = org.llm4s.llmconnect.model.AssistantMessage(
         content = "Test response",
         toolCalls = Vector.empty

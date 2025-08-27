@@ -1,13 +1,199 @@
 package org.llm4s.llmconnect.model
 
+import org.llm4s.Result
+import org.llm4s.error.ValidationError
+import org.llm4s.types.Result
+
 /**
  * Represents a message in a conversation with an LLM (Large Language Model).
  */
 sealed trait Message {
-  def role: String
+  def role: MessageRole
   def content: String
 
-  override def toString: String = s"${role}: ${content}"
+  override def toString: String = s"$role: $content"
+
+  /**
+   * Validates individual message
+   */
+  def validate: Result[Message] =
+    if (content.trim.isEmpty) {
+      Result.failure(ValidationError(s"$role message content cannot be empty", "content"))
+    } else {
+      Result.success(this)
+    }
+}
+
+/**
+ * Message validation with comprehensive conversation flow rules
+ */
+object Message {
+
+  /**
+   * Validates a list of messages for conversation consistency
+   *
+   * CRITICAL MISSING METHOD - NOW IMPLEMENTED
+   */
+  def validateConversation(messages: List[Message]): Result[Unit] = {
+    if (messages.isEmpty) {
+      return Result.success(())
+    }
+
+    val validationErrors = scala.collection.mutable.ListBuffer[String]()
+
+    // Validate individual messages first
+    messages.zipWithIndex.foreach { case (message, index) =>
+      message.validate match {
+        case Left(error) => validationErrors += s"Message $index: ${error.formatted}"
+        case Right(_)    => // OK
+      }
+    }
+
+    // Validate conversation flow rules
+    validationErrors ++= validateConversationFlow(messages)
+
+    // Validate tool call consistency
+    validationErrors ++= validateToolCallConsistency(messages)
+
+    if (validationErrors.nonEmpty) {
+      Result.failure(
+        ValidationError(
+          s"Conversation validation failed: ${validationErrors.mkString("; ")}",
+          "conversation"
+        ).withViolations(validationErrors.toList)
+      )
+    } else {
+      Result.success(())
+    }
+  }
+
+  /**
+   * Validates conversation flow rules
+   */
+  private def validateConversationFlow(messages: List[Message]): List[String] = {
+    val errors = scala.collection.mutable.ListBuffer[String]()
+
+    messages.zipWithIndex.foreach { case (message, index) =>
+      message match {
+        case _: SystemMessage =>
+          // System messages should be at the beginning
+          if (index > 0 && messages.take(index).exists(_.isInstanceOf[SystemMessage])) {
+            errors += s"Multiple system messages found - system message at index $index should be first"
+          }
+
+        case _: ToolMessage =>
+          // Tool messages must follow assistant messages with tool calls
+          if (index == 0) {
+            errors += "Tool messages cannot be the first message in a conversation"
+          } else {
+            val previousMessage = messages(index - 1)
+            previousMessage match {
+              case assistantMsg: AssistantMessage =>
+                if (assistantMsg.toolCalls.isEmpty) {
+                  errors += s"Tool message at index $index must follow an assistant message with tool calls"
+                }
+              case _ =>
+                errors += s"Tool message at index $index must follow an assistant message"
+            }
+          }
+
+        case _: UserMessage =>
+        // User messages are generally always valid in any position
+
+        case _: AssistantMessage =>
+        // Assistant messages are generally always valid in any position
+      }
+    }
+
+    errors.toList
+  }
+
+  /**
+   * Validates tool call consistency
+   */
+  private def validateToolCallConsistency(messages: List[Message]): List[String] = {
+    val errors = scala.collection.mutable.ListBuffer[String]()
+
+    // Collect all tool calls and their responses
+    val toolCalls     = scala.collection.mutable.Map[String, (AssistantMessage, Int)]()
+    val toolResponses = scala.collection.mutable.Map[String, (ToolMessage, Int)]()
+
+    messages.zipWithIndex.foreach { case (message, index) =>
+      message match {
+        case assistantMsg: AssistantMessage =>
+          assistantMsg.toolCalls.foreach(toolCall => toolCalls.put(toolCall.id, (assistantMsg, index)))
+
+        case toolMsg: ToolMessage =>
+          toolResponses.put(toolMsg.toolCallId, (toolMsg, index))
+
+        case _ => // Other message types don't affect tool call consistency
+      }
+    }
+
+    // Check for tool calls without responses
+    toolCalls.foreach { case (toolCallId, (assistantMsg, assistantIndex)) =>
+      if (!toolResponses.contains(toolCallId)) {
+        errors += s"Tool call '$toolCallId' at $assistantIndex has no corresponding tool response; Message: $assistantMsg"
+      }
+    }
+
+    // Check for tool responses without calls
+    toolResponses.foreach { case (toolCallId, (toolMsg, toolIndex)) =>
+      if (!toolCalls.contains(toolCallId)) {
+        errors += s"Tool response at message $toolIndex references unknown tool call '$toolCallId'; Message: $toolMsg"
+      }
+    }
+
+    errors.toList
+  }
+
+  // Individual message constructors with validation
+  def system(content: String): Result[SystemMessage] =
+    if (content.trim.isEmpty) {
+      Result.failure(ValidationError("System message content cannot be empty", "content"))
+    } else {
+      Result.success(SystemMessage(content = content))
+    }
+
+  def user(content: String): Result[UserMessage] =
+    if (content.trim.isEmpty) {
+      Result.failure(ValidationError("User message content cannot be empty", "content"))
+    } else {
+      Result.success(UserMessage(content = content))
+    }
+
+  def assistant(content: String, toolCalls: List[ToolCall] = List.empty): Result[AssistantMessage] =
+    if (content.trim.isEmpty && toolCalls.isEmpty) {
+      Result.failure(
+        ValidationError(
+          "Assistant message must have either content or tool calls",
+          "content"
+        )
+      )
+    } else {
+      Result.success(AssistantMessage(content = content, toolCalls = toolCalls))
+    }
+
+  def tool(content: String, toolCallId: String): Result[ToolMessage] =
+    if (content.trim.isEmpty) {
+      Result.failure(ValidationError("Tool message content cannot be empty", "content"))
+    } else if (toolCallId.trim.isEmpty) {
+      Result.failure(ValidationError("Tool call ID cannot be empty", "toolCallId"))
+    } else {
+      Result.success(ToolMessage(content = content, toolCallId = toolCallId))
+    }
+}
+
+sealed trait MessageRole {
+  def name: String
+  override def toString: String = name
+}
+
+object MessageRole {
+  case object System    extends MessageRole { val name = "system"    }
+  case object User      extends MessageRole { val name = "user"      }
+  case object Assistant extends MessageRole { val name = "assistant" }
+  case object Tool      extends MessageRole { val name = "tool"      }
 }
 
 /**
@@ -15,8 +201,8 @@ sealed trait Message {
  *
  * @param content Content of the user message.
  */
-case class UserMessage(content: String) extends Message {
-  val role = "user"
+final case class UserMessage(content: String) extends Message {
+  val role: MessageRole = MessageRole.User
 }
 
 /**
@@ -29,8 +215,8 @@ case class UserMessage(content: String) extends Message {
  *
  * @param content Content of the system message.
  */
-case class SystemMessage(content: String) extends Message {
-  val role = "system"
+final case class SystemMessage(content: String) extends Message {
+  val role: MessageRole = MessageRole.System
 }
 
 object AssistantMessage {
@@ -50,7 +236,7 @@ case class AssistantMessage(
   contentOpt: Option[String] = None,
   toolCalls: Seq[ToolCall] = Seq.empty
 ) extends Message {
-  val role = "assistant"
+  val role: MessageRole = MessageRole.Assistant
 
   def content: String = contentOpt.getOrElse("")
 
@@ -59,8 +245,22 @@ case class AssistantMessage(
       s"\nTool Calls: ${toolCalls.map(tc => s"[${tc.id}: ${tc.name}(${tc.arguments})]").mkString(", ")}"
     } else " - no tool calls"
 
-    s"${role}: ${content}${toolCallsStr}"
+    s"$role: $content$toolCallsStr"
   }
+
+  def hasToolCalls: Boolean = toolCalls.nonEmpty
+
+  override def validate: Result[Message] =
+    if (content.trim.isEmpty && toolCalls.isEmpty) {
+      Result.failure(
+        ValidationError(
+          "Assistant message must have either content or tool calls",
+          "content"
+        )
+      )
+    } else {
+      Result.success(this)
+    }
 }
 
 /**
@@ -69,13 +269,29 @@ case class AssistantMessage(
  * @param toolCallId Unique identifier for the tool call (as provided by the ToolCall).
  * @param content    Content of the tool message, usually the result of the tool execution, e.g. a json response.
  */
-case class ToolMessage(
-  toolCallId: String,
-  content: String
+final case class ToolMessage(
+  content: String,
+  toolCallId: String
 ) extends Message {
-  val role = "tool"
+  val role: MessageRole = MessageRole.Tool
 
-  override def toString: String = s"${role}(${toolCallId}): ${content}"
+  override def validate: Result[Message] = {
+    val validations = List(
+      if (content.trim.isEmpty) Some("Tool message content cannot be empty") else None,
+      if (toolCallId.trim.isEmpty) Some("Tool call ID cannot be empty") else None
+    ).flatten
+
+    if (validations.nonEmpty) {
+      Result.failure(
+        ValidationError(
+          validations.mkString("; "),
+          "toolMessage"
+        ).withViolations(validations)
+      )
+    } else {
+      Result.success(this)
+    }
+  }
 }
 
 /**

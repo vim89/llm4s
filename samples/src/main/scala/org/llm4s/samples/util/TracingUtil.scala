@@ -1,10 +1,11 @@
 package org.llm4s.samples.util
 
-import org.llm4s.trace.{EnhancedTracing, TraceEvent}
-import org.llm4s.agent.{AgentState, AgentStatus}
+import org.llm4s.agent.AgentState
+import org.llm4s.trace.{ EnhancedTracing, TraceEvent }
 import ujson._
-import scala.util.Try
+
 import scala.reflect.Selectable.reflectiveSelectable
+import scala.util.Try
 
 /**
  * Utility class for tracing operations

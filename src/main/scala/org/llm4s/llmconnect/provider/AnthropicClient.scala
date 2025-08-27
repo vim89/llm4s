@@ -327,15 +327,15 @@ curl https://api.anthropic.com/v1/messages \
 
     // Extract tool calls if present
     val toolCalls = extractToolCalls(response)
-
+    val message   = AssistantMessage(contentOpt = content, toolCalls = toolCalls)
     // Create completion
     Completion(
       id = response.id(),
+      content = message.content,
+      model = response.model().asString(),
+      toolCalls = toolCalls.toList,
       created = System.currentTimeMillis() / 1000, // Use current time as created timestamp
-      message = AssistantMessage(
-        contentOpt = content,
-        toolCalls = toolCalls
-      ),
+      message = message,
       usage = Some(
         TokenUsage(
           promptTokens = response.usage().inputTokens().toInt,

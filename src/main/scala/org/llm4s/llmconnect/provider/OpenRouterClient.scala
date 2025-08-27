@@ -244,10 +244,13 @@ class OpenRouterClient(config: OpenAIConfig) extends LLMClient {
     Completion(
       id = json("id").str,
       created = json("created").num.toLong,
+      content = message.obj.get("content").flatMap(_.strOpt).getOrElse(""),
+      model = json("model").str,
       message = AssistantMessage(
-        contentOpt = message("content").strOpt,
-        toolCalls = toolCalls
+        contentOpt = message.obj.get("content").flatMap(_.strOpt),
+        toolCalls = toolCalls.toList
       ),
+      toolCalls = toolCalls.toList,
       usage = usage
     )
   }

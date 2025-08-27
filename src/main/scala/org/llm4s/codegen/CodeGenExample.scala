@@ -1,5 +1,6 @@
 package org.llm4s.codegen
 
+import org.llm4s.llmconnect.model.MessageRole
 import org.slf4j.LoggerFactory
 
 /**
@@ -38,7 +39,7 @@ object CodeGenExample {
 
             // Print the agent's final response
             finalState.conversation.messages.last match {
-              case msg if msg.role == "assistant" =>
+              case msg if msg.role == MessageRole.Assistant =>
                 logger.info(s"Final agent response: ${msg.content}")
               case _ =>
                 logger.warn("No final assistant message found")
