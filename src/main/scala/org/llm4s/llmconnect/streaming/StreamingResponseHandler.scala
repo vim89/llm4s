@@ -45,8 +45,8 @@ trait StreamingResponseHandler {
 abstract class BaseStreamingResponseHandler extends StreamingResponseHandler {
 
   protected val accumulator: StreamingAccumulator = StreamingAccumulator.create()
-  protected var streamingError: Option[LLMError] = None
-  protected var complete                         = false
+  protected var streamingError: Option[LLMError]  = None
+  protected var complete                          = false
 
   override def isComplete: Boolean = complete
 
