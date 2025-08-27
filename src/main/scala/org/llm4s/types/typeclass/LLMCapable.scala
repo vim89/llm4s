@@ -52,6 +52,6 @@ object LLMCapable {
     def fromCompletion(completion: Completion): Result[Conversation] =
       Conversation.create(AssistantMessage(completion.asText))
     def validate(value: Conversation): Result[Unit] =
-      Result.fromBoolean(value.messages.length > 0, ValidationError("conversation", "must have messages"))
+      Result.fromBoolean(value.messages.nonEmpty, ValidationError("conversation", "must have messages"))
   }
 }

@@ -223,7 +223,7 @@ curl https://api.anthropic.com/v1/messages \
                 // inputTokens seems to return Optional<Long>
                 val inputTokens = inputTokensRaw match {
                   case opt: Optional[_] =>
-                    opt.asInstanceOf[Optional[lang.Long]].toScala.map(_.toInt).getOrElse(0)
+                    opt.toScala.map(_.toInt).getOrElse(0)
                   case null => 0
                 }
 
@@ -245,7 +245,7 @@ curl https://api.anthropic.com/v1/messages \
         streamResponse.close()
 
       // Return the accumulated completion
-      accumulator.toCompletion()
+      accumulator.toCompletion
     } catch {
       case e: com.anthropic.errors.UnauthorizedException =>
         Left(AuthenticationError("anthropic", e.getMessage))

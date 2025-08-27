@@ -123,7 +123,7 @@ class OpenRouterClient(config: OpenAIConfig) extends LLMClient {
       }
 
       // Return the accumulated completion
-      accumulator.toCompletion()
+      accumulator.toCompletion
     } catch {
       case e: Exception => Left(LLMError.fromThrowable(e))
     }
