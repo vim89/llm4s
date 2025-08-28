@@ -437,17 +437,19 @@ See the talks being given by maintainers and open source developers globally and
 
 Stay updated with talks, workshops, and presentations about **LLM4S** happening globally. These sessions dive into the architecture, features, and future plans of the project.
 
-<br>
-
 <p align="center">
-  <img src="assets/talks/Scalac_FunctionalWorld2025_Poland.png" alt="Functional World 2025 Poland Talk" width="400" style="margin-right: 10px;"/>
-  <img src="assets/talks/BayAreaScalaConference_IntroSlide.JPG" alt="Bay Area Scala Conference Generative AI Slide" width="400" style="margin-right: 10px;"/>
-  <img src="assets/talks/ScalaIndia_Talk_Banner.png" alt="Scala India Talk Banner" width="400" style="margin-right: 10px;"/>
-  <img src="assets/talks/DallasScalaEnthusiastsConference_Talk_Banner.png" alt="Dallas Scala Enthusiasts Talk Banner" width="400" style="margin-right: 10px;"/>
-  <img src="assets/talks/LondonScalaTalks_LLM4S_talk_2025_Banner.png" alt="London Scala Talks 2025 Banner" width="400" style="margin-right: 10px;"/>
-  <img src="assets/talks/ScalaDays2025_Talk_Banner.jpg" alt="Scala Days 2025 Talk Banner" width="400" style="margin-right: 10px;"/>
+  <img src="assets/talks/LondonScalaTalks_2025_Rory_szork_demo.jpeg" alt="London Scala Talks 2025 – Rory Szork Demo Slide" width="400" style="margin-right: 10px;"/>
+  <img src="assets/talks/BayAreaScalaConference_IntroSlide.JPG" alt="Bay Area Scala Conference 2025 – Introductory Slide" width="400" style="margin-right: 10px;"/>
+  <img src="assets/talks/Scalac_FunctionalWorld2025_Poland.png" alt="Functional World 2025 Poland – Scalac Conference Talk" width="400" style="margin-right: 10px;"/>
+  <img src="assets/talks/ScalaIndia_Talk_Banner.png" alt="Scala India 2025 Talk Banner" width="400" style="margin-right: 10px;"/>
+  <img src="assets/talks/DallasScalaEnthusiastsConference_Talk_Banner.png" alt="Dallas Scala Enthusiasts Conference 2025 Talk Banner" width="400" style="margin-right: 10px;"/>
+  <img src="assets/talks/LondonScalaTalks_LLM4S_talk_2025_Banner.png" alt="London Scala Talks 2025 – LLM4S Session Banner" width="400" style="margin-right: 10px;"/>
+  <img src="assets/talks/LondonScalaTalks_2025_kannupriya_multimodal_slide.jpeg" alt="London Scala Talks 2025 – Kannupriya Multimodal Slide" width="400" style="margin-right: 10px;"/>
+  <img src="assets/talks/ScalaDays2025_Talk_Banner.jpg" alt="Scala Days 2025 Official Talk Banner" width="400" style="margin-right: 10px;"/>
+  <img src="assets/talks/scaladays2025-llm4s-team.jpg" alt="Scala Days 2025 – LLM4S Team Photo" width="400" style="margin-right: 10px;"/>
+  <img src="assets/talks/scaladays2025-szork-innerworld-slide.jpg" alt="Scala Days 2025 – Szork Innerworld Demo Slide" width="400" style="margin-right: 10px;"/>
   <img src="assets/talks/ZurichScalaEnthusiasts_2025_Banner.jpg" alt="Zurich Scala Enthusiasts 2025 Banner" width="400"/>
-  <img src="assets/gsoc_assets/gsoc_2025/gsoc_llm4s_images/main logo.png" alt="GSoC x LLM4S Mentor Summit Talk 2025 Banner" width="400"/>
+  <img src="assets/gsoc_assets/gsoc_2025/gsoc_llm4s_images/main logo.png" alt="Google Summer of Code 2025 – LLM4S Mentor Summit Banner" width="400"/>
 
   <br>
   <br>
@@ -455,7 +457,6 @@ Stay updated with talks, workshops, and presentations about **LLM4S** happening 
 </p>
 
 <br>
-
 <br>
 
 
