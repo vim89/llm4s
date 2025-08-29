@@ -65,15 +65,13 @@ class EnhancedTracingExampleTest extends AnyFunSuite with Matchers {
 
   test("should transform tracing events with metadata") {
     val consoleTracer = EnhancedTracing.create(TracingMode.Console)
-    val transformedTracer = TracingComposer.transform(consoleTracer) { event =>
-      event match {
-        case e: TraceEvent.CustomEvent =>
-          TraceEvent.CustomEvent(
-            name = s"[ENHANCED] ${e.name}",
-            data = ujson.Obj.from(e.data.obj.toSeq :+ ("enhanced" -> true))
-          )
-        case other => other
-      }
+    val transformedTracer = TracingComposer.transform(consoleTracer) {
+      case e: TraceEvent.CustomEvent =>
+        TraceEvent.CustomEvent(
+          name = s"[ENHANCED] ${e.name}",
+          data = ujson.Obj.from(e.data.obj.toSeq :+ ("enhanced" -> true))
+        )
+      case other => other
     }
     
     val customEvent = TraceEvent.CustomEvent("test", ujson.Obj("value" -> 42))
@@ -96,6 +94,8 @@ class EnhancedTracingExampleTest extends AnyFunSuite with Matchers {
     val completion = org.llm4s.llmconnect.model.Completion(
       id = "test-id",
       created = System.currentTimeMillis(),
+      content = "Test response",
+      model = "tracing",
       message = org.llm4s.llmconnect.model.AssistantMessage(
         content = "Test response",
         toolCalls = Vector.empty
@@ -134,16 +134,14 @@ class EnhancedTracingExampleTest extends AnyFunSuite with Matchers {
     val complexTracer = TracingComposer.combine(
       consoleTracer,
       TracingComposer.filter(noOpTracer) { _.isInstanceOf[TraceEvent.CompletionReceived] },
-      TracingComposer.transform(consoleTracer) { event =>
-        event match {
-          case e: TraceEvent.TokenUsageRecorded =>
-            TraceEvent.TokenUsageRecorded(
-              usage = e.usage,
-              model = s"[COST] ${e.model}",
-              operation = e.operation
-            )
-          case other => other
-        }
+      TracingComposer.transform(consoleTracer) {
+        case e: TraceEvent.TokenUsageRecorded =>
+          TraceEvent.TokenUsageRecorded(
+            usage = e.usage,
+            model = s"[COST] ${e.model}",
+            operation = e.operation
+          )
+        case other => other
       }
     )
     

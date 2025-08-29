@@ -2,6 +2,7 @@ package org.llm4s.samples.agent
 
 import org.llm4s.agent.Agent
 import org.llm4s.llmconnect.LLM
+import org.llm4s.llmconnect.model.MessageRole.Assistant
 import org.llm4s.mcp._
 import org.llm4s.toolapi.tools.WeatherTool
 import org.slf4j.LoggerFactory
@@ -75,7 +76,7 @@ object MCPAgentExample {
         logger.info(s"✅ Query completed in ${duration}ms")
         
         // Show final answer
-        finalState.conversation.messages.reverse.find(_.role == "assistant") match {
+        finalState.conversation.messages.findLast(_.role == Assistant) match {
           case Some(msg) =>
             logger.info(s"💬 Agent Response: ${msg.content}")
           case None => 
