@@ -36,9 +36,11 @@ class ToolRegistry(initialTools: Seq[ToolFunction[_, _]]) {
   def execute(request: ToolCallRequest): Either[ToolCallError, ujson.Value] =
     tools.find(_.name == request.functionName) match {
       case Some(tool) =>
-        Result.fromTry(Try(tool.execute(request.arguments)))
-            .left.map(e => ToolCallError.ExecutionError(new Exception(e.message)))
-            .flatten
+        Result
+          .fromTry(Try(tool.execute(request.arguments)))
+          .left
+          .map(e => ToolCallError.ExecutionError(new Exception(e.message)))
+          .flatten
       case None => Left(ToolCallError.UnknownFunction(request.functionName))
     }
 

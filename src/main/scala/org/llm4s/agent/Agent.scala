@@ -288,10 +288,13 @@ class Agent(client: LLMClient) {
     import java.nio.charset.StandardCharsets
     import java.nio.file.{ Files, Paths }
 
-    Result.fromTry(Try {
-      val content = formatStateAsMarkdown(state)
-      Files.write(Paths.get(traceLogPath), content.getBytes(StandardCharsets.UTF_8))
-    }).left.foreach(err => logger.error("Failed to write trace log: {}", err.message))
+    Result
+      .fromTry(Try {
+        val content = formatStateAsMarkdown(state)
+        Files.write(Paths.get(traceLogPath), content.getBytes(StandardCharsets.UTF_8))
+      })
+      .left
+      .foreach(err => logger.error("Failed to write trace log: {}", err.message))
   }
 
   /**

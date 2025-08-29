@@ -32,23 +32,23 @@ object Message {
 
   implicit val rw: RW[Message] = readwriter[ujson.Value].bimap[Message](
     {
-      case um: UserMessage => ujson.Obj("type" -> ujson.Str("user"), "content" -> ujson.Str(um.content))
-      case sm: SystemMessage => ujson.Obj("type" -> ujson.Str("system"), "content" -> ujson.Str(sm.content))
+      case um: UserMessage      => ujson.Obj("type" -> ujson.Str("user"), "content" -> ujson.Str(um.content))
+      case sm: SystemMessage    => ujson.Obj("type" -> ujson.Str("system"), "content" -> ujson.Str(sm.content))
       case am: AssistantMessage => ujson.Obj("type" -> ujson.Str("assistant"), "data" -> ujson.read(write(am)))
       case tm: ToolMessage =>
         ujson.Obj(
-          "type" -> ujson.Str("tool"),
+          "type"       -> ujson.Str("tool"),
           "toolCallId" -> ujson.Str(tm.toolCallId),
-          "content" -> ujson.Str(tm.content)
+          "content"    -> ujson.Str(tm.content)
         )
     },
     json => {
       val obj = json.obj
       obj("type").str match {
-        case "user" => UserMessage(obj("content").str)
-        case "system" => SystemMessage(obj("content").str)
+        case "user"      => UserMessage(obj("content").str)
+        case "system"    => SystemMessage(obj("content").str)
         case "assistant" => read[AssistantMessage](obj("data"))
-        case "tool" => ToolMessage(obj("toolCallId").str, obj("content").str)
+        case "tool"      => ToolMessage(obj("toolCallId").str, obj("content").str)
       }
     }
   )

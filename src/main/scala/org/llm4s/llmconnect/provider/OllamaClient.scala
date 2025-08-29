@@ -161,11 +161,12 @@ class OllamaClient(config: OllamaConfig) extends LLMClient {
     } yield TokenUsage(prompt, comp, prompt + comp)).orElse(None)
 
     Completion(
-        id = id,
-        created = created,
-        content = content,
-        toolCalls =List.empty,
-        usage = usage, model = config.model,
+      id = id,
+      created = created,
+      content = content,
+      toolCalls = List.empty,
+      usage = usage,
+      model = config.model,
       message = AssistantMessage(content)
     )
   }

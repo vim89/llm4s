@@ -1,6 +1,6 @@
 package org.llm4s.types.typeclass
 
-import ujson.Value => JsonValue
+import ujson.Value as JsonValue
 
 /**
  * Encoder type class for JSON serialization.
