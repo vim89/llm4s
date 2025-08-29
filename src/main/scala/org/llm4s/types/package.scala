@@ -5,7 +5,7 @@ import org.llm4s.llmconnect.model.StreamedChunk
 import org.llm4s.toolapi.ToolFunction
 import org.llm4s.types.{ AsyncResult, Result }
 import org.slf4j.Logger
-import upickle.default.{readwriter, ReadWriter => RW}
+import upickle.default.{ readwriter, ReadWriter => RW }
 
 import java.time.Instant
 import scala.concurrent.{ ExecutionContext, Future }

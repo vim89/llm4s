@@ -1,7 +1,7 @@
 package org.llm4s.llmconnect.model
 
 import org.llm4s.types.Result
-import upickle.default.{macroRW, ReadWriter => RW}
+import upickle.default.{ macroRW, ReadWriter => RW }
 
 /**
  * Represents the message stream in a conversation.
