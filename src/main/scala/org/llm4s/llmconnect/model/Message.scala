@@ -1,5 +1,7 @@
 package org.llm4s.llmconnect.model
 
+import upickle.default.{ ReadWriter => RW, macroRW, readwriter, write, read }
+
 import org.llm4s.Result
 import org.llm4s.error.ValidationError
 import org.llm4s.types.Result
@@ -205,6 +207,10 @@ final case class UserMessage(content: String) extends Message {
   val role: MessageRole = MessageRole.User
 }
 
+object UserMessage {
+  implicit val rw: RW[UserMessage] = macroRW
+}
+
 /**
  * Represents a system message, which is typically used to set context or instructions for the LLM.
  *
@@ -219,11 +225,8 @@ final case class SystemMessage(content: String) extends Message {
   val role: MessageRole = MessageRole.System
 }
 
-object AssistantMessage {
-  def apply(content: String): AssistantMessage =
-    AssistantMessage(Some(content), Seq.empty)
-  def apply(content: String, toolCalls: Seq[ToolCall]): AssistantMessage =
-    AssistantMessage(Some(content), toolCalls)
+object SystemMessage {
+  implicit val rw: RW[SystemMessage] = macroRW
 }
 
 /**
@@ -263,6 +266,38 @@ case class AssistantMessage(
     }
 }
 
+object AssistantMessage {
+  // Manual ReadWriter for AssistantMessage due to macro issues with default parameters
+  implicit val rw: RW[AssistantMessage] = readwriter[ujson.Value].bimap[AssistantMessage](
+    msg =>
+      ujson.Obj(
+        "contentOpt" -> (msg.contentOpt match {
+          case None          => ujson.Null
+          case Some(content) => ujson.Str(content)
+        }),
+        "toolCalls" -> ujson.read(write(msg.toolCalls))
+      ),
+    json => {
+      val obj = json.obj
+      val contentOpt = obj.get("contentOpt") match {
+        case Some(ujson.Null)         => None
+        case Some(ujson.Str(content)) => Some(content)
+        case _                        => None
+      }
+      val toolCalls = obj.get("toolCalls") match {
+        case Some(toolCallsJson) => read[Seq[ToolCall]](toolCallsJson)
+        case _                   => Seq.empty
+      }
+      AssistantMessage(contentOpt, toolCalls)
+    }
+  )
+
+  def apply(content: String): AssistantMessage =
+    AssistantMessage(Some(content), Seq.empty)
+  def apply(content: String, toolCalls: Seq[ToolCall]): AssistantMessage =
+    AssistantMessage(Some(content), toolCalls)
+}
+
 /**
  * Represents a message from a tool, typically containing the result of a tool call.
  *
@@ -294,6 +329,10 @@ final case class ToolMessage(
   }
 }
 
+object ToolMessage {
+  implicit val rw: RW[ToolMessage] = macroRW
+}
+
 /**
  * Represents a tool call request from the LLM.
  *
@@ -307,4 +346,33 @@ case class ToolCall(
   arguments: ujson.Value
 ) {
   override def toString: String = s"ToolCall($id, $name, $arguments)"
+}
+
+object ToolCall {
+  implicit val rw: RW[ToolCall] = macroRW
+}
+
+object Message {
+  implicit val rw: RW[Message] = readwriter[ujson.Value].bimap[Message](
+    {
+      case um: UserMessage      => ujson.Obj("type" -> ujson.Str("user"), "content" -> ujson.Str(um.content))
+      case sm: SystemMessage    => ujson.Obj("type" -> ujson.Str("system"), "content" -> ujson.Str(sm.content))
+      case am: AssistantMessage => ujson.Obj("type" -> ujson.Str("assistant"), "data" -> ujson.read(write(am)))
+      case tm: ToolMessage =>
+        ujson.Obj(
+          "type"       -> ujson.Str("tool"),
+          "toolCallId" -> ujson.Str(tm.toolCallId),
+          "content"    -> ujson.Str(tm.content)
+        )
+    },
+    json => {
+      val obj = json.obj
+      obj("type").str match {
+        case "user"      => UserMessage(obj("content").str)
+        case "system"    => SystemMessage(obj("content").str)
+        case "assistant" => read[AssistantMessage](obj("data"))
+        case "tool"      => ToolMessage(obj("toolCallId").str, obj("content").str)
+      }
+    }
+  )
 }

@@ -1,5 +1,7 @@
 package org.llm4s.llmconnect.model
 
+import upickle.default.{ ReadWriter => RW, macroRW }
+
 import org.llm4s.types.Result
 
 /**
@@ -19,6 +21,10 @@ case class Conversation(messages: Seq[Message]) {
   // Add multiple messages and return a new Conversation
   def addMessages(newMessages: Seq[Message]): Conversation =
     Conversation(messages ++ newMessages)
+}
+
+object Conversation {
+  implicit val rw: RW[Conversation] = macroRW
 }
 
 object Conversation {
