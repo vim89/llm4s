@@ -3,7 +3,7 @@ package org.llm4s.llmconnect.model
 import org.llm4s.Result
 import org.llm4s.error.ValidationError
 import org.llm4s.types.Result
-import upickle.default.{ macroRW, read, readwriter, write, ReadWriter as RW }
+import upickle.default.{ macroRW, read, readwriter, write, ReadWriter => RW }
 
 /**
  * Represents a message in a conversation with an LLM (Large Language Model).
