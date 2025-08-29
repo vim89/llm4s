@@ -11,7 +11,6 @@ import org.llm4s.toolapi.{ ObjectSchema, ToolFunction }
 import org.llm4s.types.Result
 import org.llm4s.error.{ LLMError, AuthenticationError, RateLimitError, ValidationError }
 
-import java.lang
 import java.util.Optional
 import scala.jdk.CollectionConverters._
 

@@ -3,7 +3,7 @@ package org.llm4s.llmconnect.provider
 import org.llm4s.error.{ AuthenticationError, LLMError, RateLimitError, ServiceError }
 import org.llm4s.llmconnect.LLMClient
 import org.llm4s.llmconnect.config.OllamaConfig
-import org.llm4s.llmconnect.model.*
+import org.llm4s.llmconnect.model._
 import org.llm4s.llmconnect.streaming.StreamingAccumulator
 import org.llm4s.types.Result
 

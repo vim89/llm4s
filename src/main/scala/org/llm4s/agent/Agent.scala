@@ -2,8 +2,8 @@ package org.llm4s.agent
 
 import org.llm4s.Result
 import org.llm4s.llmconnect.LLMClient
-import org.llm4s.llmconnect.model.*
-import org.llm4s.toolapi.*
+import org.llm4s.llmconnect.model._
+import org.llm4s.toolapi._
 import org.llm4s.types.Result
 import org.slf4j.LoggerFactory
 
