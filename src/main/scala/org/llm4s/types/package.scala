@@ -4,7 +4,8 @@ import org.llm4s.error.{ ConfigurationError, ValidationError }
 import org.llm4s.llmconnect.model.StreamedChunk
 import org.llm4s.toolapi.ToolFunction
 import org.llm4s.types.{ AsyncResult, Result }
-import upickle.default.{ ReadWriter => RW, readwriter }
+import org.slf4j.Logger
+import upickle.default.{ readwriter, ReadWriter as RW }
 
 import java.time.Instant
 import scala.concurrent.{ ExecutionContext, Future }
@@ -727,13 +728,23 @@ package object types {
  */
 
 object Result {
+  val logger: Logger                                         = org.slf4j.LoggerFactory.getLogger(getClass)
   def success[A](value: A): Result[A]                        = Right(value)
   def failure[A](error: org.llm4s.error.LLMError): Result[A] = Left(error)
 
-  def fromTry[A](t: scala.util.Try[A]): Result[A] = t match {
-    case scala.util.Success(value)     => success(value)
-    case scala.util.Failure(throwable) => failure(error.LLMError.fromThrowable(throwable))
-  }
+  private def cleanly[A](block: => A)(cleanup: => Unit): A =
+    try block
+    finally cleanup
+
+  def fromTry[A](t: Try[A]): Result[A] =
+    cleanly {
+      t match {
+        case scala.util.Success(value)     => success(value)
+        case scala.util.Failure(throwable) => failure(error.LLMError.fromThrowable(throwable))
+      }
+    } {
+      logger.warn(s"Finally block executed in fromTry with Try: $t")
+    }
 
   def fromOption[A](opt: Option[A], error: => org.llm4s.error.LLMError): Result[A] =
     opt.toRight(error)

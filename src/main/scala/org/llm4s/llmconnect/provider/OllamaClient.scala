@@ -1,16 +1,16 @@
 package org.llm4s.llmconnect.provider
 
+import org.llm4s.error.{ AuthenticationError, LLMError, RateLimitError, ServiceError }
 import org.llm4s.llmconnect.LLMClient
 import org.llm4s.llmconnect.config.OllamaConfig
-import org.llm4s.llmconnect.model._
+import org.llm4s.llmconnect.model.*
 import org.llm4s.llmconnect.streaming.StreamingAccumulator
 import org.llm4s.types.Result
-import org.llm4s.error.{ LLMError, AuthenticationError, RateLimitError, ServiceError }
 
+import java.io.{ BufferedReader, InputStreamReader }
 import java.net.URI
 import java.net.http.{ HttpClient, HttpRequest, HttpResponse }
 import java.nio.charset.StandardCharsets
-import java.io.{ BufferedReader, InputStreamReader }
 import java.time.Duration
 
 class OllamaClient(config: OllamaConfig) extends LLMClient {
@@ -115,7 +115,7 @@ class OllamaClient(config: OllamaConfig) extends LLMClient {
         catch { case _: Throwable => () }
       }
 
-      accumulator.toCompletion()
+      accumulator.toCompletion
     } catch {
       case e: Exception => Left(LLMError.fromThrowable(e))
     }
@@ -161,10 +161,12 @@ class OllamaClient(config: OllamaConfig) extends LLMClient {
     } yield TokenUsage(prompt, comp, prompt + comp)).orElse(None)
 
     Completion(
-      id = id,
-      created = created,
-      message = AssistantMessage(content),
-      usage = usage
+        id = id,
+        created = created,
+        content = content,
+        toolCalls =List.empty,
+        usage = usage, model = config.model,
+      message = AssistantMessage(content)
     )
   }
 }

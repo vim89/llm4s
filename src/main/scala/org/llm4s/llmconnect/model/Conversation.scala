@@ -1,8 +1,7 @@
 package org.llm4s.llmconnect.model
 
-import upickle.default.{ ReadWriter => RW, macroRW }
-
 import org.llm4s.types.Result
+import upickle.default.{ macroRW, ReadWriter as RW }
 
 /**
  * Represents the message stream in a conversation.
@@ -24,10 +23,8 @@ case class Conversation(messages: Seq[Message]) {
 }
 
 object Conversation {
-  implicit val rw: RW[Conversation] = macroRW
-}
 
-object Conversation {
+  implicit val rw: RW[Conversation] = macroRW
 
   /**
    * Create conversation from single message - FIXED MISSING METHOD

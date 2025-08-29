@@ -1,10 +1,11 @@
 package org.llm4s.agent
 
+import org.llm4s.Result
 import org.llm4s.llmconnect.LLMClient
-import org.llm4s.llmconnect.model._
-import org.llm4s.toolapi._
-import org.slf4j.LoggerFactory
+import org.llm4s.llmconnect.model.*
+import org.llm4s.toolapi.*
 import org.llm4s.types.Result
+import org.slf4j.LoggerFactory
 
 import scala.annotation.tailrec
 import scala.util.{ Failure, Success, Try }
@@ -66,7 +67,7 @@ class Agent(client: LLMClient) {
               case Seq() => s"[assistant] text: ${completion.message.content}"
               case toolCalls =>
                 val toolNames = toolCalls.map(_.name).mkString(", ")
-                s"[assistant] tools: ${toolCalls.size} tool calls requested (${toolNames})"
+                s"[assistant] tools: ${toolCalls.size} tool calls requested ($toolNames)"
             }
 
             val updatedState = state
@@ -97,7 +98,7 @@ class Agent(client: LLMClient) {
           case Some(assistantMessage) =>
             // Log summary of tools to be processed
             val toolNames    = assistantMessage.toolCalls.map(_.name).mkString(", ")
-            val logMessage   = s"[tools] executing ${assistantMessage.toolCalls.size} tools (${toolNames})"
+            val logMessage   = s"[tools] executing ${assistantMessage.toolCalls.size} tools ($toolNames)"
             val stateWithLog = state.log(logMessage)
 
             // Process the tool calls
@@ -284,16 +285,13 @@ class Agent(client: LLMClient) {
    * @param traceLogPath The path to write the trace log to
    */
   def writeTraceLog(state: AgentState, traceLogPath: String): Unit = {
-    import java.nio.file.{ Paths, Files }
     import java.nio.charset.StandardCharsets
+    import java.nio.file.{ Files, Paths }
 
-    try {
+    Result.fromTry(Try {
       val content = formatStateAsMarkdown(state)
       Files.write(Paths.get(traceLogPath), content.getBytes(StandardCharsets.UTF_8))
-    } catch {
-      case e: Exception =>
-        logger.error("Failed to write trace log to {}: {}", traceLogPath, e.getMessage, e)
-    }
+    }).left.foreach(err => logger.error("Failed to write trace log: {}", err.message))
   }
 
   /**

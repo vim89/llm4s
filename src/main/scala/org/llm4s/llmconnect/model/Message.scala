@@ -1,10 +1,9 @@
 package org.llm4s.llmconnect.model
 
-import upickle.default.{ ReadWriter => RW, macroRW, readwriter, write, read }
-
 import org.llm4s.Result
 import org.llm4s.error.ValidationError
 import org.llm4s.types.Result
+import upickle.default.{ macroRW, read, readwriter, write, ReadWriter as RW }
 
 /**
  * Represents a message in a conversation with an LLM (Large Language Model).
@@ -30,6 +29,29 @@ sealed trait Message {
  * Message validation with comprehensive conversation flow rules
  */
 object Message {
+
+  implicit val rw: RW[Message] = readwriter[ujson.Value].bimap[Message](
+    {
+      case um: UserMessage => ujson.Obj("type" -> ujson.Str("user"), "content" -> ujson.Str(um.content))
+      case sm: SystemMessage => ujson.Obj("type" -> ujson.Str("system"), "content" -> ujson.Str(sm.content))
+      case am: AssistantMessage => ujson.Obj("type" -> ujson.Str("assistant"), "data" -> ujson.read(write(am)))
+      case tm: ToolMessage =>
+        ujson.Obj(
+          "type" -> ujson.Str("tool"),
+          "toolCallId" -> ujson.Str(tm.toolCallId),
+          "content" -> ujson.Str(tm.content)
+        )
+    },
+    json => {
+      val obj = json.obj
+      obj("type").str match {
+        case "user" => UserMessage(obj("content").str)
+        case "system" => SystemMessage(obj("content").str)
+        case "assistant" => read[AssistantMessage](obj("data"))
+        case "tool" => ToolMessage(obj("toolCallId").str, obj("content").str)
+      }
+    }
+  )
 
   /**
    * Validates a list of messages for conversation consistency
@@ -350,29 +372,4 @@ case class ToolCall(
 
 object ToolCall {
   implicit val rw: RW[ToolCall] = macroRW
-}
-
-object Message {
-  implicit val rw: RW[Message] = readwriter[ujson.Value].bimap[Message](
-    {
-      case um: UserMessage      => ujson.Obj("type" -> ujson.Str("user"), "content" -> ujson.Str(um.content))
-      case sm: SystemMessage    => ujson.Obj("type" -> ujson.Str("system"), "content" -> ujson.Str(sm.content))
-      case am: AssistantMessage => ujson.Obj("type" -> ujson.Str("assistant"), "data" -> ujson.read(write(am)))
-      case tm: ToolMessage =>
-        ujson.Obj(
-          "type"       -> ujson.Str("tool"),
-          "toolCallId" -> ujson.Str(tm.toolCallId),
-          "content"    -> ujson.Str(tm.content)
-        )
-    },
-    json => {
-      val obj = json.obj
-      obj("type").str match {
-        case "user"      => UserMessage(obj("content").str)
-        case "system"    => SystemMessage(obj("content").str)
-        case "assistant" => read[AssistantMessage](obj("data"))
-        case "tool"      => ToolMessage(obj("toolCallId").str, obj("content").str)
-      }
-    }
-  )
 }
