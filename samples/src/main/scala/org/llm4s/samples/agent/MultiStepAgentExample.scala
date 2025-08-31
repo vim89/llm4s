@@ -3,6 +3,7 @@ package org.llm4s.samples.agent
 import org.llm4s.agent.Agent
 import org.llm4s.config.ConfigReader.LLMConfig
 import org.llm4s.llmconnect.LLM
+import org.llm4s.llmconnect.model.MessageRole.{Assistant, Tool}
 import org.llm4s.toolapi.ToolRegistry
 import org.llm4s.toolapi.tools.WeatherTool
 
@@ -38,7 +39,7 @@ object MultiStepAgentExample {
 
         // Print the final answer
         finalState.conversation.messages.last match {
-          case msg if msg.role == "assistant" =>
+          case msg if msg.role == Assistant =>
             println("\nFinal Answer:")
             println(msg)
 
@@ -163,7 +164,7 @@ object MultiStepAgentExample {
     // Display tool results
     println("\nConversation after tool execution:")
     afterToolStep.conversation.messages.takeRight(2).foreach { msg =>
-      println(s"[${msg.role}] ${if (msg.role == "tool") msg.content.take(50) + "..." else msg.content}")
+      println(s"[${msg.role}] ${if (msg.role == Tool) msg.content.take(50) + "..." else msg.content}")
     }
 
     println("\nThe two-phase flow allows for more control and separation of concerns in the agent execution.")

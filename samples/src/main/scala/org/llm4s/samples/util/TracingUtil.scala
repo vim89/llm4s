@@ -5,6 +5,8 @@ import org.llm4s.toolapi.ToolFunction
 import org.llm4s.trace.{ EnhancedTracing, TraceEvent }
 import ujson._
 
+import scala.language.reflectiveCalls
+import scala.reflect.Selectable.reflectiveSelectable
 import scala.util.Try
 
 /**
