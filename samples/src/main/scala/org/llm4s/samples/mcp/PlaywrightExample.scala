@@ -2,6 +2,7 @@ package org.llm4s.samples.mcp
 
 import cats.implicits._
 import org.llm4s.agent.{Agent, AgentState}
+import org.llm4s.llmconnect.model.MessageRole.Assistant
 import org.llm4s.config.ConfigReader
 import org.llm4s.config.ConfigReader.LLMConfig
 import org.llm4s.llmconnect.model.{Conversation, SystemMessage, UserMessage}
@@ -157,8 +158,7 @@ object PlaywrightExample {
           logger.info("✅ Query {} completed: {}", queryNum, finalState.status)
 
           // Show final answer
-          finalState.conversation.messages.reverse
-            .find(_.role == "assistant")
+          finalState.conversation.messages.findLast(_.role == Assistant)
             .fold {
               logger.warn("❌ No final answer found")
             } { msg =>

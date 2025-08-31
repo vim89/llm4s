@@ -2,7 +2,7 @@ package org.llm4s.trace
 
 import org.llm4s.agent.AgentState
 import org.llm4s.config.{ ConfigKeys, ConfigReader }
-import org.llm4s.llmconnect.model.{ AssistantMessage, SystemMessage, ToolMessage, UserMessage }
+import org.llm4s.llmconnect.model.{ AssistantMessage, MessageRole, SystemMessage, ToolMessage, UserMessage }
 import org.slf4j.LoggerFactory
 import ConfigKeys._
 import org.llm4s.config.DefaultConfig._
@@ -129,14 +129,14 @@ class LangfuseTracing(
           val contextMessages = state.conversation.messages.take(idx)
           val conversationInput = contextMessages.map(msg =>
             ujson.Obj(
-              "role"    -> msg.role,
+              "role"    -> msg.role.name,
               "content" -> msg.content
             )
           )
 
           // Create proper output with assistant response and tool calls
           val generationOutput = ujson.Obj(
-            "role"    -> "assistant",
+            "role"    -> MessageRole.Assistant.name,
             "content" -> am.content,
             "tool_calls" -> ujson.Arr(
               am.toolCalls.map(tc =>
@@ -178,7 +178,7 @@ class LangfuseTracing(
           val contextMessages = state.conversation.messages.take(idx)
           val conversationInput = contextMessages.map(msg =>
             ujson.Obj(
-              "role"    -> msg.role,
+              "role"    -> msg.role.name,
               "content" -> msg.content
             )
           )
@@ -237,9 +237,9 @@ class LangfuseTracing(
                 "result" -> tm.content
               ),
               "metadata" -> ujson.Obj(
-                "role"       -> tm.role,
+                "role"       -> tm.role.name,
                 "toolCallId" -> tm.toolCallId,
-                "toolName"   -> toolCallName
+                "toolName"   -> toolCallName,
               )
             )
           )
@@ -256,7 +256,7 @@ class LangfuseTracing(
               "startTime" -> now,
               "input"     -> ujson.Obj("content" -> userMsg.content),
               "metadata" -> ujson.Obj(
-                "role" -> userMsg.role
+                "role" -> userMsg.role.name
               )
             )
           )
@@ -273,7 +273,7 @@ class LangfuseTracing(
               "startTime" -> now,
               "input"     -> ujson.Obj("content" -> sysMsg.content),
               "metadata" -> ujson.Obj(
-                "role" -> sysMsg.role
+                "role" -> sysMsg.role.name
               )
             )
           )
@@ -290,7 +290,7 @@ class LangfuseTracing(
               "startTime" -> now,
               "input"     -> ujson.Obj("content" -> msg.content),
               "metadata" -> ujson.Obj(
-                "role" -> msg.role
+                "role" -> msg.role.name
               )
             )
           )
@@ -371,7 +371,7 @@ class LangfuseTracing(
 
     // Create proper output structure with complete message content
     val completionOutput = ujson.Obj(
-      "role"    -> completion.message.role,
+      "role"    -> completion.message.role.name,
       "content" -> completion.message.content
     )
 
