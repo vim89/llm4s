@@ -153,6 +153,7 @@ lazy val root = (project in file("."))
     // Library project: do not expose or auto-discover mains
     Compile / mainClass := None,
     Compile / discoveredMainClasses := Seq.empty,
+    resolvers += "Vosk Repository" at "https://alphacephei.com/maven/",
     libraryDependencies ++= List(
       "com.azure"          % "azure-ai-openai" % "1.0.0-beta.16",
       "com.anthropic"      % "anthropic-java"  % "2.2.0",
@@ -169,7 +170,10 @@ lazy val root = (project in file("."))
       "org.apache.poi" % "poi-ooxml" % "5.4.1",
       "com.lihaoyi" %% "requests" % "0.9.0",
       "org.jsoup" % "jsoup" % "1.21.1",
-      "io.github.cdimascio" % "dotenv-java" % "3.0.0"
+      "io.github.cdimascio" % "dotenv-java" % "3.0.0",
+          // Speech: Vosk for lightweight STT (replacing abandoned Sphinx4)
+    "net.java.dev.jna" % "jna" % "5.13.0",
+    "com.alphacephei" % "vosk" % "0.3.45"
     )
 
   )
