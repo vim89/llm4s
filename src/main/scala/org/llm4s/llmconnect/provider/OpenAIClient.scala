@@ -12,6 +12,7 @@ import org.llm4s.toolapi.{ AzureToolHelper, ToolRegistry }
 import org.llm4s.types.Result
 
 import scala.jdk.CollectionConverters._
+import scala.util.Try
 
 /**
  * OpenAIClient implementation for both OpenAI and Azure OpenAI.
@@ -21,8 +22,7 @@ import scala.jdk.CollectionConverters._
  */
 class OpenAIClient private (
   private val model: String,
-  private val client: AzureOpenAIClient,
-  private val config: Either[OpenAIConfig, AzureConfig]
+  private val client: AzureOpenAIClient
 ) extends LLMClient {
 
   /* * Constructor for OpenAI (non-Azure) */
@@ -31,8 +31,7 @@ class OpenAIClient private (
     new OpenAIClientBuilder()
       .credential(new KeyCredential(config.apiKey))
       .endpoint(config.baseUrl)
-      .buildClient(),
-    Left(config)
+      .buildClient()
   )
 
   /** Constructor for Azure OpenAI */
@@ -42,8 +41,7 @@ class OpenAIClient private (
       .credential(new AzureKeyCredential(config.apiKey))
       .endpoint(config.endpoint)
       .serviceVersion(OpenAIServiceVersion.valueOf(config.apiVersion))
-      .buildClient(),
-    Right(config)
+      .buildClient()
   )
 
   override def complete(
@@ -232,4 +230,33 @@ class OpenAIClient private (
         )
       })
       .getOrElse(Seq.empty)
+}
+
+object OpenAIClient {
+  def create(config: OpenAIConfig): Result[OpenAIClient] =
+    org.llm4s.Result.fromTry {
+      Try {
+        new OpenAIClient(
+          config.model,
+          new OpenAIClientBuilder()
+            .credential(new KeyCredential(config.apiKey))
+            .endpoint(config.baseUrl)
+            .buildClient()
+        )
+      }
+    }
+
+  def create(config: AzureConfig): Result[OpenAIClient] =
+    org.llm4s.Result.fromTry {
+      Try {
+        new OpenAIClient(
+          config.model,
+          new OpenAIClientBuilder()
+            .credential(new AzureKeyCredential(config.apiKey))
+            .endpoint(config.endpoint)
+            .serviceVersion(OpenAIServiceVersion.valueOf(config.apiVersion))
+            .buildClient()
+        )
+      }
+    }
 }
