@@ -1,7 +1,7 @@
-package org.llm4s.samples.tokens
+package org.llm4s.samples.context.tokens
 
 import org.llm4s.identity.TokenizerId.{ CL100K_BASE, O200K_BASE, R50K_BASE }
-import org.llm4s.tokens.Tokenizer
+import org.llm4s.context.tokens.Tokenizer
 
 object TokenSample {
   def main(args: Array[String]): Unit =
