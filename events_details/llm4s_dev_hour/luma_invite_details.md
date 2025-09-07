@@ -1,3 +1,4 @@
+
 ## 🌟 About the Event
 
 Come discover **LLM4S**, a Scala-first toolkit built for crafting intelligent agents and LLM-powered applications. With type safety, expressive workflows, and built-in observability, LLM4S makes modern AI development approachable, powerful, and fun.
@@ -40,3 +41,15 @@ No. While Google funds some contributors through GSoC, most of our members join 
 
 **6. Do I need to be in London to attend?**
 Not at all. We’re a global family with folks from Switzerland, the US, India, and beyond. Just convert the London timing to your timezone and hop in!
+
+## 👥 Hosts
+
+**Rory Graves**
+A Scala advocate and software engineer with 30+ years of experience across diverse systems. He has contributed to Scala compiler optimizations and supports AI/ML research while mentoring developers. Beyond tech, he is a martial artist, windmill tour guide, and public speaking mentor.
+🔗 [LinkedIn](https://www.linkedin.com/in/roryjgraves/)
+📧 rory.graves@fieldmark.co.uk
+
+**Kannupriya Kalra**
+Backend engineer and community leader specializing in type-safe, functional AI development. With 10+ years’ experience, she’s led engineering at Sky, mentored Google Summer of Code contributors, and spoken at conferences worldwide, shaping how typed languages integrate with modern AI.
+🔗 [LinkedIn](https://www.linkedin.com/in/kannupriyakalra/)
+📧 kannupriyakalra@gmail.com
