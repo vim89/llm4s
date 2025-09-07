@@ -1,4 +1,4 @@
-package org.llm4s.tokens
+package org.llm4s.context.tokens
 
 import com.knuddels.jtokkit.Encodings
 import org.llm4s.identity.TokenizerId

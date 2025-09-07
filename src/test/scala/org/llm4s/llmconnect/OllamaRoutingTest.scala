@@ -10,7 +10,9 @@ class OllamaRoutingTest extends AnyFunSuite with Matchers {
   test("provider-based getClientResult returns OllamaClient") {
     val cfg = OllamaConfig(
       model = "llama3.1",
-      baseUrl = "http://localhost:11434"
+      baseUrl = "http://localhost:11434",
+      contextWindow = 8192,
+      reserveCompletion = 4096
     )
     val res = LLMConnect.getClient(LLMProvider.Ollama, cfg)
     res match {
