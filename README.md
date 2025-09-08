@@ -452,6 +452,7 @@ Stay updated with talks, workshops, and presentations about **LLM4S** happening 
   <img src="image_assets/talks/scaladays2025-llm4s-team.jpg" alt="Scala Days 2025 – LLM4S Team Photo" width="400" style="margin-right: 10px;"/>
   <img src="image_assets/talks/scaladays2025-szork-innerworld-slide.jpg" alt="Scala Days 2025 – Szork Innerworld Demo Slide" width="400" style="margin-right: 10px;"/>
   <img src="image_assets/talks/ZurichScalaEnthusiasts_2025_Banner.jpg" alt="Zurich Scala Enthusiasts 2025 Banner" width="400"/>
+  <img src="image_assets/talks/GSoC_2025_Lighting_talks_switzerland.jpg" alt="Google Summer of Code 2025 – Lightning Talks hosted by Scala Center, Switzerland" width="400"/>
   <img src="image_assets/gsoc_assets/gsoc_2025/gsoc_llm4s_images/main logo.png" alt="Google Summer of Code 2025 – LLM4S Mentor Summit Banner" width="400"/>
 
 <br>
