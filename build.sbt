@@ -258,7 +258,6 @@ lazy val samples = (project in file("samples"))
 
 lazy val crossLibDependencies = Def.setting {
   Seq(
-    "org.llm4s"     %% "llm4s"     % version.value,
     "org.scalatest" %% "scalatest" % "3.2.19" % Test,
     "com.softwaremill.sttp.client4" %% "core"  % "4.0.9",
     "com.lihaoyi"                   %% "ujson" % "4.2.1",
@@ -272,22 +271,25 @@ lazy val crossLibDependencies = Def.setting {
 
 lazy val crossTestScala2 = (project in file("crosstest/scala2"))
   .settings(
-    name               := "crosstest-scala2",
-    scalaVersion       := scala213,
-    resolvers += Resolver.mavenLocal,
-    resolvers += Resolver.defaultLocal,
-    libraryDependencies ++= crossLibDependencies.value
+    name         := "crosstest-scala2",
+    scalaVersion := scala213,
+    libraryDependencies ++= crossLibDependencies.value ++ Seq(
+      "org.llm4s" %% "llm4s" % (ThisBuild / version).value % Test
+    )
   )
 
+
 lazy val crossTestScala3 = (project in file("crosstest/scala3"))
+  .dependsOn(root % "compile->compile;test->test") // fine: both are Scala 3
   .settings(
-    name               := "crosstest-scala3",
-    scalaVersion       := scala3,
-    resolvers += Resolver.mavenLocal,
-    resolvers += Resolver.defaultLocal,
+    name         := "crosstest-scala3",
+    scalaVersion := scala3,
+    resolvers   += Resolver.mavenLocal,
+    resolvers   += Resolver.defaultLocal,
     libraryDependencies ++= crossLibDependencies.value,
     scalacOptions ++= scala3CompilerOptions
   )
+
 
 addCommandAlias("buildAll", ";clean;+compile;+test")
 addCommandAlias("publishAll", ";clean;+publish")
