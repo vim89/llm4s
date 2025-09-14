@@ -38,15 +38,17 @@ class Agent(client: LLMClient) {
       case None           => baseSystemPrompt
     }
 
+    val systemMsg = SystemMessage(fullSystemPrompt)
+    // Only store user message in conversation - system message is now config, not history
     val initialMessages = Seq(
-      SystemMessage(fullSystemPrompt),
       UserMessage(query)
     )
 
     AgentState(
       conversation = Conversation(initialMessages),
       tools = tools,
-      userQuery = query
+      userQuery = query,
+      systemMessage = Some(systemMsg)
     )
   }
 
@@ -60,8 +62,8 @@ class Agent(client: LLMClient) {
         val options = CompletionOptions(tools = state.tools.tools)
 
         logger.debug("Running completion step with tools: {}", state.tools.tools.map(_.name).mkString(", "))
-        // Request next step from LLM
-        client.complete(state.conversation, options) match {
+        // Request next step from LLM using system message injection
+        client.complete(state.toApiConversation, options) match {
           case Right(completion) =>
             val logMessage = completion.message.toolCalls match {
               case Seq() => s"[assistant] text: ${completion.message.content}"
@@ -148,13 +150,21 @@ class Agent(client: LLMClient) {
           logger.info("Tool {} completed successfully in {}ms. Result: {}", toolCall.name, duration, jsonStr)
           jsonStr
         case Left(error) =>
-          val errorJson = s"""{ "isError": true, "message": "$error" }"""
-          logger.warn("Tool {} failed in {}ms with error: {}", toolCall.name, duration, error)
+          val errorMessage = error.getFormattedMessage
+          // Escape the error message for JSON
+          val escapedMessage = errorMessage
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+            .replace("\t", "\\t")
+          val errorJson = s"""{ "isError": true, "error": "$escapedMessage" }"""
+          logger.warn("Tool {} failed in {}ms with error: {}", toolCall.name, duration, errorMessage)
           errorJson
       }
 
       state.log(s"[tool] ${toolCall.name} (${duration}ms): $resultContent")
-      ToolMessage(toolCall.id, resultContent)
+      ToolMessage(resultContent, toolCall.id)
     }
 
     // Add the tool messages to the conversation

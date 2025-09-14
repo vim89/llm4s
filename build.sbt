@@ -90,7 +90,12 @@ inThisBuild(
       """.stripMargin.replaceAll("\n", ";")
     ,
     // Generate HTML only at the current project (root when using aliases)
-    ThisBuild / (coverageReport / aggregate) := false
+    ThisBuild / (coverageReport / aggregate) := false,
+
+    // ---- Scalafix / SemanticDB ----
+    // Do not enable on-compile globally; we enable per-project where applicable
+    // Provide built-in rule implementations (e.g., Disable)
+    ThisBuild / scalafixDependencies += "ch.epfl.scala" %% "scalafix-rules" % "0.12.1"
   )
 )
 
@@ -116,6 +121,11 @@ def scalacOptionsForVersion(scalaVersion: String): Seq[String] =
 lazy val commonSettings = Seq(
   Compile / scalacOptions := scalacOptionsForVersion(scalaVersion.value),
   Test / scalacOptions    := scalacOptionsForVersion(scalaVersion.value),
+  // Enable SemanticDB only where supported; Disable rules do not require it.
+  semanticdbEnabled := (CrossVersion.partialVersion(scalaVersion.value) match {
+    case Some((3, _))  => true
+    case _             => false
+  }),
   Compile / packageDoc / publishArtifact := !isSnapshot.value,
   Compile / unmanagedSourceDirectories ++= {
     val sourceDir = (Compile / sourceDirectory).value
@@ -140,7 +150,7 @@ lazy val commonSettings = Seq(
     "dev.optics" %% "monocle-core"  % "3.3.0",
     "dev.optics" %% "monocle-macro" % "3.3.0",
     "org.scalatest" %% "scalatest"       % "3.2.19" % Test,
-    "commons-io"     % "commons-io"      % "2.18.0",
+    "org.scalamock" %% "scalamock" %      "7.4.2" % Test,
     "com.lihaoyi"   %% "fansi"           % "0.5.0"
   )
 )
@@ -151,6 +161,8 @@ lazy val root = (project in file("."))
   .settings(
     name := "llm4s",
     commonSettings,
+    // Enable scalafix on compile here (has ConfigReader)
+    scalafixOnCompile := true,
     // Library project: do not expose or auto-discover mains
     Compile / mainClass := None,
     Compile / discoveredMainClasses := Seq.empty,
@@ -183,6 +195,8 @@ lazy val shared = (project in file("shared"))
   .settings(
     name := "shared",
     commonSettings,
+    // No ConfigReader here; keep scalafix off on compile
+    scalafixOnCompile := true,
     // Pure library: avoid main discovery noise
     Compile / discoveredMainClasses := Seq.empty
   )
@@ -198,6 +212,8 @@ lazy val workspaceRunner = (project in file("workspaceRunner"))
     dockerBaseImage     := "eclipse-temurin:21-jdk",
     Compile / mainClass := Some("org.llm4s.runner.RunnerMain"),
     name                := "workspace-runner",
+    // Apply Scalafix warnings on compile for workspaceRunner
+    scalafixOnCompile := false,
     commonSettings,
     libraryDependencies ++= List(
       "com.lihaoyi"   %% "cask"            % "0.10.2",
@@ -232,7 +248,9 @@ lazy val samples = (project in file("samples"))
   .dependsOn(shared, root)
   .settings(
     name := "samples",
-    commonSettings
+    commonSettings,
+    // Samples see ConfigReader via root; enable scalafix on compile
+    scalafixOnCompile := true
   )
   .settings(
     publish / skip := true
@@ -240,7 +258,6 @@ lazy val samples = (project in file("samples"))
 
 lazy val crossLibDependencies = Def.setting {
   Seq(
-    "org.llm4s"     %% "llm4s"     % version.value,
     "org.scalatest" %% "scalatest" % "3.2.19" % Test,
     "com.softwaremill.sttp.client4" %% "core"  % "4.0.9",
     "com.lihaoyi"                   %% "ujson" % "4.2.1",
@@ -254,22 +271,25 @@ lazy val crossLibDependencies = Def.setting {
 
 lazy val crossTestScala2 = (project in file("crosstest/scala2"))
   .settings(
-    name               := "crosstest-scala2",
-    scalaVersion       := scala213,
-    resolvers += Resolver.mavenLocal,
-    resolvers += Resolver.defaultLocal,
-    libraryDependencies ++= crossLibDependencies.value
+    name         := "crosstest-scala2",
+    scalaVersion := scala213,
+    libraryDependencies ++= crossLibDependencies.value ++ Seq(
+      "org.llm4s" %% "llm4s" % (ThisBuild / version).value % Test
+    )
   )
 
+
 lazy val crossTestScala3 = (project in file("crosstest/scala3"))
+  .dependsOn(root % "compile->compile;test->test") // fine: both are Scala 3
   .settings(
-    name               := "crosstest-scala3",
-    scalaVersion       := scala3,
-    resolvers += Resolver.mavenLocal,
-    resolvers += Resolver.defaultLocal,
+    name         := "crosstest-scala3",
+    scalaVersion := scala3,
+    resolvers   += Resolver.mavenLocal,
+    resolvers   += Resolver.defaultLocal,
     libraryDependencies ++= crossLibDependencies.value,
     scalacOptions ++= scala3CompilerOptions
   )
+
 
 addCommandAlias("buildAll", ";clean;+compile;+test")
 addCommandAlias("publishAll", ";clean;+publish")
