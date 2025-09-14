@@ -144,7 +144,7 @@ val model = EnvLoader.getOrElse("LLM_MODEL", "gpt-4")
 
 ```scala
 import org.llm4s.config.ConfigReader
-import org.llm4s.config.ConfigReader.{LLMConfig}
+import org.llm4s.config.ConfigReader.LLMConfig
 import org.llm4s.llmconnect.LLMConnect
 
 // Result-first config and client acquisition
@@ -192,11 +192,12 @@ val customConfig: ConfigReader = ConfigReader(Map(
    
    // After (Result-first)
    val client = for {
-     reader <- LLMConfigResult()
+     reader <- LLMConfig()
      client <- org.llm4s.llmconnect.LLMConnect.getClient(reader)
    } yield client
-   
-   // Or, if you prefer implicits (kept for compatibility)
-   implicit val config: ConfigReader = ConfigReader.from(sys.env.view.mapValues(identity).toMap)
-   val client = org.llm4s.llmconnect.LLMConnect.getClientt(config)
+   ```
+   ```scala
+    val client = LLMConfig().flatMap { reader =>
+      LLMConnect.getClient(reader)
+    }   
    ```

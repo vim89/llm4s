@@ -9,7 +9,7 @@
     </a>
 </h4>
 <h4 align="center">
-    <img src="assets/llm4s_logo.png" width="100pt" alt="LLM4S Logo">
+    <img src="image_assets/llm4s_logo.png" width="100pt" alt="LLM4S Logo">
 </h4>
 <br>
 
@@ -24,15 +24,15 @@
 ![GitHub forks](https://img.shields.io/github/forks/llm4s/llm4s?style=for-the-badge&label=Forks&color=green)
 ![GitHub contributors](https://img.shields.io/github/contributors/llm4s/llm4s?style=for-the-badge&label=Contributors&color=blue)
 ![GitHub issues](https://img.shields.io/github/issues/llm4s/llm4s?style=for-the-badge&label=Open%20Issues&color=purple)
-<br>
+`<br>`
 
 ## Overview
 
 LLM4S provides a simple, robust, and scalable framework for building LLM applications in Scala. While most LLM work is done in Python, we believe that Scala offers a fundamentally better foundation for building reliable, maintainable AI-powered applications.
-<br>
+`<br>`
 
 <p align="center">
-  <img src="assets/llm4s-overview.jpeg" alt="LLM4S Overview" width="600"/>
+  <img src="image_assets/llm4s-overview.jpeg" alt="LLM4S Overview" width="600"/>
   <br>
   <em></em>
 </p>
@@ -61,7 +61,7 @@ LLM4S provides a simple, robust, and scalable framework for building LLM applica
 - **RAG (Retrieval-Augmented Generation)**: Built-in tools for search, embedding, and retrieval workflows.
 - **Observability**: Detailed trace logging, monitoring, and analytics for debugging and performance insights.
 
-##  Architecture
+## Architecture
 
 ```text
         ┌───────────────────────────┐
@@ -102,14 +102,11 @@ To get started with the LLM4S project, check out this teaser talk presented by *
 
 🎥 **Teaser Talk:** https://www.youtube.com/watch?v=SXybj2P3_DE&ab_channel=SalarRahmanian
 
-
-
-
 <br>
 
 <p align="center">
-  <img src="assets/talks/BayAreaScalaConference_tubiOffice.jpeg" alt="Bay Area Scala Conference at Tubi Office" width="400" style="margin-right: 10px;"/>
-  <img src="assets/talks/BayAreaScalaConference_GenAiSlide.jpeg" alt="Bay Area Scala Conference Generative AI Slide" width="400"/>
+  <img src="image_assets/talks/BayAreaScalaConference_tubiOffice.jpeg" alt="Bay Area Scala Conference at Tubi Office" width="400" style="margin-right: 10px;"/>
+  <img src="image_assets/talks/BayAreaScalaConference_GenAiSlide.jpeg" alt="Bay Area Scala Conference Generative AI Slide" width="400"/>
   <br>
   <em>LLM4S was officially introduced at the Bay Area Scala Conference in San Francisco on February 25, 2025.</em>
 </p>
@@ -169,6 +166,7 @@ or Anthropic:
 LLM_MODEL=anthropic/claude-3-7-sonnet-latest
 ANTHROPIC_API_KEY=<your_anthropic_api_key>
 ```
+
 or OpenRouter:
 
 ```
@@ -176,7 +174,6 @@ LLM_MODEL=openai/gpt-4o
 OPENAI_API_KEY=<your_openai_api_key>
 OPENAI_BASE_URL=https://openrouter.ai/api/v1
 ```
-
 
 This will allow you to run the non-containerized examples.
 
@@ -254,10 +251,9 @@ Our goal is to implement Scala equivalents of popular Python LLM frameworks, wit
 - [ ] Scala Coding SWE Agent — perform SWE Bench–type tasks on Scala codebases
   - [ ] Code maps, code generation, and library templates
 
-
 ## Tool Calling
 
-Tool calling is a critical integration — designed to work seamlessly with **multi-provider support** and **agent frameworks**.  
+Tool calling is a critical integration — designed to work seamlessly with **multi-provider support** and **agent frameworks**.
 We use ScalaMeta to auto-generate tool definitions, support dynamic mapping, and run in **secure execution environments**.
 
 Tools can run:
@@ -296,8 +292,7 @@ Tools run in a protected Docker container environment to prevent accidental syst
 
 ## Comprehensive Tracing & Observability
 
-Tracing isn’t just for debugging — it’s the backbone of understanding model behavior.  
-LLM4S’s observability layer includes:
+Tracing isn’t just for debugging — it’s the backbone of understanding model behavior.LLM4S’s observability layer includes:
 
 - Detailed token usage reporting
 - Multi-backend trace output (Langfuse, console, none)
@@ -335,18 +330,21 @@ tracer.traceCompletion(completion, model)
 tracer.traceTokenUsage(tokenUsage, model, "chat-completion")
 tracer.traceAgentState(agentState)
 ```
+
 ### Usage using starter kit `llm4s.g8`
+
 #### A carefully crafted starter kit to unlock the power of llm4s
 
 > **Note:** The LLM4S template has moved to its own repository for better maintainability and independent versioning.
 
 The llm4s.g8 starter kit helps you quickly create AI-powered applications using llm4s.
-It is a starter kit for building AI-powered applications using [llm4s] with improved SDK usability and developer ergonomics. You can now spin up a fully working scala project with a single `sbt` command.
+It is a starter kit for building AI-powered applications using [llm4s][llm4s] with improved SDK usability and developer ergonomics. You can now spin up a fully working scala project with a single `sbt` command.
 The starter kit comes pre-configured with best practices, prompt execution examples, CI, formatting hooks, unit testing, documentation, and cross-platform support.
 
 **Template Repository:** [github.com/llm4s/llm4s.g8](https://github.com/llm4s/llm4s.g8)
 
 Using `sbt`, do:
+
 ```
 sbt new llm4s/llm4s.g8 \
 --name=<your.project.name> \
@@ -358,12 +356,13 @@ sbt new llm4s/llm4s.g8 \
 --directory=<your.project.name> \
 --force
 ```
+
 to create new project.
 
 For more information about the template, including compatibility matrix and documentation, visit the [template repository](https://github.com/llm4s/llm4s.g8).
 Use the comprehensive [documentation](docs/llm4s-g8-starter-kit.md) to get started with the project using starter kit.
 
-----
+---
 
 ## Continuous Integration (CI)
 
@@ -372,6 +371,7 @@ LLM4S uses GitHub Actions for continuous integration to ensure code quality and 
 ### CI Workflows
 
 #### Main CI Pipeline (`ci.yml`)
+
 Our unified CI workflow runs on every push and pull request to main/master branches:
 
 - **Quick Checks**: Fast-failing checks for code formatting and compilation
@@ -380,6 +380,7 @@ Our unified CI workflow runs on every push and pull request to main/master branc
 - **Caching**: Optimized caching strategy with Coursier for faster builds
 
 #### Claude Code Review (`claude-code-review.yml`)
+
 Automated AI-powered code review for pull requests:
 
 - **Automatic Reviews**: Trusted PRs get automatic Claude reviews
@@ -387,6 +388,7 @@ Automated AI-powered code review for pull requests:
 - **Manual Trigger**: Maintainers can request reviews with `@claude` comment
 
 #### Release Pipeline (`release.yml`)
+
 Automated release process triggered by version tags (format: `v0.1.11`):
 
 - **Tag Format**: Must use `v` prefix (e.g., `v0.1.11`, not `0.1.11`)
@@ -421,18 +423,16 @@ Stay hands-on with **LLM4S**! Join us for interactive **mob programming** sessio
 <br>
 
 <p align="center">
-  <img src="assets/llm4s_dev_hour/banner/llm4s-dev-hour-banner.png" alt="LLM4S Dev Hour Banner" width="800"/>
+  <img src="image_assets/llm4s_dev_hour/banner/llm4s-dev-hour-banner.png" alt="LLM4S Dev Hour Banner" width="800"/>
   <br>
   <em>🗓️ Weekly live coding and collaboration during LLM4S Dev Hour — join us every Sunday on Discord!</em>
 </p>
 
 <br>
 
-| Date                      | Session Title                                           | Description                                                                                                                                                          | Location       | Hosts                                | Details URL                                                                 | Featured In                                        |
-|---------------------------|--------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|---------------------------------------|------------------------------------------------------------------------|----------------------------------------------------|
-| **20-Jul-2025 onwards (Weekly Sundays)** | 🗓️ LLM4S Dev Hour — Weekly Live Coding & Collaboration | A weekly **mob programming** session where we code, debug, and learn together — open to all! <br>📌 *Link to join is shared by the host in the `#general` Discord channel before each session.* | Online, London, UK (9am local time) | Kannupriya Kalra, Rory Graves        | [LinkedIn](https://www.linkedin.com/posts/kannupriyakalra_ai-llms-scala-activity-7352669046288384000-av_n) <br> [Reddit](https://www.reddit.com/r/scala/comments/1m4oxf6/llm4s_dev_hour_sundays_9am_london_time) <br> [Bluesky](https://bsky.app/profile/kannupriyakalra.bsky.social/post/3lufjgszijk2o) <br> [Mastodon](https://functional.cafe/@kannupriyakalra/114885664201722837) <br> [X/Twitter](https://x.com/KannupriyaKalra/status/1946915693644890537) | [Scala Times – Issue #537](https://scalatimes.com/15edab7583) |
-
-
+| Date                                           | Session Title                                             | Description                                                                                                                                                                                                                                                                                                                                               | Location                            | Hosts                         | Details URL                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Featured In                                                 |
+| ---------------------------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| **20-Jul-2025 onwards (Weekly Sundays)** | 🗓️ LLM4S Dev Hour — Weekly Live Coding & Collaboration | A weekly **mob programming** session where we code, debug, and learn together — open to all! `<br>`📌 *Link to join is shared by the host in the `#llm4s-dev-hour` Discord channel before each session. Luma invite link [https://luma.com/193ak5ln](https://luma.com/193ak5ln "https://luma.com/193ak5ln") (for scheduling in your calender)* | Online, London, UK (9am local time) | Kannupriya Kalra, Rory Graves | [LinkedIn](https://www.linkedin.com/posts/kannupriyakalra_ai-llms-scala-activity-7352669046288384000-av_n) `<br>` [Reddit](https://www.reddit.com/r/scala/comments/1m4oxf6/llm4s_dev_hour_sundays_9am_london_time) `<br>` [Bluesky](https://bsky.app/profile/kannupriyakalra.bsky.social/post/3lufjgszijk2o) `<br>` [Mastodon](https://functional.cafe/@kannupriyakalra/114885664201722837) `<br>` [X/Twitter](https://x.com/KannupriyaKalra/status/1946915693644890537) | [Scala Times – Issue #537](https://scalatimes.com/15edab7583) |
 
 ## 📢 Talks & Presentations
 
@@ -441,46 +441,43 @@ See the talks being given by maintainers and open source developers globally and
 Stay updated with talks, workshops, and presentations about **LLM4S** happening globally. These sessions dive into the architecture, features, and future plans of the project.
 
 <p align="center">
-  <img src="assets/talks/LondonScalaTalks_2025_Rory_szork_demo.jpeg" alt="London Scala Talks 2025 – Rory Szork Demo Slide" width="400" style="margin-right: 10px;"/>
-  <img src="assets/talks/BayAreaScalaConference_IntroSlide.JPG" alt="Bay Area Scala Conference 2025 – Introductory Slide" width="400" style="margin-right: 10px;"/>
-  <img src="assets/talks/Scalac_FunctionalWorld2025_Poland.png" alt="Functional World 2025 Poland – Scalac Conference Talk" width="400" style="margin-right: 10px;"/>
-  <img src="assets/talks/ScalaIndia_Talk_Banner.png" alt="Scala India 2025 Talk Banner" width="400" style="margin-right: 10px;"/>
-  <img src="assets/talks/DallasScalaEnthusiastsConference_Talk_Banner.png" alt="Dallas Scala Enthusiasts Conference 2025 Talk Banner" width="400" style="margin-right: 10px;"/>
-  <img src="assets/talks/LondonScalaTalks_LLM4S_talk_2025_Banner.png" alt="London Scala Talks 2025 – LLM4S Session Banner" width="400" style="margin-right: 10px;"/>
-  <img src="assets/talks/LondonScalaTalks_2025_kannupriya_multimodal_slide.jpeg" alt="London Scala Talks 2025 – Kannupriya Multimodal Slide" width="400" style="margin-right: 10px;"/>
-  <img src="assets/talks/ScalaDays2025_Talk_Banner.jpg" alt="Scala Days 2025 Official Talk Banner" width="400" style="margin-right: 10px;"/>
-  <img src="assets/talks/scaladays2025-llm4s-team.jpg" alt="Scala Days 2025 – LLM4S Team Photo" width="400" style="margin-right: 10px;"/>
-  <img src="assets/talks/scaladays2025-szork-innerworld-slide.jpg" alt="Scala Days 2025 – Szork Innerworld Demo Slide" width="400" style="margin-right: 10px;"/>
-  <img src="assets/talks/ZurichScalaEnthusiasts_2025_Banner.jpg" alt="Zurich Scala Enthusiasts 2025 Banner" width="400"/>
-  <img src="assets/gsoc_assets/gsoc_2025/gsoc_llm4s_images/main logo.png" alt="Google Summer of Code 2025 – LLM4S Mentor Summit Banner" width="400"/>
-
-  <br>
-  <br>
+  <img src="image_assets/talks/LondonScalaTalks_2025_Rory_szork_demo.jpeg" alt="London Scala Talks 2025 – Rory Szork Demo Slide" width="400" style="margin-right: 10px;"/>
+  <img src="image_assets/talks/BayAreaScalaConference_IntroSlide.JPG" alt="Bay Area Scala Conference 2025 – Introductory Slide" width="400" style="margin-right: 10px;"/>
+  <img src="image_assets/talks/Scalac_FunctionalWorld2025_Poland.png" alt="Functional World 2025 Poland – Scalac Conference Talk" width="400" style="margin-right: 10px;"/>
+  <img src="image_assets/talks/ScalaIndia_Talk_Banner.png" alt="Scala India 2025 Talk Banner" width="400" style="margin-right: 10px;"/>
+  <img src="image_assets/talks/DallasScalaEnthusiastsConference_Talk_Banner.png" alt="Dallas Scala Enthusiasts Conference 2025 Talk Banner" width="400" style="margin-right: 10px;"/>
+  <img src="image_assets/talks/LondonScalaTalks_LLM4S_talk_2025_Banner.png" alt="London Scala Talks 2025 – LLM4S Session Banner" width="400" style="margin-right: 10px;"/>
+  <img src="image_assets/talks/LondonScalaTalks_2025_kannupriya_multimodal_slide.jpeg" alt="London Scala Talks 2025 – Kannupriya Multimodal Slide" width="400" style="margin-right: 10px;"/>
+  <img src="image_assets/talks/ScalaDays2025_Talk_Banner.jpg" alt="Scala Days 2025 Official Talk Banner" width="400" style="margin-right: 10px;"/>
+  <img src="image_assets/talks/scaladays2025-llm4s-team.jpg" alt="Scala Days 2025 – LLM4S Team Photo" width="400" style="margin-right: 10px;"/>
+  <img src="image_assets/talks/scaladays2025-szork-innerworld-slide.jpg" alt="Scala Days 2025 – Szork Innerworld Demo Slide" width="400" style="margin-right: 10px;"/>
+  <img src="image_assets/talks/ZurichScalaEnthusiasts_2025_Banner.jpg" alt="Zurich Scala Enthusiasts 2025 Banner" width="400"/>
+  <img src="image_assets/talks/GSoC_2025_Lighting_talks_switzerland.jpg" alt="Google Summer of Code 2025 – Lightning Talks hosted by Scala Center, Switzerland" width="400"/>
+  <img src="image_assets/gsoc_assets/gsoc_2025/gsoc_llm4s_images/main logo.png" alt="Google Summer of Code 2025 – LLM4S Mentor Summit Banner" width="400"/>
+</p>
+<p align="center">
+<br>
   <em>Snapshots from LLM4S talks held around the world 🌍.</em>
 </p>
 
 <br>
 <br>
 
-
-
-
-
 ### Upcoming & Past Talks
 
-| Date           | Event/Conference               | Talk Title                                                       | Location                                                                                                                     | Speaker Name                | Details URL                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Recording Link URL                                                                                   | Featured In                                                                                     |
-|----------------|--------------------------------|------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|-----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|
-| **25-Feb-2025** | Bay Area Scala                | Let's Teach LLMs to Write Great Scala! (Original version)        | Tubi office, San Francisco, CA, USA 🇺🇸                                                                                         | Kannupriya Kalra            | [Event Info](https://lu.ma/5fz2y9or) <br> [Reddit Discussion](https://www.reddit.com/r/scala/comments/1ipr596/scala_meetup_san_francisco_designing_the_library/?share_id=3IdgjEpmpDcwoIFgNOy1d&utm_content=1&utm_medium=android_app&utm_name=androidcss&utm_source=share&utm_term=3) <br> [Mastodon Post](https://social.softinio.com/@softinio/statuses/01JM3MD5H0R4ZS5CHXN37S878E) <br> [Bluesky Post](https://bsky.app/profile/salarrahmanian.bsky.social/post/3li6lh3funk2q) <br> [X/Twitter Post](https://x.com/SalarRahmanian/status/1890575797947388070) <br> [Meetup Event](https://www.meetup.com/scala-bay/events/306178503/?eventOrigin=group_past_events)                                                                                                                                                                                                                                                                                                                                                                                   | [Watch Recording](https://www.youtube.com/watch?v=SXybj2P3_DE&t=779s&ab_channel=SalarRahmanian)       | –                                                                                              |
- **20-Apr-2025** | Scala India                   | Let's Teach LLMs to Write Great Scala! (Updated from Feb 2025)   | India 🇮🇳                                                                                                                      | Kannupriya Kalra            | [Event Info](https://www.linkedin.com/posts/activity-7318299169914249216-Sec-?utm_source=share&utm_medium=member_desktop&rcm=ACoAAA8qk7UBmvcZ2O7aAJfMpsdEXBvcKSNiHWM) <br> [Reddit Discussion](https://www.reddit.com/r/scala/comments/1k0r1c7/upcoming_scala_india_talk_on_topic_lets_teach/?share_id=aPCwPdh0wOkxuPfsU7f3j&utm_content=1&utm_medium=android_app&utm_name=androidcss&utm_source=share&utm_term=3) <br> [X/Twitter Post](https://x.com/themightysid888/status/1912758284509134866)                                                                                                                                                                                                                                                                                                                                                                            | [Watch Recording](https://www.youtube.com/watch?v=PiUaVKuV0dM&ab_channel=ScalaIndia)                  | –                                                                                              |
-| **28-May-2025** | Functional World 2025 by Scalac | Let's Teach LLMs to Write Great Scala! (Updated from Apr 2025)    | Gdansk, Poland 🇵🇱                                                                                                              | Kannupriya Kalra            | [LinkedIn Post 1](https://www.linkedin.com/posts/scalac_ai-functionalworld-scala-ugcPost-7326538223818563584-U2Ru) <br> [LinkedIn Post 2](https://www.linkedin.com/posts/scalac_lets-teach-llms-to-write-great-scala-ugcPost-7332752921190625281-K2YD) <br> [Reddit Discussion](https://www.reddit.com/r/scala/comments/1krvvgv/meetup_lets_teach_llms_to_write_great_scala/) <br> [Meetup Link](https://www.meetup.com/functionalworld/events/307654612/?eventOrigin=group_upcoming_events) <br> [X/Twitter Post](https://x.com/FunctionalWorld/status/1920776605015674943)                                                                                                                                                                                                                                                                                                                               | [Watch Recording](https://www.youtube.com/watch?v=cNAmsIpSsgk&ab_channel=Scalac)                      | [Scalendar (May 2025)](https://www.linkedin.com/pulse/scalendar-may-2025-scalac-qck6e/?trackingId=aSO5CkxeSB2O0U4GPUxJuw%3D%3D) <br> [Scala Times 1](https://scalatimes.com/ead904f5c2) <br> [Scala Times 2](https://scalatimes.com/af935bf2d5) |
-| **13-Jun-2025** | Dallas Scala Enthusiasts      | Let's Teach LLMs to Write Great Scala! (Updated from May 2025)   | Dallas, Texas, USA 🇺🇸                                                                                                           | Kannupriya Kalra            | [Meetup Event](https://www.meetup.com/dallas-scala-enthusiasts/events/307717420/?eventOrigin=find_page%24all) <br> [LinkedIn Post](https://www.linkedin.com/posts/kannupriyakalra_scala-ai-llm4s-activity-7338339521807212544-t5gT) <br> [X/Twitter Post](https://x.com/KannupriyaKalra/status/1932864594025836700) <br> [Reddit Discussion](https://www.reddit.com/r/scala/comments/1l9iheb/talk_llm4s_talk_in_dallas_scala_meets_ai_june_13/) <br> [Bluesky Post](https://bsky.app/profile/kannupriyakalra.bsky.social/post/3lrfuplb3oc2n) <br> [Mastodon Post](https://functional.cafe/@kannupriyakalra/114672918629990024)                                                                                              | [Watch Recording](https://www.youtube.com/watch?v=-PnsSSWTye0&ab_channel=DallasScalaEnthusiasts)     | [Scalendar (June 2025)](https://www.linkedin.com/pulse/scalendar-june-2025-scalac-fmiwe/?trackingId=ifE4kllzPvQvBqItbqXL4w%3D%3D)                                           |
-| **13-Aug-2025** | London Scala Users Group      | Scala Meets GenAI: Build the Cool Stuff with LLM4S               | [The Trade Desk](https://www.thetradedesk.com/) office, London, UK 🇬🇧                                                          | Kannupriya Kalra, Rory Graves | [Meetup Event](https://www.meetup.com/london-scala/events/308564399/?utm_medium=email&utm_campaign=rsvp-confirmation-social) <br> [X/Twitter Post](https://x.com/KannupriyaKalra/status/1949925385992622131) <br> [Bluesky Post](https://bsky.app/profile/kannupriyakalra.bsky.social/post/3lv2g77b2yk2s) <br> [LinkedIn Post](https://www.linkedin.com/posts/kannupriyakalra_scala-genai-llms-activity-7357084500595482626-CxBe?utm_source=share&utm_medium=member_desktop&rcm=ACoAAA8qk7UBmvcZ2O7aAJfMpsdEXBvcKSNiHWM) | Recording will be posted once the event is done                                                      | [Scalendar (August 2025)](https://www.linkedin.com/pulse/scalendar-august-2025-scalac-cxoje/?trackingId=c5MNCnKeSOeff0LojUz0ug%3D%3D) |
-| **21-Aug-2025** | Scala Days 2025               | Scala Meets GenAI: Build the Cool Stuff with LLM4S               | SwissTech Convention Center, [EPFL](https://www.epfl.ch/en/) campus, Lausanne, Switzerland 🇨🇭                                | Kannupriya Kalra, Rory Graves | [Talk Info](https://scaladays.org/editions/2025/talks/scala-meets-genai-build-the) <br> [LinkedIn Post](https://www.linkedin.com/feed/update/urn:li:activity:7348123421945262080/) <br> [X/Twitter Post](https://x.com/KannupriyaKalra/status/1942369453267947900) <br> [Reddit Discussion](https://www.reddit.com/r/scala/comments/1lua1ud/talk_llm4s_at_scala_days_2025_scala_meets_genai/) <br> [Bluesky Post](https://bsky.app/profile/kannupriyakalra.bsky.social/post/3ltfyhmlsi22p) <br> [Mastodon Post](https://functional.cafe/@kannupriyakalra/114814671581110365)                                                                                                       | Recording will be posted once the event is done                                                      | [Scala Days 2025: August in Lausanne – Code, Community & Innovation](https://scalac.io/blog/scala-days-2025-august-lausanne-code-community-innovation/) <br> [Scalendar (August 2025)](https://www.linkedin.com/pulse/scalendar-august-2025-scalac-cxoje/?trackingId=c5MNCnKeSOeff0LojUz0ug%3D%3D) <br> [Scala Days 2025 LinkedIn Post](https://www.linkedin.com/posts/scalac_scala-scalac-scaladays2025-activity-7359538627879571456-5YKa?utm_source=share&utm_medium=member_desktop&rcm=ACoAAA8qk7UBmvcZ2O7aAJfMpsdEXBvcKSNiHWM) |
-| **25-Aug-2025** | Zürich Scala Enthusiasts      | Fork It Till You Make It: Career Building with Scala OSS         | Rivero AG, ABB Historic Building, Elias-Canetti-Strasse 7, Zürich, Switzerland 🇨🇭                                             | Kannupriya Kalra            | [Meetup Event](https://lnkd.in/emMVS8Mj) <br> [LinkedIn Post](https://www.linkedin.com/posts/kannupriyakalra_scala-opensource-llm4s-activity-7354152797799342080-O_ik) <br> [X/Twitter Post](https://x.com/KannupriyaKalra/status/1948388464837226568) <br> [Bluesky Post](https://bsky.app/profile/kannupriyakalra.bsky.social/post/3lupqmo2z722j) <br> [Mastodon Post](https://functional.cafe/@kannupriyakalra/114908674646390403) <br> [Reddit Discussion](https://www.reddit.com/r/scala/comments/1m867vu/zurich_career_growth_through_scala_oss_join_our/)                                                                                     | Recording will be posted once the event is done                                                      | [Scalendar (August 2025)](https://www.linkedin.com/pulse/scalendar-august-2025-scalac-cxoje/?trackingId=c5MNCnKeSOeff0LojUz0ug%3D%3D) |
-| **23-25-Oct-2025** | Google Summer Of Code Mentor Summit 2025 | LLM4S x GSoC 2025: Engineering GenAI Agents in Functional Scala | Munich Marriott Hotel, Berliner Str. 93, 80805 München, Germany 🇩🇪                                                             | Kannupriya Kalra            | [Event Website](https://sites.google.com/view/2025mentorsummit/home)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Recording will be posted once the event is done                                                      | –                                                                                              |
+| Date                     | Event/Conference                         | Talk Title                                                      | Location                                                                                    | Speaker Name                  | Details URL                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Recording Link URL                                                                            | Featured In                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ------------------------ | ---------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **25-Feb-2025**    | Bay Area Scala                           | Let's Teach LLMs to Write Great Scala! (Original version)       | Tubi office, San Francisco, CA, USA 🇺🇸                                                    | Kannupriya Kalra              | [Event Info](https://lu.ma/5fz2y9or) `<br>` [Reddit Discussion](https://www.reddit.com/r/scala/comments/1ipr596/scala_meetup_san_francisco_designing_the_library/?share_id=3IdgjEpmpDcwoIFgNOy1d&utm_content=1&utm_medium=android_app&utm_name=androidcss&utm_source=share&utm_term=3) `<br>` [Mastodon Post](https://social.softinio.com/@softinio/statuses/01JM3MD5H0R4ZS5CHXN37S878E) `<br>` [Bluesky Post](https://bsky.app/profile/salarrahmanian.bsky.social/post/3li6lh3funk2q) `<br>` [X/Twitter Post](https://x.com/SalarRahmanian/status/1890575797947388070) `<br>` [Meetup Event](https://www.meetup.com/scala-bay/events/306178503/?eventOrigin=group_past_events) | [Watch Recording](https://www.youtube.com/watch?v=SXybj2P3_DE&t=779s&ab_channel=SalarRahmanian)  | –                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| **20-Apr-2025**    | Scala India                              | Let's Teach LLMs to Write Great Scala! (Updated from Feb 2025)  | India 🇮🇳                                                                                  | Kannupriya Kalra              | [Event Info](https://www.linkedin.com/posts/activity-7318299169914249216-Sec-?utm_source=share&utm_medium=member_desktop&rcm=ACoAAA8qk7UBmvcZ2O7aAJfMpsdEXBvcKSNiHWM) `<br>` [Reddit Discussion](https://www.reddit.com/r/scala/comments/1k0r1c7/upcoming_scala_india_talk_on_topic_lets_teach/?share_id=aPCwPdh0wOkxuPfsU7f3j&utm_content=1&utm_medium=android_app&utm_name=androidcss&utm_source=share&utm_term=3) `<br>` [X/Twitter Post](https://x.com/themightysid888/status/1912758284509134866)                                                                                                                                                                       | [Watch Recording](https://www.youtube.com/watch?v=PiUaVKuV0dM&ab_channel=ScalaIndia)             | –                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| **28-May-2025**    | Functional World 2025 by Scalac          | Let's Teach LLMs to Write Great Scala! (Updated from Apr 2025)  | Gdansk, Poland 🇵🇱                                                                         | Kannupriya Kalra              | [LinkedIn Post 1](https://www.linkedin.com/posts/scalac_ai-functionalworld-scala-ugcPost-7326538223818563584-U2Ru) `<br>` [LinkedIn Post 2](https://www.linkedin.com/posts/scalac_lets-teach-llms-to-write-great-scala-ugcPost-7332752921190625281-K2YD) `<br>` [Reddit Discussion](https://www.reddit.com/r/scala/comments/1krvvgv/meetup_lets_teach_llms_to_write_great_scala/) `<br>` [Meetup Link](https://www.meetup.com/functionalworld/events/307654612/?eventOrigin=group_upcoming_events) `<br>` [X/Twitter Post](https://x.com/FunctionalWorld/status/1920776605015674943)                                                                                           | [Watch Recording](https://www.youtube.com/watch?v=cNAmsIpSsgk&ab_channel=Scalac)                 | [Scalendar (May 2025)](https://www.linkedin.com/pulse/scalendar-may-2025-scalac-qck6e/?trackingId=aSO5CkxeSB2O0U4GPUxJuw%3D%3D) `<br>` [Scala Times 1](https://scalatimes.com/ead904f5c2) `<br>` [Scala Times 2](https://scalatimes.com/af935bf2d5)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| **13-Jun-2025**    | Dallas Scala Enthusiasts                 | Let's Teach LLMs to Write Great Scala! (Updated from May 2025)  | Dallas, Texas, USA 🇺🇸                                                                     | Kannupriya Kalra              | [Meetup Event](https://www.meetup.com/dallas-scala-enthusiasts/events/307717420/?eventOrigin=find_page%24all) `<br>` [LinkedIn Post](https://www.linkedin.com/posts/kannupriyakalra_scala-ai-llm4s-activity-7338339521807212544-t5gT) `<br>` [X/Twitter Post](https://x.com/KannupriyaKalra/status/1932864594025836700) `<br>` [Reddit Discussion](https://www.reddit.com/r/scala/comments/1l9iheb/talk_llm4s_talk_in_dallas_scala_meets_ai_june_13/) `<br>` [Bluesky Post](https://bsky.app/profile/kannupriyakalra.bsky.social/post/3lrfuplb3oc2n) `<br>` [Mastodon Post](https://functional.cafe/@kannupriyakalra/114672918629990024)                                        | [Watch Recording](https://www.youtube.com/watch?v=-PnsSSWTye0&ab_channel=DallasScalaEnthusiasts) | [Scalendar (June 2025)](https://www.linkedin.com/pulse/scalendar-june-2025-scalac-fmiwe/?trackingId=ifE4kllzPvQvBqItbqXL4w%3D%3D)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| **13-Aug-2025**    | London Scala Users Group                 | Scala Meets GenAI: Build the Cool Stuff with LLM4S              | [The Trade Desk](https://www.thetradedesk.com/) office, London, UK 🇬🇧                        | Kannupriya Kalra, Rory Graves | [Meetup Event](https://www.meetup.com/london-scala/events/308564399/?utm_medium=email&utm_campaign=rsvp-confirmation-social) `<br>` [X/Twitter Post](https://x.com/KannupriyaKalra/status/1949925385992622131) `<br>` [Bluesky Post](https://bsky.app/profile/kannupriyakalra.bsky.social/post/3lv2g77b2yk2s) `<br>` [LinkedIn Post](https://www.linkedin.com/posts/kannupriyakalra_scala-genai-llms-activity-7357084500595482626-CxBe?utm_source=share&utm_medium=member_desktop&rcm=ACoAAA8qk7UBmvcZ2O7aAJfMpsdEXBvcKSNiHWM)                                                                                                                                                | Recording will be posted once the event is done                                               | [Scalendar (August 2025)](https://www.linkedin.com/pulse/scalendar-august-2025-scalac-cxoje/?trackingId=c5MNCnKeSOeff0LojUz0ug%3D%3D)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| **21-Aug-2025**    | Scala Days 2025                          | Scala Meets GenAI: Build the Cool Stuff with LLM4S              | SwissTech Convention Center,[EPFL](https://www.epfl.ch/en/) campus, Lausanne, Switzerland 🇨🇭 | Kannupriya Kalra, Rory Graves | [Talk Info](https://scaladays.org/editions/2025/talks/scala-meets-genai-build-the) `<br>` [LinkedIn Post](https://www.linkedin.com/feed/update/urn:li:activity:7348123421945262080/) `<br>` [X/Twitter Post](https://x.com/KannupriyaKalra/status/1942369453267947900) `<br>` [Reddit Discussion](https://www.reddit.com/r/scala/comments/1lua1ud/talk_llm4s_at_scala_days_2025_scala_meets_genai/) `<br>` [Bluesky Post](https://bsky.app/profile/kannupriyakalra.bsky.social/post/3ltfyhmlsi22p) `<br>` [Mastodon Post](https://functional.cafe/@kannupriyakalra/114814671581110365)                                                                                          | Recording will be posted once the event is done                                               | [Scala Days 2025: August in Lausanne – Code, Community &amp; Innovation](https://scalac.io/blog/scala-days-2025-august-lausanne-code-community-innovation/) `<br>` [Scalendar (August 2025)](https://www.linkedin.com/pulse/scalendar-august-2025-scalac-cxoje/?trackingId=c5MNCnKeSOeff0LojUz0ug%3D%3D) `<br>` [Scala Days 2025 LinkedIn Post](https://www.linkedin.com/posts/scalac_scala-scalac-scaladays2025-activity-7359538627879571456-5YKa?utm_source=share&utm_medium=member_desktop&rcm=ACoAAA8qk7UBmvcZ2O7aAJfMpsdEXBvcKSNiHWM) `<br>` [Scala Days 2025 Highlights](https://www.linkedin.com/posts/scalac_scala-days-2025-highlights-our-key-takeaways-activity-7370816575886483456-3g6w?utm_source=share&utm_medium=member_desktop&rcm=ACoAAA8qk7UBmvcZ2O7aAJfMpsdEXBvcKSNiHWM) `<br>` [Scala Days 2025 Wrap](https://www.linkedin.com/posts/scalac_scala-days-2025-ugcPost-7364632095945547778-8sAk?utm_source=share&utm_medium=member_desktop&rcm=ACoAAA8qk7UBmvcZ2O7aAJfMpsdEXBvcKSNiHWM) `<br>` [Scala Days 2025 Recap – A Scala Community Reunion](https://scalac.io/blog/scala-days-2025-recap-a-scala-community-reunion/) |
+| **25-Aug-2025**    | Zürich Scala Enthusiasts                | Fork It Till You Make It: Career Building with Scala OSS        | Rivero AG, ABB Historic Building, Elias-Canetti-Strasse 7, Zürich, Switzerland 🇨🇭        | Kannupriya Kalra              | [Meetup Event](https://lnkd.in/emMVS8Mj) `<br>` [LinkedIn Post](https://www.linkedin.com/posts/kannupriyakalra_scala-opensource-llm4s-activity-7354152797799342080-O_ik) `<br>` [X/Twitter Post](https://x.com/KannupriyaKalra/status/1948388464837226568) `<br>` [Bluesky Post](https://bsky.app/profile/kannupriyakalra.bsky.social/post/3lupqmo2z722j) `<br>` [Mastodon Post](https://functional.cafe/@kannupriyakalra/114908674646390403) `<br>` [Reddit Discussion](https://www.reddit.com/r/scala/comments/1m867vu/zurich_career_growth_through_scala_oss_join_our/)                                                                                                      | Recording will be posted once the event is done                                               | [Scalendar (August 2025)](https://www.linkedin.com/pulse/scalendar-august-2025-scalac-cxoje/?trackingId=c5MNCnKeSOeff0LojUz0ug%3D%3D)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| **18-Sept-2025**   | Scala Center Talks                       | Lightning Talks Powered by GSoC 2025 for Scala                  | EPFL campus, Lausanne, Switzerland 🇨🇭                                                     | Kannupriya Kalra              | [Event Invite](https://luma.com/3eda0rsz)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Recording will be posted once the event is done                                               | –                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| **23-25-Oct-2025** | Google Summer Of Code Mentor Summit 2025 | LLM4S x GSoC 2025: Engineering GenAI Agents in Functional Scala | Munich Marriott Hotel, Berliner Str. 93, 80805 München, Germany 🇩🇪                       | Kannupriya Kalra              | [Event Website](https://sites.google.com/view/2025mentorsummit/home)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Recording will be posted once the event is done                                               | –                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 
 > 📝 *Want to invite us for a talk or workshop? Reach out via our respective emails or connect on Discord: [https://discord.gg/4uvTPn6qww](https://discord.gg/4uvTPn6qww)*
-
 
 ### Why You Should Contribute to LLM4S?
 
@@ -491,7 +488,6 @@ Stay updated with talks, workshops, and presentations about **LLM4S** happening 
 - Gain real-world experience working with Dockerized environments and multi-LLM providers.
 - Contribute to a project that offers you the opportunity to become a mentor or contributor funded by Google through its [Google Summer of Code (GSoC)](https://summerofcode.withgoogle.com/) program.
 - Join a global developer community focused on type-safe, maintainable AI systems.
-
 
 ## Contributing
 
@@ -510,13 +506,12 @@ Want to be part of developing this and interact with other developers? Join our 
 <br>
 
 <p align="center">
-  <img src="assets/gsoc_assets/gsoc_2025/gsoc_llm4s_images/Cracking_GSoC_with_LLM4S_banner_1.png" alt="GSoC Logo" width="400"/>
+  <img src="image_assets/gsoc_assets/gsoc_2025/gsoc_llm4s_images/Cracking_GSoC_with_LLM4S_banner_1.png" alt="GSoC Logo" width="400"/>
   <br>
   <em>LLM4S was selected for GSoC 2025 under the Scala Center Organisation.</em>
 </p>
 
 <br>
-
 
 This project is also participating in **Google Summer of Code (GSoC) 2025**! If you're interested in contributing to the project as a contributor, check out the details here:
 
@@ -528,22 +523,17 @@ To know everything about GSoC and how it works, check out this talk:
 
 To learn about the experience of GSoC contributors of LLM4S, check out their blogs in the section below.
 
-📚 **Explore Past GSoC Projects with Scala Center:** [https://www.gsocorganizations.dev/organization/scala-center/](https://www.gsocorganizations.dev/organization/scala-center/)  
+📚 **Explore Past GSoC Projects with Scala Center:** [https://www.gsocorganizations.dev/organization/scala-center/](https://www.gsocorganizations.dev/organization/scala-center/)
 This page includes detailed information on all GSoC projects with Scala Center from past years — including project descriptions, code repositories, contributor blogs, and mentor details.
-
 
 ### 👥 GSoC Contributor Onboarding Resources
 
 > Hello GSoCers and future GSoC aspirants! Here are some essential onboarding links to help you collaborate and stay organized within the LLM4S community.
 
-- 🔗 **LLM4S GSoC GitHub Team**:  
-  You have been invited to join the LLM4S GitHub team for GSoC participants. Accepting this invite will grant you access to internal resources and coordination tools.  
-  👉 [https://github.com/orgs/llm4s/teams/gsoc/members](https://github.com/orgs/llm4s/teams/gsoc/members)
-
-- 📌 **Private GSoC Project Tracking Board**:  
-  Once you're part of the team, you will have access to our private GSoC tracking board. This board helps you track tasks, timelines, and project deliverables throughout the GSoC period.  
+- 🔗 **LLM4S GSoC GitHub Team**:You have been invited to join the LLM4S GitHub team for GSoC participants. Accepting this invite will grant you access to internal resources and coordination tools.👉 [https://github.com/orgs/llm4s/teams/gsoc/members](https://github.com/orgs/llm4s/teams/gsoc/members)
+- 📌 **Private GSoC Project Tracking Board**:
+  Once you're part of the team, you will have access to our private GSoC tracking board. This board helps you track tasks, timelines, and project deliverables throughout the GSoC period.
   👉 [https://github.com/orgs/llm4s/projects/3](https://github.com/orgs/llm4s/projects/3)
-
 
 ## GSoC 2025: Google Open Source Funded Project Ideas from LLM4S
 
@@ -552,7 +542,7 @@ This page includes detailed information on all GSoC projects with Scala Center f
 - **Contributor:** [Elvan Konukseven](https://github.com/elvankonukseven)
 - **LinkedIn:** [https://www.linkedin.com/in/elvan-konukseven/](https://www.linkedin.com/in/elvan-konukseven/) | **Email:** [elvankonukseven0@gmail.com](mailto:elvankonukseven0@gmail.com) | **Discord:** `elvan_31441`
 - **Mentors:** [Kannupriya Kalra](https://www.linkedin.com/in/kannupriyakalra/) (Email: [kannupriyakalra@gmail.com](mailto:kannupriyakalra@gmail.com)), [Rory Graves](https://www.linkedin.com/in/roryjgraves/) (Email: [rory.graves@fieldmark.co.uk](mailto:rory.graves@fieldmark.co.uk))
-- **Announcement:** [Official Acceptance Post](https://www.linkedin.com/posts/elvan-konukseven_got-accepted-into-the-google-summer-of-code-activity-7326980179812139008-OoMU?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0) 
+- **Announcement:** [Official Acceptance Post](https://www.linkedin.com/posts/elvan-konukseven_got-accepted-into-the-google-summer-of-code-activity-7326980179812139008-OoMU?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0)
 - **Contributor Blogs:** 📌 [elvankonukseven.com/blog](https://www.elvankonukseven.com/blog)
 - **Work log:** 📌 [GitHub Project Board](https://github.com/users/elvankonukseven/projects/4/views/1)
 
@@ -565,14 +555,13 @@ This page includes detailed information on all GSoC projects with Scala Center f
 - **Contributor Blogs:** 📌 [Main Blog](https://gopitrinadh.site/blog) | 📌 [Scala at Light Speed – Part 1](https://gopitrinadh.site/scala-at-lightspeed-part1/) | 📌 [Scala at Light Speed – Part 2](https://gopitrinadh.site/scala-at-light-speed-gsoc-part2/)
 - **Work log:**  📌 [Work Log → GitHub Project](https://github.com/users/GOPITRINADH3561/projects/1/views/1)
 
-
 ### LLM4S - Support image, voice and other LLM modalites
 
 - **Contributor:** [Anshuman Awasthi](https://github.com/AnshumanAI)
 - **LinkedIn:** [https://www.linkedin.com/in/let-me-try-to-fork-your-responsibilities/](https://www.linkedin.com/in/let-me-try-to-fork-your-responsibilities/) | **Email:** [mcs23026@iiitl.ac.in](mailto:mcs23026@iiitl.ac.in) | **Discord:** `anshuman23026`
 - **Mentors:** [Kannupriya Kalra](https://www.linkedin.com/in/kannupriyakalra/) (Email: [kannupriyakalra@gmail.com](mailto:kannupriyakalra@gmail.com)), [Rory Graves](https://www.linkedin.com/in/roryjgraves/) (Email: [rory.graves@fieldmark.co.uk](mailto:rory.graves@fieldmark.co.uk))
 - **Announcement:** [Official Acceptance Post](https://www.linkedin.com/posts/let-me-try-to-fork-your-responsibilities_big-announcement-im-thrilled-to-activity-7327724651726405635-3Y7V?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0) | [Midterm evaluation post](https://www.linkedin.com/posts/let-me-try-to-fork-your-responsibilities_gsoc-googlesummerofcode-opensource-activity-7352249524486066176-loNn?utm_source=share&utm_medium=member_desktop&rcm=ACoAADFpDrQB56LGBguVZFlinC7-yOKG5O6RI70)
-- **Contributor Blogs:** 📌 [Anshuman's GSoC Journey](https://awesomegsoc.hashnode.dev/)
+- **Contributor Blogs:** 📌 [Anshuman&#39;s GSoC Journey](https://awesomegsoc.hashnode.dev/)
 - **Work Log:** 📌 [GitHub Project Board](https://github.com/users/AnshumanAI/projects/2/views/1)
 
 ### LLM4S - Tracing support
@@ -584,19 +573,17 @@ This page includes detailed information on all GSoC projects with Scala Center f
 - **Contributor Blogs:** 📌 [Cracking the Code: My GSoC 2025 Story](https://shubhams-gsoc-journey.hashnode.dev/cracking-the-code-my-gsoc-2025-story)
 - **Work log:** 📌 [GitHub Project Board](https://github.com/users/Vi-shub/projects/2/views/1)
 
-  
 Feel free to reach out to the contributors or mentors listed for any guidance or questions related to **GSoC 2026**.
 
 <br>
 
 <p align="center">
- <img src="assets/gsoc_assets/gsoc_2025/gsoc_2025_contributors_shoutout.png" alt="Contributors_banner_shoutout" width="600"/>
+ <img src="image_assets/gsoc_assets/gsoc_2025/gsoc_2025_contributors_shoutout.png" alt="Contributors_banner_shoutout" width="600"/>
   <br>
   <em>Contributors selected across the globe for GSoC 2025 program.</em>
 </p>
 
 <br>
-
 
 ## 🚧 Behind the Build: Blogs & Series
 
@@ -613,7 +600,7 @@ Stay tuned — the series will be published soon on [scalac.io/blog](https://sca
 <br>
 
 <p align="center">
-  <img src="assets/blogging_with_scalac/LLM4s_x_Scalac_Collab_Banner.png" alt="LLM4S x Scalac Collaboration" width="600"/>
+  <img src="image_assets/blogging_with_scalac/LLM4s_x_Scalac_Collab_Banner.png" alt="LLM4S x Scalac Collaboration" width="600"/>
   <br>
   <em>LLM4S blogs powered by Scalac.</em>
 </p>
@@ -626,24 +613,26 @@ Stay tuned — the series will be published soon on [scalac.io/blog](https://sca
 
 Our **Google Summer of Code (GSoC) 2025** contributors have actively documented their journeys, sharing insights and implementation deep-dives from their projects. These blog posts offer valuable perspectives on how LLM4S is evolving from a contributor-first lens.
 
-| Contributor | Blog(s) | Project |
-|-------------|---------|---------|
-| **Elvan Konukseven** | [elvankonukseven.com/blog](https://www.elvankonukseven.com/blog) | Agentic Toolkit for LLMs |
-| **Gopi Trinadh Maddikunta** | [Main Blog](https://gopitrinadh.site/blog) <br> [Scala at Light Speed – Part 1](https://gopitrinadh.site/scala-at-lightspeed-part1/) <br> [Scala at Light Speed – Part 2](https://gopitrinadh.site/scala-at-light-speed-gsoc-part2/) | RAG in a Box |
-| **Anshuman Awasthi** | [Anshuman's GSoC Journey](https://awesomegsoc.hashnode.dev/) | Multimodal LLM Support |
-| **Shubham Vishwakarma** | [Cracking the Code: My GSoC 2025 Story](https://shubhams-gsoc-journey.hashnode.dev/cracking-the-code-my-gsoc-2025-story) | Tracing and Observability |
+| Contributor                       | Blog(s)                                                                                                                                                                                                                               | Project                   |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| **Elvan Konukseven**        | [elvankonukseven.com/blog](https://www.elvankonukseven.com/blog)                                                                                                                                                                         | Agentic Toolkit for LLMs  |
+| **Gopi Trinadh Maddikunta** | [Main Blog](https://gopitrinadh.site/blog) `<br>` [Scala at Light Speed – Part 1](https://gopitrinadh.site/scala-at-lightspeed-part1/) `<br>` [Scala at Light Speed – Part 2](https://gopitrinadh.site/scala-at-light-speed-gsoc-part2/) | RAG in a Box              |
+| **Anshuman Awasthi**        | [Anshuman&#39;s GSoC Journey](https://awesomegsoc.hashnode.dev/)                                                                                                                                                                         | Multimodal LLM Support    |
+| **Shubham Vishwakarma**     | [Cracking the Code: My GSoC 2025 Story](https://shubhams-gsoc-journey.hashnode.dev/cracking-the-code-my-gsoc-2025-story)                                                                                                                 | Tracing and Observability |
 
 > 💡 These blogs reflect first-hand experience in building real-world AI tools using Scala, and are great resources for future contributors and researchers alike.
 
 ### 📚 Where Innovation Speaks: Articles by GSoC's Brightest
 
 #### **Elvan Konukseven**
+
 - 🌐 [Main Blog](https://www.elvankonukseven.com/blog)
 - 📝 Articles:
   - [The Application](https://elvankonukseven.com/blog/gsoc-application)
   - [First Task](https://elvankonukseven.com/blog/first-task)
 
 #### **Gopi Trinadh Maddikunta**
+
 - 🌐 [Main Blog](https://gopitrinadh.site/blog)
 - 📝 Articles:
   - [Spark of Curiosity](https://gopitrinadh.site/spark-of-curiosity/)
@@ -661,19 +650,21 @@ Our **Google Summer of Code (GSoC) 2025** contributors have actively documented 
   - [Universal Extraction + Embedding Client = One step closer to RAG](https://gopitrinadh.site/embedding-anything/)
   - [Midterm Milestone- Modular RAG in Motion](https://gopitrinadh.site/blog/#)
 
-
 #### **Anshuman Awasthi**
-- 🌐 [Main Blog : Anshuman's GSoC Journey](https://awesomegsoc.hashnode.dev/)
+
+- 🌐 [Main Blog : Anshuman&#39;s GSoC Journey](https://awesomegsoc.hashnode.dev/)
 - 📝 Articles:
   - [My Journey to Google Summer of Code 2025](https://awesomegsoc.hashnode.dev/my-journey-to-google-summer-of-code-2025)
   - [Community Bonding Experience at GSoC 2025](https://awesomegsoc.hashnode.dev/community-bonding-experience-at-gsoc-2025)
   - [Milestone 1 : Successfully Added Image Generation Capabilities into the LLM4S Library](https://awesomegsoc.hashnode.dev/milestone-1-successfully-added-image-generation-capabilities-into-the-llm4s-library)
 
 #### **Shubham Vishwakarma**
-- 🌐 [Main Blog : Shubham's GSoC Journey](https://shubhams-gsoc-journey.hashnode.dev)
+
+- 🌐 [Main Blog : Shubham&#39;s GSoC Journey](https://shubhams-gsoc-journey.hashnode.dev)
 - 📝 Articles:
   - [Cracking the Code: My GSoC 2025 Story](https://shubhams-gsoc-journey.hashnode.dev/cracking-the-code-my-gsoc-2025-story)
   - [My Scala Sprint: JVM to Poland Insights](https://shubhams-gsoc-journey.hashnode.dev/my-scala-sprint-jvm-to-poland-insights)
+
 ## Maintainers
 
 Want to connect with maintainers? The LLM4S project is maintained by:
@@ -685,7 +676,8 @@ Want to connect with maintainers? The LLM4S project is maintained by:
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
-----------------
+---
+
 [llm4s]: https://github.com/llm4s/llm4s
 [Scala 3]: https://dotty.epfl.ch/
 [Scala 2]: https://www.scala-lang.org/
