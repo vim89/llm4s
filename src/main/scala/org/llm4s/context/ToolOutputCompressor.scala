@@ -116,17 +116,11 @@ object ToolOutputCompressor {
     }
 
   private def parseJsonSafely(content: String): Result[Value] =
-    try
-      Right(ujson.read(content))
-    catch {
-      case _: Exception =>
-        Left(
-          ContextError.schemaCompressionFailed(
-            "ToolOutputCompressor",
-            "Failed to parse JSON content"
-          )
-        )
-    }
+    scala.util
+      .Try(ujson.read(content))
+      .toEither
+      .left
+      .map(_ => ContextError.schemaCompressionFailed("ToolOutputCompressor", "Failed to parse JSON content"))
 
   private def compressJsonRecursively(value: Value): Value = value match {
     case obj: Obj =>

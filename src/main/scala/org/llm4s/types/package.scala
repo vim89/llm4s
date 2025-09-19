@@ -1,5 +1,6 @@
 package org.llm4s
 
+import cats.data.ValidatedNec
 import org.llm4s.config.ConfigReader
 import org.llm4s.error.{ ConfigurationError, ValidationError }
 import org.llm4s.llmconnect.model.StreamedChunk
@@ -50,8 +51,8 @@ package object types {
   /** Multi-value result for operations returning collections */
   type MultiResult[+A] = Result[List[A]]
 
-  /** Validated result with accumulating errors */
-  type ValidatedResult[+A] = Either[List[error.LLMError], A]
+  /** Validated result with accumulating errors (non-empty chain) */
+  type ValidatedResult[+A] = ValidatedNec[error.LLMError, A]
 
   /** Paginated result for large datasets */
   type PaginatedResult[+A] = Result[(List[A], PaginationInfo)]
@@ -277,13 +278,7 @@ package object types {
   /** Type alias for URL string with validation */
   final case class Url(value: String) extends AnyVal {
     override def toString: String = value
-    def isValid: Boolean =
-      try {
-        new java.net.URI(value)
-        true
-      } catch {
-        case _: Exception => false
-      }
+    def isValid: Boolean          = scala.util.Try(new java.net.URI(value)).isSuccess
   }
 
   /** Type alias for endpoint configuration */
@@ -773,12 +768,12 @@ package object types {
 
   object Url {
     def create(value: String): Result[Url] =
-      try {
-        new java.net.URI(value) // Validate URL format
-        Right(Url(value))
-      } catch {
-        case _: Exception => Left(error.ValidationError(s"Invalid URL: $value", "url"))
-      }
+      scala.util
+        .Try(new java.net.URI(value)) // Validate URL format
+        .toEither
+        .left
+        .map(_ => error.ValidationError(s"Invalid URL: $value", "url"))
+        .map(_ => Url(value))
   }
 
   /**
@@ -857,7 +852,7 @@ package object types {
      * Convert a Try to a Result using the existing Result.fromTry method.
      * This provides the cleaner .toResult syntax requested in PR reviews.
      */
-    def toResult: Result[A] = Result.fromTry(t)
+    def toResult: Result[A] = org.llm4s.core.safety.Safety.fromTry(t)
   }
 
 }
@@ -883,33 +878,23 @@ object Result {
   def failure[A](error: org.llm4s.error.LLMError): Result[A] = Left(error)
 
   /**
-   * Executes a block of code and ensures a finallyBlock function is always run afterward,
-   * regardless of whether the block succeeds or throws.
-   *
-   * @param block   The main code to execute, which returns an A.
-   * @param finallyBlock A zero-argument function to run afterward (e.g., close fd, log, release resources).
-   */
-  private def cleanly[A, B](block: => A)(finallyBlock: => Unit): A =
-    try block
-    finally finallyBlock
-
-  /**
    * Converts a scala.util.Try[A] into a Result[A], while allowing a custom finallyBlock action.
    *
    * @param t       The Try[A] to wrap.
    * @param finallyBlock A user-provided finallyBlock function to run after processing.
    * @return A Result[A] representing success or failure.
    */
+  @deprecated("Use Safety.fromTry or TryOps.toResult with ErrorMapper", since = "0.1.10")
   def fromTry[A](
     t: Try[A],
     finallyBlock: () => Unit = () => logger.info("Running default cleanup in fromTry")
-  ): Result[A] = cleanly {
-    t match {
+  ): Result[A] = {
+    val res: Result[A] = t match {
       case scala.util.Success(value)     => success(value)
-      case scala.util.Failure(throwable) => failure(error.LLMError.fromThrowable(throwable))
+      case scala.util.Failure(throwable) => failure(org.llm4s.error.ThrowableOps.RichThrowable(throwable).toLLMError)
     }
-  } {
-    finallyBlock()
+    scala.util.Try(finallyBlock()) // do not throw; best-effort
+    res
   }
 
   def fromOption[A](opt: Option[A], error: => org.llm4s.error.LLMError): Result[A] =
@@ -940,11 +925,11 @@ object Result {
       c <- rc
     } yield (a, b, c)
 
-  def safely[A](operation: => A): Result[A] = fromTry(Try(operation))
+  def safely[A](operation: => A): Result[A] = org.llm4s.core.safety.Safety.fromTry(Try(operation))
 
   // Async support
   def fromFuture[A](future: Future[A])(implicit ec: ExecutionContext): Future[Result[A]] =
-    future.map(success).recover { case ex => failure(error.LLMError.fromThrowable(ex)) }
+    future.map(success).recover { case ex => failure(org.llm4s.error.ThrowableOps.RichThrowable(ex).toLLMError) }
 
   /**
    * Create Result from boolean condition
@@ -966,12 +951,7 @@ object Result {
     if (errors.nonEmpty) Left(errors) else Right(successes)
   }
 
-  // Resource management
-  def bracket[A, B](acquire: => Result[A])(release: A => Result[Unit])(use: A => Result[B]): Result[B] =
-    acquire.flatMap { resource =>
-      val result = use(resource)
-      release(resource).flatMap(_ => result)
-    }
+  // Resource management: use scala.util.Using + core.safety.UsingOps#toResult
 }
 
 object AsyncResult {
@@ -981,7 +961,7 @@ object AsyncResult {
   def failure[A](error: org.llm4s.error.LLMError): AsyncResult[A] = Future.successful(Left(error))
 
   def fromFuture[A](future: Future[A])(implicit ec: ExecutionContext): AsyncResult[A] =
-    future.map(Right(_)).recover { case ex => Left(error.LLMError.fromThrowable(ex)) }
+    future.map(Right(_)).recover { case ex => Left(org.llm4s.error.ThrowableOps.RichThrowable(ex).toLLMError) }
 
   def fromResult[A](result: Result[A]): AsyncResult[A] =
     Future.successful(result)

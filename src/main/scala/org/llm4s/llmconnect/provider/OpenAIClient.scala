@@ -3,13 +3,14 @@ package org.llm4s.llmconnect.provider
 import com.azure.ai.openai.models._
 import com.azure.ai.openai.{ OpenAIClientBuilder, OpenAIServiceVersion, OpenAIClient => AzureOpenAIClient }
 import com.azure.core.credential.{ AzureKeyCredential, KeyCredential }
-import org.llm4s.error.LLMError
+import org.llm4s.error.ThrowableOps._
 import org.llm4s.llmconnect.LLMClient
 import org.llm4s.llmconnect.config.{ AzureConfig, OpenAIConfig, ProviderConfig }
 import org.llm4s.llmconnect.model._
 import org.llm4s.llmconnect.streaming._
 import org.llm4s.toolapi.{ AzureToolHelper, ToolRegistry }
 import org.llm4s.types.Result
+import org.llm4s.core.safety.Safety
 
 import scala.jdk.CollectionConverters._
 import scala.util.Try
@@ -50,106 +51,98 @@ class OpenAIClient private (
   override def complete(
     conversation: Conversation,
     options: CompletionOptions
-  ): Result[Completion] =
-    try {
-      // Convert conversation to Azure format
-      val chatMessages = convertToOpenAIMessages(conversation)
+  ): Result[Completion] = {
+    // Convert conversation to Azure format
+    val chatMessages = convertToOpenAIMessages(conversation)
 
-      // Create chat options
-      val chatOptions = new ChatCompletionsOptions(chatMessages)
+    // Create chat options
+    val chatOptions = new ChatCompletionsOptions(chatMessages)
 
-      // Set options
-      chatOptions.setTemperature(options.temperature.doubleValue())
-      options.maxTokens.foreach(mt => chatOptions.setMaxTokens(mt))
-      chatOptions.setPresencePenalty(options.presencePenalty.doubleValue())
-      chatOptions.setFrequencyPenalty(options.frequencyPenalty.doubleValue())
-      chatOptions.setTopP(options.topP.doubleValue())
+    // Set options
+    chatOptions.setTemperature(options.temperature.doubleValue())
+    options.maxTokens.foreach(mt => chatOptions.setMaxTokens(mt))
+    chatOptions.setPresencePenalty(options.presencePenalty.doubleValue())
+    chatOptions.setFrequencyPenalty(options.frequencyPenalty.doubleValue())
+    chatOptions.setTopP(options.topP.doubleValue())
 
-      // Add tools if specified
-      if (options.tools.nonEmpty) {
-        val toolRegistry = new ToolRegistry(options.tools)
-        AzureToolHelper.addToolsToOptions(toolRegistry, chatOptions)
-      }
-
-      // Add organization header if specified
-      // Note: Azure SDK doesn't directly support adding custom headers to ChatCompletionsOptions
-      // This would need to be handled differently if organization header is required
-
-      // Make API call
-      val completions = client.getChatCompletions(model, chatOptions)
-
-      // Convert response to our model
-      Right(convertFromOpenAIFormat(completions))
-    } catch {
-      case e: Exception => Left(LLMError.fromThrowable(e))
+    // Add tools if specified
+    if (options.tools.nonEmpty) {
+      val toolRegistry = new ToolRegistry(options.tools)
+      AzureToolHelper.addToolsToOptions(toolRegistry, chatOptions)
     }
+
+    // Add organization header if specified
+    // Note: Azure SDK doesn't directly support adding custom headers to ChatCompletionsOptions
+    // This would need to be handled differently if organization header is required
+
+    val res = scala.util.Try(client.getChatCompletions(model, chatOptions)).toEither
+    for {
+      completions <- res.left.map(e => e.toLLMError)
+    } yield convertFromOpenAIFormat(completions)
+  }
 
   override def streamComplete(
     conversation: Conversation,
     options: CompletionOptions = CompletionOptions(),
     onChunk: StreamedChunk => Unit
-  ): Result[Completion] =
-    try {
-      // Convert conversation to Azure format
-      val chatMessages = convertToOpenAIMessages(conversation)
+  ): Result[Completion] = {
+    // Convert conversation to Azure format
+    val chatMessages = convertToOpenAIMessages(conversation)
 
-      // Create chat options with streaming enabled
-      val chatOptions = new ChatCompletionsOptions(chatMessages)
+    // Create chat options with streaming enabled
+    val chatOptions = new ChatCompletionsOptions(chatMessages)
 
-      // Set options
-      chatOptions.setTemperature(options.temperature.doubleValue())
-      options.maxTokens.foreach(mt => chatOptions.setMaxTokens(mt))
-      chatOptions.setPresencePenalty(options.presencePenalty.doubleValue())
-      chatOptions.setFrequencyPenalty(options.frequencyPenalty.doubleValue())
-      chatOptions.setTopP(options.topP.doubleValue())
+    // Set options
+    chatOptions.setTemperature(options.temperature.doubleValue())
+    options.maxTokens.foreach(mt => chatOptions.setMaxTokens(mt))
+    chatOptions.setPresencePenalty(options.presencePenalty.doubleValue())
+    chatOptions.setFrequencyPenalty(options.frequencyPenalty.doubleValue())
+    chatOptions.setTopP(options.topP.doubleValue())
 
-      // Add tools if specified
-      if (options.tools.nonEmpty) {
-        val toolRegistry = new ToolRegistry(options.tools)
-        AzureToolHelper.addToolsToOptions(toolRegistry, chatOptions)
-      }
+    // Add tools if specified
+    if (options.tools.nonEmpty) {
+      val toolRegistry = new ToolRegistry(options.tools)
+      AzureToolHelper.addToolsToOptions(toolRegistry, chatOptions)
+    }
 
-      // Use the SDK's streaming method
-      val stream = client.getChatCompletionsStream(model, chatOptions)
+    // Use the SDK's streaming method
+    val stream = client.getChatCompletionsStream(model, chatOptions)
 
-      // Create accumulator for building the final completion
-      val accumulator = StreamingAccumulator.create()
+    // Create accumulator for building the final completion
+    val accumulator = StreamingAccumulator.create()
 
-      // Process the stream
-      stream.forEach { chatCompletions =>
-        if (chatCompletions.getChoices != null && !chatCompletions.getChoices.isEmpty) {
-          val choice = chatCompletions.getChoices.get(0)
-          val delta  = choice.getDelta
+    // Process the stream
+    stream.forEach { chatCompletions =>
+      if (chatCompletions.getChoices != null && !chatCompletions.getChoices.isEmpty) {
+        val choice = chatCompletions.getChoices.get(0)
+        val delta  = choice.getDelta
 
-          // Create StreamedChunk from delta
-          val chunk = StreamedChunk(
-            id = Option(chatCompletions.getId).getOrElse(""),
-            content = Option(delta.getContent),
-            toolCall = extractStreamingToolCall(delta),
-            finishReason = Option(choice.getFinishReason).map(_.toString)
-          )
+        // Create StreamedChunk from delta
+        val chunk = StreamedChunk(
+          id = Option(chatCompletions.getId).getOrElse(""),
+          content = Option(delta.getContent),
+          toolCall = extractStreamingToolCall(delta),
+          finishReason = Option(choice.getFinishReason).map(_.toString)
+        )
 
-          // Add to accumulator
-          accumulator.addChunk(chunk)
+        // Add to accumulator
+        accumulator.addChunk(chunk)
 
-          // Call the callback
-          onChunk(chunk)
+        // Call the callback
+        onChunk(chunk)
 
-          // Check if streaming is complete
-          if (choice.getFinishReason != null) {
-            // Extract usage if available
-            Option(chatCompletions.getUsage).foreach { usage =>
-              accumulator.updateTokens(usage.getPromptTokens, usage.getCompletionTokens)
-            }
+        // Check if streaming is complete
+        if (choice.getFinishReason != null) {
+          // Extract usage if available
+          Option(chatCompletions.getUsage).foreach { usage =>
+            accumulator.updateTokens(usage.getPromptTokens, usage.getCompletionTokens)
           }
         }
       }
-
-      // Return the accumulated completion
-      accumulator.toCompletion
-    } catch {
-      case e: Exception => Left(LLMError.fromThrowable(e))
     }
+
+    accumulator.toCompletion.map(c => c.copy(model = model))
+  }
 
   override def getContextWindow(): Int = config.contextWindow
 
@@ -241,16 +234,8 @@ class OpenAIClient private (
 
 object OpenAIClient {
   def create(config: OpenAIConfig): Result[OpenAIClient] =
-    org.llm4s.Result.fromTry {
-      Try {
-        new OpenAIClient(config)
-      }
-    }
+    Safety.fromTry(Try(new OpenAIClient(config)))
 
   def create(config: AzureConfig): Result[OpenAIClient] =
-    org.llm4s.Result.fromTry {
-      Try {
-        new OpenAIClient(config)
-      }
-    }
+    Safety.fromTry(Try(new OpenAIClient(config)))
 }

@@ -357,11 +357,13 @@ object WorkspaceTools {
     val content    = params.getString("content").getOrElse("")
     val createDirs = params.getBoolean("create_directories").getOrElse(true)
 
-    Try(workspace.writeFile(path, content, createDirectories = Some(createDirs))) match {
-      case Success(response) =>
-        Right(ujson.Obj("success" -> response.success))
-      case Failure(ex) =>
-        Left(s"Exception writing file: ${ex.getMessage}")
+    {
+      val r = org.llm4s.core.safety.Safety.safely(
+        workspace.writeFile(path, content, createDirectories = Some(createDirs))
+      )
+      for {
+        resp <- r.left.map(_.formatted)
+      } yield ujson.Obj("success" -> resp.success)
     }
   }
 
@@ -377,8 +379,13 @@ object WorkspaceTools {
     val searchType = params.getString("search_type").getOrElse("literal")
     val recursive  = params.getBoolean("recursive").getOrElse(true)
 
-    Try(workspace.searchFiles(paths, query, searchType, recursive = Some(recursive))) match {
-      case Success(response) =>
+    (for {
+      response <- org.llm4s.core.safety.Safety
+        .safely(workspace.searchFiles(paths, query, searchType, recursive = Some(recursive)))
+        .left
+        .map(_.formatted)
+    } yield response) match {
+      case Right(response) =>
         val matches = response.matches.map(m =>
           ujson.Obj(
             "path"       -> m.path,
@@ -390,8 +397,8 @@ object WorkspaceTools {
           )
         )
         Right(ujson.Obj("matches" -> ujson.Arr.from(matches)))
-      case Failure(ex) =>
-        Left(s"Exception searching files: ${ex.getMessage}")
+      case Left(err) =>
+        Left(err)
     }
   }
 
@@ -406,25 +413,26 @@ object WorkspaceTools {
     val workingDir = params.getString("working_directory").getOrElse("/workspace")
     val timeout    = params.getInt("timeout").toOption.flatMap(Some(_))
 
-    try {
+    {
       logger.info(s"Executing command: $command in directory: $workingDir with timeout: $timeout")
-      val execResult = workspace.executeCommand(command, workingDirectory = Some(workingDir), timeout = timeout)
-      logger.info(
-        "Command execution complete - exitCode: " + execResult.exitCode +
-          " stdout: " + execResult.stdout.length + " stderr: " + execResult.stderr.length + "b"
+      val r = org.llm4s.core.safety.Safety.safely(
+        workspace.executeCommand(command, workingDirectory = Some(workingDir), timeout = timeout)
       )
-      println(execResult.stdout)
-      println(execResult.stderr)
-      Right(
+      for {
+        execResult <- r.left.map(_.formatted)
+      } yield {
+        logger.info(
+          "Command execution complete - exitCode: " + execResult.exitCode +
+            " stdout: " + execResult.stdout.length + " stderr: " + execResult.stderr.length + "b"
+        )
+        println(execResult.stdout)
+        println(execResult.stderr)
         ujson.Obj(
           "exit_code" -> execResult.exitCode,
           "stdout"    -> execResult.stdout,
           "stderr"    -> execResult.stderr
         )
-      )
-    } catch {
-      case ex: Exception =>
-        Left(s"Exception executing command: ${ex.getMessage}")
+      }
     }
   }
 
@@ -440,32 +448,25 @@ object WorkspaceTools {
 
     opsParam match {
       case Right(arr) =>
-        try {
-          val operations = arr.arr.map { opObj =>
-            val extractor  = SafeParameterExtractor(opObj)
-            val op         = extractor.getString("operation").getOrElse("replace")
-            val startLine  = extractor.getInt("start_line").getOrElse(0)
-            val endLine    = extractor.getInt("end_line").getOrElse(0)
-            val newContent = extractor.getString("new_content").getOrElse("")
+        val operations = arr.arr.map { opObj =>
+          val extractor  = SafeParameterExtractor(opObj)
+          val op         = extractor.getString("operation").getOrElse("replace")
+          val startLine  = extractor.getInt("start_line").getOrElse(0)
+          val endLine    = extractor.getInt("end_line").getOrElse(0)
+          val newContent = extractor.getString("new_content").getOrElse("")
 
-            op match {
-              case "replace" => ReplaceOperation(startLine = startLine, endLine = endLine, newContent = newContent)
-              case "insert"  => InsertOperation(afterLine = startLine, newContent = newContent)
-              case "delete"  => DeleteOperation(startLine = startLine, endLine = endLine)
-              case _         => throw new IllegalArgumentException(s"Unknown operation type: $op")
-            }
-          }.toList
-
-          workspace.modifyFile(path, operations) match {
-            case response if response.success =>
-              Right(ujson.Obj("success" -> true))
-            case _ =>
-              Left(s"Failed to modify file")
+          op match {
+            case "replace" => ReplaceOperation(startLine = startLine, endLine = endLine, newContent = newContent)
+            case "insert"  => InsertOperation(afterLine = startLine, newContent = newContent)
+            case "delete"  => DeleteOperation(startLine = startLine, endLine = endLine)
+            case _         => throw new IllegalArgumentException(s"Unknown operation type: $op")
           }
-        } catch {
-          case ex: Exception =>
-            Left(s"Exception modifying file: ${ex.getMessage}")
-        }
+        }.toList
+
+        val r = org.llm4s.core.safety.Safety.safely(workspace.modifyFile(path, operations))
+        for {
+          _ <- r.left.map(_.formatted)
+        } yield ujson.Obj("success" -> true)
       case Left(error) =>
         Left(s"Invalid operations parameter: $error")
     }

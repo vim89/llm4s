@@ -101,21 +101,23 @@ case class ProcessedImage(
   def saveToFile(path: Path): Either[LLMError, Unit] = {
     import java.nio.file.Files
 
-    // Use cats Validated for path validation
+    // Use cats Validated for path validation, then safely write
     validatePath(path).toEither.flatMap { normalizedPath =>
-      try {
-        Files.write(normalizedPath, data)
-        Right(())
-      } catch {
-        case e: java.nio.file.AccessDeniedException =>
-          Left(LLMError.processingFailed("save", s"Access denied: ${e.getMessage}", Some(e)))
-        case e: java.nio.file.NoSuchFileException =>
-          Left(LLMError.processingFailed("save", s"Directory does not exist: ${e.getMessage}", Some(e)))
-        case e: java.nio.file.FileSystemException =>
-          Left(LLMError.processingFailed("save", s"File system error: ${e.getMessage}", Some(e)))
-        case e: Exception =>
-          Left(LLMError.processingFailed("save", s"Unexpected error: ${e.getMessage}", Some(e)))
-      }
+      scala.util
+        .Try(Files.write(normalizedPath, data))
+        .toEither
+        .left
+        .map {
+          case e: java.nio.file.AccessDeniedException =>
+            LLMError.processingFailed("save", s"Access denied: ${e.getMessage}", Some(e))
+          case e: java.nio.file.NoSuchFileException =>
+            LLMError.processingFailed("save", s"Directory does not exist: ${e.getMessage}", Some(e))
+          case e: java.nio.file.FileSystemException =>
+            LLMError.processingFailed("save", s"File system error: ${e.getMessage}", Some(e))
+          case e: Exception =>
+            LLMError.processingFailed("save", s"Unexpected error: ${e.getMessage}", Some(e))
+        }
+        .map(_ => ())
     }
   }
 

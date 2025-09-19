@@ -75,15 +75,18 @@ object EmbeddingConfig {
 
   /** Validates that required embedding configuration is present for the active provider. */
   def validateConfig(config: ConfigReader): Either[String, String] =
-    try {
-      val provider = activeProvider(config)
-      val providerConfig = provider.toLowerCase match {
-        case "openai" => openAI(config)
-        case "voyage" => voyage(config)
-        case other    => return Left(s"Unknown embedding provider: $other")
+    scala.util
+      .Try {
+        val provider = activeProvider(config)
+        val providerConfig = provider.toLowerCase match {
+          case "openai" => openAI(config)
+          case "voyage" => voyage(config)
+          case other    => throw new RuntimeException(s"Unknown embedding provider: $other")
+        }
+        provider -> providerConfig
       }
-      validateProviderConfig(providerConfig).map(_ => provider)
-    } catch {
-      case e: RuntimeException => Left(e.getMessage)
-    }
+      .toEither
+      .left
+      .map(_.getMessage)
+      .flatMap { case (provider, cfg) => validateProviderConfig(cfg).map(_ => provider) }
 }

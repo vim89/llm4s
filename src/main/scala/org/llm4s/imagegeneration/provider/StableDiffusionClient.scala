@@ -69,50 +69,32 @@ class StableDiffusionClient(config: StableDiffusionConfig) extends ImageGenerati
     count: Int,
     options: ImageGenerationOptions = ImageGenerationOptions()
   ): Either[ImageGenerationError, Seq[GeneratedImage]] =
-    try {
-      logger.info(s"Generating $count image(s) with prompt: $prompt")
-
-      // Build the request payload
-      val payload = buildPayload(prompt, count, options)
-
-      // Make the HTTP request to Stable Diffusion API
-      val response = makeHttpRequest(payload)
-
-      // Parse and return the response
-      parseResponse(response, prompt, options)
-
-    } catch {
-      case e: Exception =>
-        logger.error(s"Error generating images: ${e.getMessage}", e)
-        Left(UnknownError(e))
-    }
+    for {
+      _       <- Right(logger.info(s"Generating $count image(s) with prompt: $prompt"))
+      payload <- Right(buildPayload(prompt, count, options))
+      response <- scala.util
+        .Try(makeHttpRequest(payload))
+        .toEither
+        .left
+        .map(e => UnknownError(e))
+      result <- parseResponse(response, prompt, options)
+    } yield result
 
   override def health(): Either[ImageGenerationError, ServiceStatus] =
-    try {
-      // Try to ping the health endpoint
-      val url      = s"${config.baseUrl}/sdapi/v1/options"
-      val response = requests.get(url, readTimeout = 5000, connectTimeout = 5000)
-
-      if (response.statusCode == 200) {
-        Right(
-          ServiceStatus(
-            status = HealthStatus.Healthy,
-            message = "Stable Diffusion service is responding"
-          )
-        )
-      } else {
-        Right(
-          ServiceStatus(
-            status = HealthStatus.Degraded,
-            message = s"Service returned status code: ${response.statusCode}"
-          )
-        )
+    scala.util
+      .Try {
+        val url      = s"${config.baseUrl}/sdapi/v1/options"
+        val response = requests.get(url, readTimeout = 5000, connectTimeout = 5000)
+        response
       }
-    } catch {
-      case e: Exception =>
-        logger.warn(s"Health check failed: ${e.getMessage}")
-        Left(ServiceError(s"Health check failed: ${e.getMessage}", 0))
-    }
+      .toEither
+      .left
+      .map(e => ServiceError(s"Health check failed: ${e.getMessage}", 0))
+      .map { response =>
+        if (response.statusCode == 200)
+          ServiceStatus(HealthStatus.Healthy, "Stable Diffusion service is responding")
+        else ServiceStatus(HealthStatus.Degraded, s"Service returned status code: ${response.statusCode}")
+      }
 
   private def buildPayload(
     prompt: String,
@@ -164,31 +146,30 @@ class StableDiffusionClient(config: StableDiffusionConfig) extends ImageGenerati
       return Left(ServiceError(errorMsg, response.statusCode))
     }
 
-    try {
-      val responseJson = read[ujson.Value](response.text())
-      val images       = responseJson("images").arr
-
-      if (images.isEmpty) {
-        return Left(ValidationError("No images returned from the API"))
+    scala.util
+      .Try {
+        val responseJson = read[ujson.Value](response.text())
+        val images       = responseJson("images").arr
+        images
       }
-
-      val generatedImages = images.map { imageData =>
-        GeneratedImage(
-          data = imageData.str,
-          format = options.format,
-          size = options.size,
-          prompt = prompt,
-          seed = options.seed
-        )
-      }.toSeq
-
-      logger.info(s"Successfully generated ${generatedImages.length} image(s)")
-      Right(generatedImages)
-
-    } catch {
-      case e: Exception =>
-        logger.error(s"Failed to parse response: ${e.getMessage}", e)
-        Left(UnknownError(e))
-    }
+      .toEither
+      .left
+      .map(e => UnknownError(e))
+      .flatMap { images =>
+        if (images.isEmpty) Left(ValidationError("No images returned from the API"))
+        else {
+          val generatedImages = images.map { imageData =>
+            GeneratedImage(
+              data = imageData.str,
+              format = options.format,
+              size = options.size,
+              prompt = prompt,
+              seed = options.seed
+            )
+          }.toSeq
+          logger.info(s"Successfully generated ${generatedImages.length} image(s)")
+          Right(generatedImages)
+        }
+      }
   }
 }
