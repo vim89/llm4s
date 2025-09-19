@@ -7,6 +7,8 @@ import org.slf4j.LoggerFactory
 import sttp.client4._
 import ujson.{ Arr, Obj, read }
 
+import scala.util.Try
+
 class OpenAIEmbeddingProvider(config: ConfigReader) extends EmbeddingProvider {
 
   private val backend = DefaultSyncBackend()
@@ -18,7 +20,7 @@ class OpenAIEmbeddingProvider(config: ConfigReader) extends EmbeddingProvider {
 
     // Lazily read provider config; surface missing envs as a clean EmbeddingError
     val cfgEither: Either[EmbeddingError, EmbeddingProviderConfig] =
-      scala.util.Try(EmbeddingConfig.openAI(config)).toEither.left.map { e =>
+      Try(EmbeddingConfig.openAI(config)).toEither.left.map { e =>
         EmbeddingError(
           code = Some("400"),
           message = s"Missing OpenAI configuration: ${e.getMessage}",

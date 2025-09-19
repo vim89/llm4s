@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import java.util.UUID
+import scala.util.Try
 
 /**
  * Enhanced Langfuse tracing with type-safe events
@@ -43,7 +44,7 @@ class EnhancedLangfuseTracing(
 
     val batchPayload = ujson.Obj("batch" -> ujson.Arr(events: _*))
 
-    val attempt = scala.util.Try {
+    val attempt = Try {
       val response = requests.post(
         langfuseUrl,
         data = batchPayload.render(),

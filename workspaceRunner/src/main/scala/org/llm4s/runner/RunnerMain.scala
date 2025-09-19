@@ -210,7 +210,7 @@ object RunnerMain extends cask.MainRoutes {
           Right(GetWorkspaceInfoResponse(command.commandId, workspacePath, Nil, WorkspaceLimits(0, 0, 0, 0)))
 
         case cmd: GetWorkspaceInfoCommand =>
-          scala.util.Try(workspaceInterface.getWorkspaceInfo().copy(commandId = cmd.commandId)).toEither.left.map {
+          Try(workspaceInterface.getWorkspaceInfo().copy(commandId = cmd.commandId)).toEither.left.map {
             case e: WorkspaceAgentException => WorkspaceAgentErrorResponse(cmd.commandId, e.error, e.code, e.details)
             case e: Exception =>
               WorkspaceAgentErrorResponse(
@@ -236,7 +236,7 @@ object RunnerMain extends cask.MainRoutes {
   private def handleExecuteCommand(channel: cask.WsChannelActor, cmd: ExecuteCommandCommand): Unit =
     Future {
       sendMessage(channel, CommandStartedMessage(cmd.commandId, cmd.command))
-      val res = scala.util.Try(executeCommandWithStreaming(cmd)).toEither.left.map {
+      val res = Try(executeCommandWithStreaming(cmd)).toEither.left.map {
         case e: WorkspaceAgentException => WorkspaceAgentErrorResponse(cmd.commandId, e.error, e.code, e.details)
         case e: Exception =>
           WorkspaceAgentErrorResponse(
@@ -267,7 +267,7 @@ object RunnerMain extends cask.MainRoutes {
       .copy(commandId = cmd.commandId)
 
   private def sendMessage(channel: cask.WsChannelActor, message: WebSocketMessage): Unit = {
-    val attempt = scala.util.Try(write(message)).toEither
+    val attempt = Try(write(message)).toEither
     for {
       json <- attempt.left.map(ex => logger.error(s"Failed to serialize WebSocket message: ${ex.getMessage}", ex))
     } yield channel.send(cask.Ws.Text(json))
@@ -295,7 +295,7 @@ object RunnerMain extends cask.MainRoutes {
 
           if (currentTime - lastHeartbeat > HeartbeatTimeoutMs) {
             logger.warn(s"WebSocket connection timed out - no heartbeat for ${currentTime - lastHeartbeat}ms")
-            scala.util.Try(channel.send(cask.Ws.Close(1000, "Heartbeat timeout"))).failed.foreach { ex =>
+            Try(channel.send(cask.Ws.Close(1000, "Heartbeat timeout"))).failed.foreach { ex =>
               logger.error(s"Error closing timed out connection: ${ex.getMessage}", ex)
             }
             connections.remove(channel)
@@ -337,7 +337,7 @@ object RunnerMain extends cask.MainRoutes {
       shutdown()
     }))
 
-    logger.info(s"WebSocket Runner service starting on ${host}:${port}")
+    logger.info(s"WebSocket Runner service starting on $host:$port")
     super.main(args)
   }
 

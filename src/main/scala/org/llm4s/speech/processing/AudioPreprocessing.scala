@@ -2,17 +2,18 @@ package org.llm4s.speech.processing
 
 import org.llm4s.error.ProcessingError
 import org.llm4s.types.Result
-import org.llm4s.speech.{ AudioMeta, AudioFormat, GeneratedAudio }
+import org.llm4s.speech.{ AudioFormat, AudioMeta, GeneratedAudio }
 import org.llm4s.speech.io.BinaryReader._
 
 import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, IOException }
 import javax.sound.sampled.{
-  AudioFormat => JAudioFormat,
   AudioInputStream,
   AudioSystem,
+  LineUnavailableException,
   UnsupportedAudioFileException,
-  LineUnavailableException
+  AudioFormat => JAudioFormat
 }
+import scala.util.Try
 
 /**
  * Functional audio preprocessing utilities.
@@ -22,7 +23,7 @@ object AudioPreprocessing {
 
   /** Resample PCM16 little-endian bytes to target sample rate using Java Sound. */
   def resamplePcm16(bytes: Array[Byte], source: AudioMeta, targetRate: Int): Result[(Array[Byte], AudioMeta)] = {
-    val attempt = scala.util.Try {
+    val attempt = Try {
       val srcFormat = new JAudioFormat(source.sampleRate.toFloat, source.bitDepth, source.numChannels, true, false)
       val srcAis =
         new AudioInputStream(new ByteArrayInputStream(bytes), srcFormat, bytes.length / srcFormat.getFrameSize)
@@ -81,7 +82,7 @@ object AudioPreprocessing {
 
   /** Trim leading and trailing silence using a simple amplitude threshold on PCM16. */
   def trimSilence(bytes: Array[Byte], meta: AudioMeta, threshold: Int = 512): Result[(Array[Byte], AudioMeta)] = {
-    val attempt = scala.util.Try {
+    val attempt = Try {
       val sampleSize = meta.bitDepth / 8
       val frameSize  = sampleSize * meta.numChannels
       val numFrames  = bytes.length / frameSize

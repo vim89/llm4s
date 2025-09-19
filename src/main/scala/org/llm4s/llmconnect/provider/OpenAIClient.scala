@@ -75,7 +75,7 @@ class OpenAIClient private (
     // Note: Azure SDK doesn't directly support adding custom headers to ChatCompletionsOptions
     // This would need to be handled differently if organization header is required
 
-    val res = scala.util.Try(client.getChatCompletions(model, chatOptions)).toEither
+    val res = Try(client.getChatCompletions(model, chatOptions)).toEither
     for {
       completions <- res.left.map(e => e.toLLMError)
     } yield convertFromOpenAIFormat(completions)

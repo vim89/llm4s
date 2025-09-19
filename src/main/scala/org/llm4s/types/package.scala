@@ -2,6 +2,7 @@ package org.llm4s
 
 import cats.data.ValidatedNec
 import org.llm4s.config.ConfigReader
+import org.llm4s.core.safety.Safety
 import org.llm4s.error.{ ConfigurationError, ValidationError }
 import org.llm4s.llmconnect.model.StreamedChunk
 import org.llm4s.toolapi.ToolFunction
@@ -278,7 +279,7 @@ package object types {
   /** Type alias for URL string with validation */
   final case class Url(value: String) extends AnyVal {
     override def toString: String = value
-    def isValid: Boolean          = scala.util.Try(new java.net.URI(value)).isSuccess
+    def isValid: Boolean          = Try(new java.net.URI(value)).isSuccess
   }
 
   /** Type alias for endpoint configuration */
@@ -852,7 +853,7 @@ package object types {
      * Convert a Try to a Result using the existing Result.fromTry method.
      * This provides the cleaner .toResult syntax requested in PR reviews.
      */
-    def toResult: Result[A] = org.llm4s.core.safety.Safety.fromTry(t)
+    def toResult: Result[A] = Safety.fromTry(t)
   }
 
 }
@@ -893,7 +894,7 @@ object Result {
       case scala.util.Success(value)     => success(value)
       case scala.util.Failure(throwable) => failure(org.llm4s.error.ThrowableOps.RichThrowable(throwable).toLLMError)
     }
-    scala.util.Try(finallyBlock()) // do not throw; best-effort
+    Try(finallyBlock()) // do not throw; best-effort
     res
   }
 
@@ -925,7 +926,7 @@ object Result {
       c <- rc
     } yield (a, b, c)
 
-  def safely[A](operation: => A): Result[A] = org.llm4s.core.safety.Safety.fromTry(Try(operation))
+  def safely[A](operation: => A): Result[A] = Safety.fromTry(Try(operation))
 
   // Async support
   def fromFuture[A](future: Future[A])(implicit ec: ExecutionContext): Future[Result[A]] =

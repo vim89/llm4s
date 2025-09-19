@@ -130,8 +130,8 @@ class ContainerisedWorkspace(val workspaceDir: String) extends WorkspaceAgentInt
   private def handleStreamingOutput(commandId: String, outputType: String, content: String, isComplete: Boolean): Unit =
     Option(streamingHandlers.get(commandId)) match {
       case Some(handler) =>
-        scala.util.Try(handler(StreamingOutputMessage(commandId, outputType, content, isComplete))).failed.foreach {
-          ex => logger.error(s"Error in streaming handler for command $commandId: ${ex.getMessage}", ex)
+        Try(handler(StreamingOutputMessage(commandId, outputType, content, isComplete))).failed.foreach { ex =>
+          logger.error(s"Error in streaming handler for command $commandId: ${ex.getMessage}", ex)
         }
         if (isComplete) streamingHandlers.remove(commandId)
       case None =>
@@ -231,7 +231,7 @@ class ContainerisedWorkspace(val workspaceDir: String) extends WorkspaceAgentInt
   }
 
   private def connectWebSocket(): Boolean = {
-    val attempt = scala.util.Try {
+    val attempt = Try {
       val client = new WorkspaceWebSocketClient(new URI(wsUrl))
       wsClient.set(client)
       val connected = client.connectBlocking(ConnectionTimeoutMs, TimeUnit.MILLISECONDS)
@@ -244,15 +244,12 @@ class ContainerisedWorkspace(val workspaceDir: String) extends WorkspaceAgentInt
     logger.info("Starting heartbeat task")
 
     heartbeatExecutor.scheduleAtFixedRate(
-      new Runnable {
-        def run(): Unit =
-          if (containerRunning.get() && wsConnected.get()) {
-            val hb = scala.util.Try(sendHeartbeat())
-            hb.failed.foreach { e =>
-              logger.warn(s"Failed to send heartbeat: ${e.getMessage}")
-              handleContainerDown()
-            }
-          }
+      () => if (containerRunning.get() && wsConnected.get()) {
+        val hb = Try(sendHeartbeat())
+        hb.failed.foreach { e =>
+          logger.warn(s"Failed to send heartbeat: ${e.getMessage}")
+          handleContainerDown()
+        }
       },
       0,
       HeartbeatIntervalSeconds,
@@ -292,7 +289,7 @@ class ContainerisedWorkspace(val workspaceDir: String) extends WorkspaceAgentInt
 
     // Shutdown heartbeat task
     heartbeatExecutor.shutdown()
-    val term = scala.util.Try(heartbeatExecutor.awaitTermination(3, TimeUnit.SECONDS)).getOrElse(false)
+    val term = Try(heartbeatExecutor.awaitTermination(3, TimeUnit.SECONDS)).getOrElse(false)
     if (!term) heartbeatExecutor.shutdownNow()
 
     // Execute stop and remove as separate commands
@@ -346,12 +343,12 @@ class ContainerisedWorkspace(val workspaceDir: String) extends WorkspaceAgentInt
     pendingResponses.put(command.commandId, future)
 
     val sendEither = for {
-      json <- scala.util.Try(write(CommandMessage(command))).toEither.left.map(_.getMessage)
+      json <- Try(write(CommandMessage(command))).toEither.left.map(_.getMessage)
       _ <- Option(wsClient.get()).filter(_.isOpen).toRight("WebSocket client is not connected").map { client =>
         client.send(json)
         logger.debug(s"Sent command: ${command.getClass.getSimpleName} with ID: ${command.commandId}")
       }
-      response <- scala.util.Try(future.get(30, TimeUnit.SECONDS)).toEither.left.map(_.getMessage)
+      response <- Try(future.get(30, TimeUnit.SECONDS)).toEither.left.map(_.getMessage)
       finalResp <- response match {
         case error: WorkspaceAgentErrorResponse => Left(s"${error.code}: ${error.error}")
         case ok                                 => Right(ok)
@@ -493,7 +490,7 @@ class ContainerisedWorkspace(val workspaceDir: String) extends WorkspaceAgentInt
     // Register streaming handler
     streamingHandlers.put(cmd.commandId, outputHandler)
 
-    val resp = scala.util.Try(sendCommand(cmd).asInstanceOf[ExecuteCommandResponse]).toEither
+    val resp = Try(sendCommand(cmd).asInstanceOf[ExecuteCommandResponse]).toEither
     streamingHandlers.remove(cmd.commandId)
     resp.fold(
       e => throw e,

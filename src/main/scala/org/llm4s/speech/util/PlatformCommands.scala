@@ -1,6 +1,6 @@
 package org.llm4s.speech.util
 
-import scala.util.Properties
+import scala.util.{ Properties, Try }
 
 /**
  * Cross-platform command utilities for testing speech adapters.
@@ -53,7 +53,7 @@ object PlatformCommands {
    */
   def isCommandAvailable(command: String): Boolean = {
     import scala.sys.process._
-    scala.util.Try((command :: "--version" :: Nil).!).toOption.contains(0)
+    Try((command :: "--version" :: Nil).!).toOption.contains(0)
   }
 
   /**

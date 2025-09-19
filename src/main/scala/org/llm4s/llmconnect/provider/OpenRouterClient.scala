@@ -15,6 +15,7 @@ import java.net.http.{ HttpClient, HttpRequest, HttpResponse }
 import java.time.Duration
 import java.io.{ BufferedReader, InputStreamReader }
 import java.nio.charset.StandardCharsets
+import scala.util.Try
 
 class OpenRouterClient(config: OpenAIConfig) extends LLMClient {
   private val httpClient = HttpClient.newHttpClient()
@@ -97,7 +98,7 @@ class OpenRouterClient(config: OpenAIConfig) extends LLMClient {
 
         val sseParser = SSEParser.createStreamingParser()
         val reader    = new BufferedReader(new InputStreamReader(response.body(), StandardCharsets.UTF_8))
-        val loopTry = scala.util.Try {
+        val loopTry = Try {
           var line: String = null
           while ({ line = reader.readLine(); line != null }) {
             sseParser.addChunk(line + "\n")
@@ -116,7 +117,7 @@ class OpenRouterClient(config: OpenAIConfig) extends LLMClient {
               }
           }
         }
-        scala.util.Try(reader.close()); scala.util.Try(response.body().close());
+        Try(reader.close()); Try(response.body().close())
         loopTry.get
       }
       .toEither
