@@ -244,13 +244,14 @@ class ContainerisedWorkspace(val workspaceDir: String) extends WorkspaceAgentInt
     logger.info("Starting heartbeat task")
 
     heartbeatExecutor.scheduleAtFixedRate(
-      () => if (containerRunning.get() && wsConnected.get()) {
-        val hb = Try(sendHeartbeat())
-        hb.failed.foreach { e =>
-          logger.warn(s"Failed to send heartbeat: ${e.getMessage}")
-          handleContainerDown()
-        }
-      },
+      () =>
+        if (containerRunning.get() && wsConnected.get()) {
+          val hb = Try(sendHeartbeat())
+          hb.failed.foreach { e =>
+            logger.warn(s"Failed to send heartbeat: ${e.getMessage}")
+            handleContainerDown()
+          }
+        },
       0,
       HeartbeatIntervalSeconds,
       TimeUnit.SECONDS
