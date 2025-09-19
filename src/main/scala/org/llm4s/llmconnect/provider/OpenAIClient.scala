@@ -10,7 +10,6 @@ import org.llm4s.llmconnect.model._
 import org.llm4s.llmconnect.streaming._
 import org.llm4s.toolapi.{ AzureToolHelper, ToolRegistry }
 import org.llm4s.types.Result
- 
 
 import scala.jdk.CollectionConverters._
 import scala.util.Try
