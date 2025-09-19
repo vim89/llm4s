@@ -13,6 +13,7 @@ import org.llm4s.error.ThrowableOps._
 
 import java.util.Optional
 import scala.jdk.CollectionConverters._
+import scala.util.Try
 
 class AnthropicClient(config: AnthropicConfig) extends LLMClient {
   // Store config for budget calculations
@@ -53,13 +54,14 @@ class AnthropicClient(config: AnthropicConfig) extends LLMClient {
     val messageParams = paramsBuilder.build()
 
     val messageService = client.messages()
-    val attempt = scala.util.Try(messageService.create(messageParams)).toEither.left.map {
+    // Make API call
+    val attempt = Try(messageService.create(messageParams)).toEither.left.map {
       case e: com.anthropic.errors.UnauthorizedException         => AuthenticationError("anthropic", e.getMessage)
       case _: com.anthropic.errors.RateLimitException            => RateLimitError("anthropic")
       case e: com.anthropic.errors.AnthropicInvalidDataException => ValidationError("input", e.getMessage)
       case e: Exception                                          => e.toLLMError
     }
-    attempt.map(convertFromAnthropicResponse)
+    attempt.map(convertFromAnthropicResponse) // Convert response to our model
   }
 
   /*
@@ -98,101 +100,107 @@ curl https://api.anthropic.com/v1/messages \
       .temperature(options.temperature.floatValue())
       .topP(options.topP.floatValue())
 
+    // Add max tokens if specified (required by the API)
     val maxTokens = options.maxTokens.getOrElse(2048)
     paramsBuilder.maxTokens(maxTokens)
+    // Add tools if specified
     if (options.tools.nonEmpty) options.tools.foreach(t => paramsBuilder.addTool(convertToolToAnthropicTool(t)))
+    // Add messages from conversation
     addMessagesToParams(conversation, paramsBuilder)
+    // Build the parameters
     val messageParams = paramsBuilder.build()
 
+    // Create accumulator for building the final completion
     val accumulator                      = StreamingAccumulator.create()
     var currentMessageId: Option[String] = None
 
-    val attempt = scala.util
-      .Try {
-        val messageService = client.messages()
-        val streamResponse = messageService.createStreaming(messageParams)
+    // Process the stream
+    val attempt = Try {
+      val messageService = client.messages()
+      val streamResponse = messageService.createStreaming(messageParams)
 
-        import scala.jdk.StreamConverters._
-        import scala.jdk.OptionConverters._
-        val stream: Iterator[RawMessageStreamEvent] = streamResponse.stream().toScala(Iterator)
-        val loopTry = scala.util.Try {
-          stream.foreach { event =>
-            val messageStartOpt = event.messageStart()
-            if (messageStartOpt != null && messageStartOpt.isPresent) {
-              val msgStart = messageStartOpt.get()
-              currentMessageId = Some(msgStart.message().id())
-            }
+      import scala.jdk.StreamConverters._
+      import scala.jdk.OptionConverters._
+      val stream: Iterator[RawMessageStreamEvent] = streamResponse.stream().toScala(Iterator)
+      val loopTry = Try {
+        stream.foreach { event =>
+          // Process different event types using the event's accessor methods
+          // Check for message start event
+          val messageStartOpt = event.messageStart()
+          if (messageStartOpt != null && messageStartOpt.isPresent) {
+            val msgStart = messageStartOpt.get()
+            currentMessageId = Some(msgStart.message().id())
+          }
 
-            val contentDeltaOpt = event.contentBlockDelta()
-            if (contentDeltaOpt != null && contentDeltaOpt.isPresent) {
-              val contentDelta = contentDeltaOpt.get()
-              val delta        = contentDelta.delta()
-              scala.util.Try(delta.text()).foreach { textOpt =>
-                if (textOpt != null && textOpt.isPresent) {
-                  val textDelta = textOpt.get()
-                  val text      = textDelta.text()
-                  if (text != null && text.nonEmpty) {
-                    val chunk = StreamedChunk(
-                      id = currentMessageId.getOrElse(""),
-                      content = Some(text),
-                      toolCall = None,
-                      finishReason = None
-                    )
-                    accumulator.addChunk(chunk)
-                    onChunk(chunk)
-                  }
-                }
-              }
-            }
-
-            val contentStartOpt = event.contentBlockStart()
-            if (contentStartOpt != null && contentStartOpt.isPresent) {
-              val contentStart = contentStartOpt.get()
-              val block        = contentStart.contentBlock()
-              if (block.isToolUse) {
-                val toolUse = block.asToolUse()
-                val chunk = StreamedChunk(
-                  id = currentMessageId.getOrElse(""),
-                  content = None,
-                  toolCall = Some(ToolCall(id = toolUse.id(), name = toolUse.name(), arguments = ujson.Null)),
-                  finishReason = None
-                )
-                accumulator.addChunk(chunk)
-              }
-            }
-
-            val messageStopOpt = event.messageStop()
-            if (messageStopOpt != null && messageStopOpt.isPresent) {
-              val chunk = StreamedChunk(
-                id = currentMessageId.getOrElse(""),
-                content = None,
-                toolCall = None,
-                finishReason = Some("stop")
-              )
-              accumulator.addChunk(chunk)
-            }
-
-            val messageDeltaOpt = event.messageDelta()
-            if (messageDeltaOpt != null && messageDeltaOpt.isPresent) {
-              val msgDelta = messageDeltaOpt.get()
-              scala.util.Try(msgDelta.usage()).foreach { usage =>
-                if (usage != null) {
-                  val inputTokens = Option(usage.inputTokens()) match {
-                    case Some(opt: Optional[_]) => opt.toScala.map(_.toInt).getOrElse(0)
-                    case _                      => 0
-                  }
-                  val outputTokens = Option(usage.outputTokens()).map(_.toInt).getOrElse(0)
-                  if (inputTokens > 0 || outputTokens > 0) accumulator.updateTokens(inputTokens, outputTokens)
+          // Check for content block delta event
+          val contentDeltaOpt = event.contentBlockDelta()
+          if (contentDeltaOpt != null && contentDeltaOpt.isPresent) {
+            val contentDelta = contentDeltaOpt.get()
+            val delta        = contentDelta.delta()
+            Try(delta.text()).foreach { textOpt =>
+              if (textOpt != null && textOpt.isPresent) {
+                val textDelta = textOpt.get()
+                val text      = textDelta.text()
+                if (text != null && text.nonEmpty) {
+                  val chunk = StreamedChunk(
+                    id = currentMessageId.getOrElse(""),
+                    content = Some(text),
+                    toolCall = None,
+                    finishReason = None
+                  )
+                  accumulator.addChunk(chunk)
+                  onChunk(chunk)
                 }
               }
             }
           }
+
+          val contentStartOpt = event.contentBlockStart()
+          if (contentStartOpt != null && contentStartOpt.isPresent) {
+            val contentStart = contentStartOpt.get()
+            val block        = contentStart.contentBlock()
+            if (block.isToolUse) {
+              val toolUse = block.asToolUse()
+              val chunk = StreamedChunk(
+                id = currentMessageId.getOrElse(""),
+                content = None,
+                toolCall = Some(ToolCall(id = toolUse.id(), name = toolUse.name(), arguments = ujson.Null)),
+                finishReason = None
+              )
+              accumulator.addChunk(chunk)
+            }
+          }
+
+          val messageStopOpt = event.messageStop()
+          if (messageStopOpt != null && messageStopOpt.isPresent) {
+            val chunk = StreamedChunk(
+              id = currentMessageId.getOrElse(""),
+              content = None,
+              toolCall = None,
+              finishReason = Some("stop")
+            )
+            accumulator.addChunk(chunk)
+          }
+
+          val messageDeltaOpt = event.messageDelta()
+          if (messageDeltaOpt != null && messageDeltaOpt.isPresent) {
+            val msgDelta = messageDeltaOpt.get()
+            Try(msgDelta.usage()).foreach { usage =>
+              if (usage != null) {
+                val inputTokens = Option(usage.inputTokens()) match {
+                  case Some(opt: Optional[_]) => opt.toScala.map(_.toInt).getOrElse(0)
+                  case _                      => 0
+                }
+                val outputTokens = Option(usage.outputTokens()).map(_.toInt).getOrElse(0)
+                if (inputTokens > 0 || outputTokens > 0) accumulator.updateTokens(inputTokens, outputTokens)
+              }
+            }
+          }
         }
-        scala.util.Try(streamResponse.close());
-        loopTry.get
       }
-      .toEither
-      .left
+      Try(streamResponse.close());
+      loopTry.get
+    }.toEither.left
       .map {
         case e: com.anthropic.errors.UnauthorizedException         => AuthenticationError("anthropic", e.getMessage)
         case _: com.anthropic.errors.RateLimitException            => RateLimitError("anthropic")
@@ -200,6 +208,7 @@ curl https://api.anthropic.com/v1/messages \
         case e: Exception                                          => e.toLLMError
       }
 
+    // Return the accumulated completion
     attempt.flatMap(_ => accumulator.toCompletion.map(c => c.copy(model = config.model)))
   }
 

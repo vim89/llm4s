@@ -46,7 +46,7 @@ class SessionManager(sessionDir: DirectoryPath, agent: Agent) {
         logger.debug("Serializing agent state components")
 
         // Test conversation serialization
-        val conversationJson = scala.util.Try(write(agentState.conversation)).getOrElse {
+        val conversationJson = Try(write(agentState.conversation)).getOrElse {
           val ex = new RuntimeException("Conversation serialization failed")
           logger.error("Failed to serialize conversation", ex)
           throw ex
@@ -54,7 +54,7 @@ class SessionManager(sessionDir: DirectoryPath, agent: Agent) {
         logger.debug("Conversation serialized successfully")
 
         // Test status serialization
-        val statusJson = scala.util.Try(write(agentState.status)).getOrElse {
+        val statusJson = Try(write(agentState.status)).getOrElse {
           val ex = new RuntimeException("AgentStatus serialization failed")
           logger.error("Failed to serialize agent status", ex)
           throw ex
@@ -122,7 +122,7 @@ class SessionManager(sessionDir: DirectoryPath, agent: Agent) {
    * Creates JSON content for session storage
    */
   private def createJsonContent(state: SessionState): Either[AssistantError, String] =
-    Try(sessionStateToJson(state).toString()).toEither
+    Try(sessionStateToJson(state)).toEither
       .leftMap(ex => AssistantError.jsonSerializationFailed("SessionState", ex))
 
   /**
@@ -240,7 +240,7 @@ class SessionManager(sessionDir: DirectoryPath, agent: Agent) {
       baseFilename
     } else {
       // Use system temp directory to generate guaranteed unique filename
-      val tempFile     = FileUtils.getFile(FileUtils.getTempDirectory(), s"session_${System.nanoTime()}")
+      val tempFile     = FileUtils.getFile(FileUtils.getTempDirectory, s"session_${System.nanoTime()}")
       val uniqueSuffix = tempFile.getName.substring(8) // Remove "session_" prefix
       s"$baseFilename-$uniqueSuffix"
     }

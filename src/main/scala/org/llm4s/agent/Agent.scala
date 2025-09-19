@@ -1,5 +1,6 @@
 package org.llm4s.agent
 
+import org.llm4s.core.safety.Safety
 import org.llm4s.llmconnect.LLMClient
 import org.llm4s.llmconnect.model._
 import org.llm4s.toolapi._
@@ -292,7 +293,7 @@ class Agent(client: LLMClient) {
     import java.nio.charset.StandardCharsets
     import java.nio.file.{ Files, Paths }
 
-    org.llm4s.core.safety.Safety
+    Safety
       .fromTry(Try {
         val content = formatStateAsMarkdown(state)
         Files.write(Paths.get(traceLogPath), content.getBytes(StandardCharsets.UTF_8))

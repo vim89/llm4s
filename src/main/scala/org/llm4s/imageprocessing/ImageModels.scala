@@ -5,6 +5,7 @@ import java.time.Instant
 import org.llm4s.error.LLMError
 import cats.data.Validated
 import cats.syntax.validated._
+import scala.util.Try
 
 /**
  * Represents different image formats supported by the system.
@@ -103,10 +104,7 @@ case class ProcessedImage(
 
     // Use cats Validated for path validation, then safely write
     validatePath(path).toEither.flatMap { normalizedPath =>
-      scala.util
-        .Try(Files.write(normalizedPath, data))
-        .toEither
-        .left
+      Try(Files.write(normalizedPath, data)).toEither.left
         .map {
           case e: java.nio.file.AccessDeniedException =>
             LLMError.processingFailed("save", s"Access denied: ${e.getMessage}", Some(e))

@@ -3,6 +3,7 @@ package org.llm4s.imagegeneration.provider
 import org.llm4s.imagegeneration._
 import org.slf4j.LoggerFactory
 import upickle.default._
+import scala.util.Try
 
 /**
  * Represents the JSON payload for the Stable Diffusion WebUI API's text-to-image endpoint.
@@ -80,21 +81,17 @@ class StableDiffusionClient(config: StableDiffusionConfig) extends ImageGenerati
       result <- parseResponse(response, prompt, options)
     } yield result
 
-  override def health(): Either[ImageGenerationError, ServiceStatus] =
-    scala.util
-      .Try {
-        val url      = s"${config.baseUrl}/sdapi/v1/options"
-        val response = requests.get(url, readTimeout = 5000, connectTimeout = 5000)
-        response
-      }
-      .toEither
-      .left
-      .map(e => ServiceError(s"Health check failed: ${e.getMessage}", 0))
-      .map { response =>
-        if (response.statusCode == 200)
-          ServiceStatus(HealthStatus.Healthy, "Stable Diffusion service is responding")
-        else ServiceStatus(HealthStatus.Degraded, s"Service returned status code: ${response.statusCode}")
-      }
+  override def health(): Either[ImageGenerationError, ServiceStatus] = Try {
+    val url      = s"${config.baseUrl}/sdapi/v1/options"
+    val response = requests.get(url, readTimeout = 5000, connectTimeout = 5000)
+    response
+  }.toEither.left
+    .map(e => ServiceError(s"Health check failed: ${e.getMessage}", 0))
+    .map { response =>
+      if (response.statusCode == 200)
+        ServiceStatus(HealthStatus.Healthy, "Stable Diffusion service is responding")
+      else ServiceStatus(HealthStatus.Degraded, s"Service returned status code: ${response.statusCode}")
+    }
 
   private def buildPayload(
     prompt: String,
@@ -146,14 +143,11 @@ class StableDiffusionClient(config: StableDiffusionConfig) extends ImageGenerati
       return Left(ServiceError(errorMsg, response.statusCode))
     }
 
-    scala.util
-      .Try {
-        val responseJson = read[ujson.Value](response.text())
-        val images       = responseJson("images").arr
-        images
-      }
-      .toEither
-      .left
+    Try {
+      val responseJson = read[ujson.Value](response.text())
+      val images       = responseJson("images").arr
+      images
+    }.toEither.left
       .map(e => UnknownError(e))
       .flatMap { images =>
         if (images.isEmpty) Left(ValidationError("No images returned from the API"))

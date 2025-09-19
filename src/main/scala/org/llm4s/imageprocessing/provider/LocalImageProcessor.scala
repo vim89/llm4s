@@ -2,11 +2,13 @@ package org.llm4s.imageprocessing.provider
 
 import org.llm4s.imageprocessing._
 import org.llm4s.error.LLMError
+
 import java.awt.image.BufferedImage
 import java.awt.{ RenderingHints, Color }
 import java.io.{ ByteArrayOutputStream, File }
 import javax.imageio.ImageIO
 import java.time.Instant
+import scala.util.Try
 
 /**
  * Local image processor that uses Java's built-in image processing capabilities.
@@ -21,10 +23,7 @@ class LocalImageProcessor extends org.llm4s.imageprocessing.ImageProcessingClien
   ): Either[LLMError, ImageAnalysisResult] =
     // Local processor can only provide basic metadata analysis
     // For AI-powered analysis, use OpenAI or Anthropic clients
-    scala.util
-      .Try(ImageIO.read(new File(imagePath)))
-      .toEither
-      .left
+    Try(ImageIO.read(new File(imagePath))).toEither.left
       .map(e => LLMError.processingFailed("analyze", s"Error reading image: ${e.getMessage}", Some(e)))
       .flatMap { bufferedImage =>
         if (bufferedImage == null)
@@ -50,10 +49,7 @@ class LocalImageProcessor extends org.llm4s.imageprocessing.ImageProcessingClien
     imagePath: String,
     operations: List[ImageOperation]
   ): Either[LLMError, ProcessedImage] =
-    scala.util
-      .Try(ImageIO.read(new File(imagePath)))
-      .toEither
-      .left
+    Try(ImageIO.read(new File(imagePath))).toEither.left
       .map(e => LLMError.processingFailed("process", s"Error reading image: ${e.getMessage}", Some(e)))
       .flatMap { originalImage =>
         if (originalImage == null)
@@ -85,10 +81,7 @@ class LocalImageProcessor extends org.llm4s.imageprocessing.ImageProcessingClien
     imagePath: String,
     targetFormat: ImageFormat
   ): Either[LLMError, ProcessedImage] =
-    scala.util
-      .Try(ImageIO.read(new File(imagePath)))
-      .toEither
-      .left
+    Try(ImageIO.read(new File(imagePath))).toEither.left
       .map(e => LLMError.processingFailed("convert", s"Error reading image: ${e.getMessage}", Some(e)))
       .flatMap { originalImage =>
         if (originalImage == null)

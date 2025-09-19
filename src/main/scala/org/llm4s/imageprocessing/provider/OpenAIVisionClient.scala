@@ -193,9 +193,7 @@ class OpenAIVisionClient(config: OpenAIVisionConfig) extends org.llm4s.imageproc
         case statusCode =>
           val errorMessage = response.body match {
             case Left(errorBody) =>
-              scala.util
-                .Try(read(errorBody))
-                .toOption
+              Try(read(errorBody)).toOption
                 .flatMap(js => js.obj.get("error"))
                 .map { err =>
                   val message   = err.obj.get("message").flatMap(_.strOpt)
@@ -219,9 +217,7 @@ class OpenAIVisionClient(config: OpenAIVisionConfig) extends org.llm4s.imageproc
   private def extractContentFromResponse(jsonResponse: String): String = {
     import ujson._
 
-    scala.util
-      .Try(read(jsonResponse))
-      .toOption
+    Try(read(jsonResponse)).toOption
       .flatMap { json =>
         json("choices").arr.headOption
           .flatMap(_.obj.get("message"))

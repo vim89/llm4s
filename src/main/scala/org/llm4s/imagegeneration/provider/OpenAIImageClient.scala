@@ -4,6 +4,7 @@ import org.llm4s.imagegeneration._
 import org.slf4j.LoggerFactory
 import ujson._
 import java.time.Instant
+import scala.util.Try
 
 /**
  * OpenAI DALL-E API client for image generation.
@@ -195,11 +196,10 @@ class OpenAIImageClient(config: OpenAIConfig) extends ImageGenerationClient {
    * Handle error responses from the API.
    */
   private def handleErrorResponse(response: requests.Response): Either[ImageGenerationError, requests.Response] = {
-    val errorMessage = scala.util
-      .Try {
-        val json = read(response.text())
-        json("error")("message").str
-      }
+    val errorMessage = Try {
+      val json = read(response.text())
+      json("error")("message").str
+    }
       .getOrElse(response.text())
 
     response.statusCode match {

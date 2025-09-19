@@ -12,6 +12,7 @@ import java.net.URI
 import java.net.http.{ HttpClient, HttpRequest, HttpResponse }
 import java.nio.charset.StandardCharsets
 import java.time.Duration
+import scala.util.Try
 
 class OllamaClient(config: OllamaConfig) extends LLMClient {
   private val httpClient = HttpClient.newHttpClient()
@@ -70,7 +71,7 @@ class OllamaClient(config: OllamaConfig) extends LLMClient {
 
     val accumulator = StreamingAccumulator.create()
     val reader      = new BufferedReader(new InputStreamReader(response.body(), StandardCharsets.UTF_8))
-    val processEither = scala.util.Try {
+    val processEither = Try {
       var line: String = null
       while ({ line = reader.readLine(); line != null }) {
         val trimmed = line.trim
@@ -104,8 +105,8 @@ class OllamaClient(config: OllamaConfig) extends LLMClient {
       }
     }.toEither
     // close resources regardless
-    scala.util.Try(reader.close())
-    scala.util.Try(response.body().close())
+    Try(reader.close())
+    Try(response.body().close())
     processEither.left.foreach(_ => ())
 
     accumulator.toCompletion

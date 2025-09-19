@@ -2,9 +2,11 @@ package org.llm4s.context
 
 import org.llm4s.error.ContextError
 import org.llm4s.llmconnect.model.{ Message, ToolMessage }
-import org.llm4s.types.{ Result, ArtifactKey, ExternalizedContent, ExternalizationThreshold, ContentSize }
+import org.llm4s.types.{ ArtifactKey, ContentSize, ExternalizationThreshold, ExternalizedContent, Result }
 import org.slf4j.LoggerFactory
 import ujson._
+
+import scala.util.Try
 
 /**
  * Handles intelligent compression and externalization of tool outputs.
@@ -116,10 +118,7 @@ object ToolOutputCompressor {
     }
 
   private def parseJsonSafely(content: String): Result[Value] =
-    scala.util
-      .Try(ujson.read(content))
-      .toEither
-      .left
+    Try(ujson.read(content)).toEither.left
       .map(_ => ContextError.schemaCompressionFailed("ToolOutputCompressor", "Failed to parse JSON content"))
 
   private def compressJsonRecursively(value: Value): Value = value match {

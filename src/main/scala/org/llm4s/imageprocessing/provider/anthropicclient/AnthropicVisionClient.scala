@@ -30,18 +30,23 @@ class AnthropicVisionClient(config: AnthropicVisionConfig) extends org.llm4s.ima
     prompt: Option[String] = None
   ): Either[LLMError, ImageAnalysisResult] =
     for {
+      // First, get basic metadata using local processor
       basic <- localProcessor.analyzeImage(imagePath, None)
       metadata = basic.metadata
+      // Convert image to base64 for API call
       base64Image <- encodeImageToBase64(imagePath).toEither.left
         .map(e => LLMError.processingFailed("encode", s"Failed to encode image: ${e.getMessage}", Some(e)))
+
+      // Call Anthropic Vision API
       analysisPrompt = prompt.getOrElse(
         "Analyze this image in detail. Describe what you see, identify any objects, text, or people present. " +
           "Provide tags that categorize the image content."
       )
+      // Detect media type for proper API call
       mediaType = detectMediaType(imagePath)
       visionResponse <- callAnthropicVisionAPI(base64Image, analysisPrompt, mediaType).toEither.left
         .map(e => LLMError.apiCallFailed("Anthropic", s"Anthropic Vision API call failed: ${e.getMessage}"))
-    } yield parseVisionResponse(visionResponse, metadata)
+    } yield parseVisionResponse(visionResponse, metadata) // Parse the response and extract structured information
 
   /**
    * Preprocesses an image by applying a sequence of operations.
@@ -207,9 +212,7 @@ class AnthropicVisionClient(config: AnthropicVisionConfig) extends org.llm4s.ima
         case statusCode =>
           val errorMessage = response.body match {
             case Left(errorBody) =>
-              scala.util
-                .Try(read(errorBody))
-                .toOption
+              Try(read(errorBody)).toOption
                 .flatMap(js => js.obj.get("error"))
                 .map { err =>
                   val message   = err.obj.get("message").flatMap(_.strOpt)
@@ -231,9 +234,7 @@ class AnthropicVisionClient(config: AnthropicVisionConfig) extends org.llm4s.ima
   private def extractContentFromResponse(jsonResponse: String): String = {
     import ujson._
 
-    scala.util
-      .Try(read(jsonResponse))
-      .toOption
+    Try(read(jsonResponse)).toOption
       .flatMap { json =>
         json("content").arr.headOption
           .flatMap(_.obj.get("text"))

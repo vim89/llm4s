@@ -10,12 +10,14 @@ import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.{ Failure, Success, Try }
 
 /**
- * Pure helpers for safe, typed error handling without effect systems.
+ * Pure helpers for safe, typed error handling.
  * All helpers return Either-based results or cats ValidatedNec for aggregation.
  */
 object Safety {
 
-  // -------- Pure helpers --------
+  /**
+   * Pure helpers
+   */
 
   def safely[A](thunk: => A)(implicit em: ErrorMapper = DefaultErrorMapper): Result[A] =
     fromTry(Try(thunk))
@@ -37,7 +39,9 @@ object Safety {
       (cats.data.Validated.fromEither(r).toValidatedNec, acc).mapN(_ :: _)
     }
 
-  // -------- Minimal Future helpers (no effect system) --------
+  /**
+   * Minimal Future helpers
+   */
 
   object future {
     def fromFuture[A](
