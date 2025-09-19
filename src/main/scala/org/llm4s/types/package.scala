@@ -770,10 +770,8 @@ package object types {
 
   object Url {
     def create(value: String): Result[Url] =
-      scala.util
-        .Try(new java.net.URI(value)) // Validate URL format
-        .toEither
-        .left
+      Try(new java.net.URI(value)) // Validate URL format
+        .toEither.left
         .map(_ => error.ValidationError(s"Invalid URL: $value", "url"))
         .map(_ => Url(value))
   }
