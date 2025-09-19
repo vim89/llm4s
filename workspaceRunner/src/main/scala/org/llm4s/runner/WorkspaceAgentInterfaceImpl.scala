@@ -90,7 +90,7 @@ class WorkspaceAgentInterfaceImpl(workspaceRoot: String) extends WorkspaceAgentI
     excludePatterns.exists { pattern =>
       val regex = pattern
         .replace(".", "\\.")
-        .replace("**", ".+")
+        .replace("**", ".*") // allow zero or more segments
         .replace("*", "[^/]+")
 
       path.matches(regex)

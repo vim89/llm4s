@@ -1,8 +1,8 @@
 package org.llm4s.config
 
 import io.github.cdimascio.dotenv.Dotenv
-import org.llm4s.Result
 import org.llm4s.error.NotFoundError
+import org.llm4s.core.safety.Safety
 import org.llm4s.types.Result
 
 import scala.util.Try
@@ -21,11 +21,14 @@ object ConfigReader {
     override def get(key: String): Option[String] = map.get(key)
   }
 
+  // Use anonymous class for Scala 2.13 compatibility (no SAM for Scala traits)
   def LLMConfig(): Result[ConfigReader] =
-    Result.fromTry(
+    Safety.fromTry(
       Try {
         val env = Dotenv.configure().ignoreIfMissing().load() // Load throws DotenvException
-        (key: String) => Option(env.get(key))
+        new ConfigReader {
+          override def get(key: String): Option[String] = Option(env.get(key))
+        }
       }
     )
 }

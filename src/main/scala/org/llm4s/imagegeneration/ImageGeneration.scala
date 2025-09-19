@@ -118,15 +118,15 @@ case class GeneratedImage(
   }
 
   /** Save image to file and return updated GeneratedImage with file path */
-  def saveToFile(path: Path): Either[ImageGenerationError, GeneratedImage] =
-    try {
-      import java.nio.file.Files
-      Files.write(path, asBytes)
-      Right(copy(filePath = Some(path)))
-    } catch {
-      case e: Exception =>
-        Left(UnknownError(e))
-    }
+  def saveToFile(path: Path): Either[ImageGenerationError, GeneratedImage] = {
+    import java.nio.file.Files
+    scala.util
+      .Try(Files.write(path, asBytes))
+      .toEither
+      .left
+      .map(UnknownError.apply)
+      .map(_ => copy(filePath = Some(path)))
+  }
 }
 
 // ===== CONFIGURATION =====

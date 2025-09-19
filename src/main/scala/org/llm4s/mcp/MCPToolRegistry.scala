@@ -41,16 +41,16 @@ class MCPToolRegistry(
         // If local tools fail, try MCP tools
         findMCPTool(request.functionName) match {
           case Some(tool) =>
-            try {
-              logger.debug(s"Executing MCP tool: ${request.functionName}")
-              val result = tool.execute(request.arguments)
-              logger.debug(s"MCP tool ${request.functionName} executed successfully")
-              result
-            } catch {
-              case e: Exception =>
+            logger.debug(s"Executing MCP tool: ${request.functionName}")
+            scala.util
+              .Try(tool.execute(request.arguments))
+              .toEither
+              .left
+              .map { e =>
                 logger.error(s"MCP tool ${request.functionName} execution failed", e)
-                Left(ToolCallError.ExecutionError(request.functionName, e))
-            }
+                ToolCallError.ExecutionError(request.functionName, e)
+              }
+              .flatten
           case None =>
             logger.warn(s"Tool ${request.functionName} not found in any registry (local or MCP)")
             Left(ToolCallError.UnknownFunction(request.functionName))
