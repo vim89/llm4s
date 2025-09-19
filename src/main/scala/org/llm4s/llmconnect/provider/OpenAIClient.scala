@@ -105,43 +105,45 @@ class OpenAIClient private (
       AzureToolHelper.addToolsToOptions(toolRegistry, chatOptions)
     }
 
-    // Use the SDK's streaming method
-    val stream = client.getChatCompletionsStream(model, chatOptions)
-
     // Create accumulator for building the final completion
     val accumulator = StreamingAccumulator.create()
 
-    // Process the stream
-    stream.forEach { chatCompletions =>
-      if (chatCompletions.getChoices != null && !chatCompletions.getChoices.isEmpty) {
-        val choice = chatCompletions.getChoices.get(0)
-        val delta  = choice.getDelta
+    // Safely obtain and process the stream, mapping all failures to LLMError
+    val attempt = Try {
+      val stream = client.getChatCompletionsStream(model, chatOptions)
 
-        // Create StreamedChunk from delta
-        val chunk = StreamedChunk(
-          id = Option(chatCompletions.getId).getOrElse(""),
-          content = Option(delta.getContent),
-          toolCall = extractStreamingToolCall(delta),
-          finishReason = Option(choice.getFinishReason).map(_.toString)
-        )
+      stream.forEach { chatCompletions =>
+        if (chatCompletions.getChoices != null && !chatCompletions.getChoices.isEmpty) {
+          val choice = chatCompletions.getChoices.get(0)
+          val delta  = choice.getDelta
 
-        // Add to accumulator
-        accumulator.addChunk(chunk)
+          // Create StreamedChunk from delta
+          val chunk = StreamedChunk(
+            id = Option(chatCompletions.getId).getOrElse(""),
+            content = Option(delta.getContent),
+            toolCall = extractStreamingToolCall(delta),
+            finishReason = Option(choice.getFinishReason).map(_.toString)
+          )
 
-        // Call the callback
-        onChunk(chunk)
+          // Add to accumulator
+          accumulator.addChunk(chunk)
 
-        // Check if streaming is complete
-        if (choice.getFinishReason != null) {
-          // Extract usage if available
-          Option(chatCompletions.getUsage).foreach { usage =>
-            accumulator.updateTokens(usage.getPromptTokens, usage.getCompletionTokens)
+          // Call the callback
+          onChunk(chunk)
+
+          // Check if streaming is complete
+          if (choice.getFinishReason != null) {
+            // Extract usage if available
+            Option(chatCompletions.getUsage).foreach { usage =>
+              accumulator.updateTokens(usage.getPromptTokens, usage.getCompletionTokens)
+            }
           }
         }
       }
-    }
+    }.toEither.left.map(e => e.toLLMError)
 
-    accumulator.toCompletion.map(c => c.copy(model = model))
+    // Convert accumulated chunks into a final Completion on success
+    attempt.flatMap(_ => accumulator.toCompletion.map(c => c.copy(model = model)))
   }
 
   override def getContextWindow(): Int = config.contextWindow
