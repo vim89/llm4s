@@ -32,7 +32,7 @@ LLM4S provides a simple, robust, and scalable framework for building LLM applica
 `<br>`
 
 <p align="center">
-  <img src="image_assets/llm4s-overview.jpeg" alt="LLM4S Overview" width="600"/>
+  <img src="docs/image_assets/llm4s-overview.jpeg" alt="LLM4S Overview" width="600"/>
   <br>
   <em></em>
 </p>
