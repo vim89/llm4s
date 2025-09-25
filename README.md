@@ -578,7 +578,7 @@ Feel free to reach out to the contributors or mentors listed for any guidance or
 <br>
 
 <p align="center">
- <img src="image_assets/gsoc_assets/gsoc_2025/gsoc_2025_contributors_shoutout.png" alt="Contributors_banner_shoutout" width="600"/>
+ <img src="docs/image_assets/gsoc_assets/gsoc_2025/gsoc_2025_contributors_shoutout.png" alt="Contributors_banner_shoutout" width="600"/>
   <br>
   <em>Contributors selected across the globe for GSoC 2025 program.</em>
 </p>
@@ -600,7 +600,7 @@ Stay tuned — the series will be published soon on [scalac.io/blog](https://sca
 <br>
 
 <p align="center">
-  <img src="image_assets/blogging_with_scalac/LLM4s_x_Scalac_Collab_Banner.png" alt="LLM4S x Scalac Collaboration" width="600"/>
+  <img src="docs/image_assets/blogging_with_scalac/LLM4s_x_Scalac_Collab_Banner.png" alt="LLM4S x Scalac Collaboration" width="600"/>
   <br>
   <em>LLM4S blogs powered by Scalac.</em>
 </p>
