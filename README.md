@@ -105,8 +105,8 @@ To get started with the LLM4S project, check out this teaser talk presented by *
 <br>
 
 <p align="center">
-  <img src="image_assets/talks/BayAreaScalaConference_tubiOffice.jpeg" alt="Bay Area Scala Conference at Tubi Office" width="400" style="margin-right: 10px;"/>
-  <img src="image_assets/talks/BayAreaScalaConference_GenAiSlide.jpeg" alt="Bay Area Scala Conference Generative AI Slide" width="400"/>
+  <img src="docs/image_assets/talks/BayAreaScalaConference_tubiOffice.jpeg" alt="Bay Area Scala Conference at Tubi Office" width="400" style="margin-right: 10px;"/>
+  <img src="docs/image_assets/talks/BayAreaScalaConference_GenAiSlide.jpeg" alt="Bay Area Scala Conference Generative AI Slide" width="400"/>
   <br>
   <em>LLM4S was officially introduced at the Bay Area Scala Conference in San Francisco on February 25, 2025.</em>
 </p>
@@ -423,7 +423,7 @@ Stay hands-on with **LLM4S**! Join us for interactive **mob programming** sessio
 <br>
 
 <p align="center">
-  <img src="image_assets/llm4s_dev_hour/banner/llm4s-dev-hour-banner.png" alt="LLM4S Dev Hour Banner" width="800"/>
+  <img src="docs/image_assets/llm4s_dev_hour/banner/llm4s-dev-hour-banner.png" alt="LLM4S Dev Hour Banner" width="800"/>
   <br>
   <em>🗓️ Weekly live coding and collaboration during LLM4S Dev Hour — join us every Sunday on Discord!</em>
 </p>
