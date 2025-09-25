@@ -9,7 +9,7 @@
     </a>
 </h4>
 <h4 align="center">
-    <img src="image_assets/llm4s_logo.png" width="100pt" alt="LLM4S Logo">
+    <img src="docs/image_assets/llm4s_logo.png" width="100pt" alt="LLM4S Logo">
 </h4>
 <br>
 
