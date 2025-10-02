@@ -199,11 +199,12 @@ class OpenAIClient private (
   }
 
   private def convertFromOpenAIFormat(completions: ChatCompletions): Completion = {
-    val choice           = completions.getChoices.get(0)
-    val message          = choice.getMessage
-    val toolCalls        = extractToolCalls(message)
-    val content          = Option(message.getContent).getOrElse("")
-    val assistantMessage = AssistantMessage(contentOpt = if (content.isEmpty) None else Some(content), toolCalls = toolCalls)
+    val choice    = completions.getChoices.get(0)
+    val message   = choice.getMessage
+    val toolCalls = extractToolCalls(message)
+    val content   = Option(message.getContent).getOrElse("")
+    val assistantMessage =
+      AssistantMessage(contentOpt = if (content.isEmpty) None else Some(content), toolCalls = toolCalls)
 
     Completion(
       id = completions.getId,
