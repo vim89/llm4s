@@ -191,7 +191,7 @@ class OpenAIClient private (
           msg.setToolCalls(openAIToolCools)
         }
         messages.add(msg)
-      case ToolMessage(toolCallId, content) =>
+      case ToolMessage(content, toolCallId) =>
         messages.add(new ChatRequestToolMessage(content, toolCallId))
     }
 
@@ -202,12 +202,13 @@ class OpenAIClient private (
     val choice           = completions.getChoices.get(0)
     val message          = choice.getMessage
     val toolCalls        = extractToolCalls(message)
-    val assistantMessage = AssistantMessage(content = message.getContent, toolCalls = toolCalls)
+    val content          = Option(message.getContent).getOrElse("")
+    val assistantMessage = AssistantMessage(contentOpt = if (content.isEmpty) None else Some(content), toolCalls = toolCalls)
 
     Completion(
       id = completions.getId,
       created = completions.getCreatedAt.toEpochSecond,
-      content = message.getContent,
+      content = content,
       model = completions.getModel,
       message = assistantMessage,
       toolCalls = toolCalls.toList,

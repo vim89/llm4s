@@ -322,8 +322,8 @@ object AssistantMessage {
 /**
  * Represents a message from a tool, typically containing the result of a tool call.
  *
- * @param toolCallId Unique identifier for the tool call (as provided by the ToolCall).
  * @param content    Content of the tool message, usually the result of the tool execution, e.g. a json response.
+ * @param toolCallId Unique identifier for the tool call (as provided by the ToolCall).
  */
 final case class ToolMessage(
   content: String,

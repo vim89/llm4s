@@ -18,7 +18,7 @@ object MultiStepAgentExample {
       agent               = new Agent(client)
       query               = "What's the weather like in London, and is it different from New York?"
       _                   = println(s"User Query: $query\n")
-      traceLogPath        = "/Users/rory.graves/workspace/home/llm4s/log/agent-trace.md"
+      traceLogPath        = ".log/agent-trace.md"
       _                   = println(s"Trace log will be written to: $traceLogPath\n")
       _                   = println("=== Running Multi-Step Agent to Completion ===\n")
       _                   = println("Example 1: Running without a step limit, with trace logging")
@@ -57,7 +57,7 @@ object MultiStepAgentExample {
       // Example 3: Manual step execution to show the two-phase flow
       _                  = println("\n\n=== Manual Step Execution to Demonstrate Two-Phase Flow ===\n")
       _                  = println("Example 3: Running with manual step execution")
-      manualTraceLogPath = "/Users/rory.graves/workspace/home/llm4s/log/agent-trace-manual.md"
+      manualTraceLogPath = ".log/agent-trace-manual.md"
       initialState       = agent.initialize(query, toolRegistry)
       _                  = println(s"Initial state: ${initialState.status}")
       _                  = agent.writeTraceLog(initialState, manualTraceLogPath)
