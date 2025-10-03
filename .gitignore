@@ -13,3 +13,5 @@ CLAUDE.md
 .vscode
 **/.claude/settings.local.json
 .DS_Store
+.log
+.scala-build
