@@ -640,6 +640,7 @@ This page includes detailed information on all GSoC projects with Scala Center f
 - **Announcement:** [Official Acceptance Post](https://www.linkedin.com/posts/let-me-try-to-fork-your-responsibilities_big-announcement-im-thrilled-to-activity-7327724651726405635-3Y7V?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0) | [Midterm evaluation post](https://www.linkedin.com/posts/let-me-try-to-fork-your-responsibilities_gsoc-googlesummerofcode-opensource-activity-7352249524486066176-loNn?utm_source=share&utm_medium=member_desktop&rcm=ACoAADFpDrQB56LGBguVZFlinC7-yOKG5O6RI70) | [Rock the JVM post](https://www.linkedin.com/posts/let-me-try-to-fork-your-responsibilities_scala-catseffect-rockthejvm-activity-7366439188415569922-HHUf?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0) | [Lightning talk post](https://www.linkedin.com/posts/let-me-try-to-fork-your-responsibilities_ai-generativeai-artificialintelligence-activity-7373069282827517952-Z4sc?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0)
 - **Contributor Blogs:** 📌 [Anshuman&#39;s GSoC Journey](https://awesomegsoc.hashnode.dev/)
 - **Work Log:** 📌 [GitHub Project Board](https://github.com/users/AnshumanAI/projects/2/views/1)
+- **GSoC Final Report:** [Permanent URL](https://awesomegsoc.hashnode.dev/gsoc-2025-with-scala-center-the-final-report)
 
 ### LLM4S - Tracing support
 
@@ -734,6 +735,7 @@ Our **Google Summer of Code (GSoC) 2025** contributors have actively documented 
   - [My Journey to Google Summer of Code 2025](https://awesomegsoc.hashnode.dev/my-journey-to-google-summer-of-code-2025)
   - [Community Bonding Experience at GSoC 2025](https://awesomegsoc.hashnode.dev/community-bonding-experience-at-gsoc-2025)
   - [Milestone 1 : Successfully Added Image Generation Capabilities into the LLM4S Library](https://awesomegsoc.hashnode.dev/milestone-1-successfully-added-image-generation-capabilities-into-the-llm4s-library)
+  - [ GSoC Final Report URL](https://awesomegsoc.hashnode.dev/gsoc-2025-with-scala-center-the-final-report)
 
 #### **Shubham Vishwakarma**
 
