@@ -622,6 +622,7 @@ This page includes detailed information on all GSoC projects with Scala Center f
 - **Announcement:** [Official Acceptance Post](https://www.linkedin.com/posts/elvan-konukseven_got-accepted-into-the-google-summer-of-code-activity-7326980179812139008-OoMU?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0) | [Volunteering at Scala Center 1](https://www.linkedin.com/posts/scala-center_a-huge-thank-you-to-our-incredible-volunteers-ugcPost-7363630531332194305-0bW3?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0), [2](https://www.linkedin.com/posts/lausanne-capitale-olympique_scaladays2025-scala-epfl-ugcPost-7371447794642997248-aYd5?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0), [3](https://www.linkedin.com/posts/scaladays_such-a-smooth-and-productive-start-to-the-activity-7363237831990824960-44hS?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0) | [Python Vs Scala](https://www.linkedin.com/posts/elvan-konukseven_gsoc2025-scalacenter-activity-7371455676214046720-OeEI?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0)
 - **Contributor Blogs:** 📌 [elvankonukseven.com/blog](https://www.elvankonukseven.com/blog)
 - **Work log:** 📌 [GitHub Project Board](https://github.com/users/elvankonukseven/projects/4/views/1)
+- **GSoC Final Report:** [Permanent URL](https://elvankonukseven.com/gsoc-links.html)
 
 ### LLM4S - RAG in a box
 
@@ -708,6 +709,7 @@ Our **Google Summer of Code (GSoC) 2025** contributors have actively documented 
 - 📝 Articles:
   - [The Application](https://elvankonukseven.com/blog/gsoc-application)
   - [First Task](https://elvankonukseven.com/blog/first-task)
+  - [Final GSoC Report URL](https://elvankonukseven.com/gsoc-links.html)
 
 #### **Gopi Trinadh Maddikunta**
 
