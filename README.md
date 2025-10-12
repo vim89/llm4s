@@ -616,13 +616,12 @@ This page includes detailed information on all GSoC projects with Scala Center f
 
 ### LLM4S - Implement an agentic toolkit for Large Language Models
 
-- **Contributor:** [Elvan Konukseven](https://github.com/elvankonukseven)
+- **Contributor:** [Elvan Konukseven](https://github.com/elvankonukseven) | [GSoC Final Report](https://elvankonukseven.com/gsoc-links.html)
 - **LinkedIn:** [https://www.linkedin.com/in/elvan-konukseven/](https://www.linkedin.com/in/elvan-konukseven/) | **Email:** [elvankonukseven0@gmail.com](mailto:elvankonukseven0@gmail.com) | **Discord:** `elvan_31441`
 - **Mentors:** [Kannupriya Kalra](https://www.linkedin.com/in/kannupriyakalra/) (Email: [kannupriyakalra@gmail.com](mailto:kannupriyakalra@gmail.com)), [Rory Graves](https://www.linkedin.com/in/roryjgraves/) (Email: [rory.graves@fieldmark.co.uk](mailto:rory.graves@fieldmark.co.uk))
 - **Announcement:** [Official Acceptance Post](https://www.linkedin.com/posts/elvan-konukseven_got-accepted-into-the-google-summer-of-code-activity-7326980179812139008-OoMU?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0) | [Volunteering at Scala Center 1](https://www.linkedin.com/posts/scala-center_a-huge-thank-you-to-our-incredible-volunteers-ugcPost-7363630531332194305-0bW3?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0), [2](https://www.linkedin.com/posts/lausanne-capitale-olympique_scaladays2025-scala-epfl-ugcPost-7371447794642997248-aYd5?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0), [3](https://www.linkedin.com/posts/scaladays_such-a-smooth-and-productive-start-to-the-activity-7363237831990824960-44hS?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0) | [Python Vs Scala](https://www.linkedin.com/posts/elvan-konukseven_gsoc2025-scalacenter-activity-7371455676214046720-OeEI?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0)
 - **Contributor Blogs:** 📌 [elvankonukseven.com/blog](https://www.elvankonukseven.com/blog)
 - **Work log:** 📌 [GitHub Project Board](https://github.com/users/elvankonukseven/projects/4/views/1)
-- **GSoC Final Report:** [Permanent URL](https://elvankonukseven.com/gsoc-links.html)
 
 ### LLM4S - RAG in a box
 
@@ -635,13 +634,12 @@ This page includes detailed information on all GSoC projects with Scala Center f
 
 ### LLM4S - Support image, voice and other LLM modalites
 
-- **Contributor:** [Anshuman Awasthi](https://github.com/AnshumanAI)
+- **Contributor:** [Anshuman Awasthi](https://github.com/AnshumanAI) | [GSoC Final Report](https://awesomegsoc.hashnode.dev/gsoc-2025-with-scala-center-the-final-report)
 - **LinkedIn:** [https://www.linkedin.com/in/let-me-try-to-fork-your-responsibilities/](https://www.linkedin.com/in/let-me-try-to-fork-your-responsibilities/) | **Email:** [mcs23026@iiitl.ac.in](mailto:mcs23026@iiitl.ac.in) | **Discord:** `anshuman23026`
 - **Mentors:** [Kannupriya Kalra](https://www.linkedin.com/in/kannupriyakalra/) (Email: [kannupriyakalra@gmail.com](mailto:kannupriyakalra@gmail.com)), [Rory Graves](https://www.linkedin.com/in/roryjgraves/) (Email: [rory.graves@fieldmark.co.uk](mailto:rory.graves@fieldmark.co.uk))
 - **Announcement:** [Official Acceptance Post](https://www.linkedin.com/posts/let-me-try-to-fork-your-responsibilities_big-announcement-im-thrilled-to-activity-7327724651726405635-3Y7V?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0) | [Midterm evaluation post](https://www.linkedin.com/posts/let-me-try-to-fork-your-responsibilities_gsoc-googlesummerofcode-opensource-activity-7352249524486066176-loNn?utm_source=share&utm_medium=member_desktop&rcm=ACoAADFpDrQB56LGBguVZFlinC7-yOKG5O6RI70) | [Rock the JVM post](https://www.linkedin.com/posts/let-me-try-to-fork-your-responsibilities_scala-catseffect-rockthejvm-activity-7366439188415569922-HHUf?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0) | [Lightning talk post](https://www.linkedin.com/posts/let-me-try-to-fork-your-responsibilities_ai-generativeai-artificialintelligence-activity-7373069282827517952-Z4sc?utm_source=share&utm_medium=member_desktop&rcm=ACoAADmu6soBQhs2fe8_CNIw2ChlNe0Oon4E3G0)
 - **Contributor Blogs:** 📌 [Anshuman&#39;s GSoC Journey](https://awesomegsoc.hashnode.dev/)
 - **Work Log:** 📌 [GitHub Project Board](https://github.com/users/AnshumanAI/projects/2/views/1)
-- **GSoC Final Report:** [Permanent URL](https://awesomegsoc.hashnode.dev/gsoc-2025-with-scala-center-the-final-report)
 
 ### LLM4S - Tracing support
 
