@@ -46,7 +46,7 @@ object MCPAgentExample {
             val source = if (tool.description == "Retrieves current weather for the given location.") "local" else "MCP"
             logger.info(s"   ${index + 1}. ${tool.name} ($source): ${tool.description}")
           }
-          agent.run(query, mcpRegistry, Some(5), Some(".log/mcp-agent-example.md"), None)
+          agent.run(query, mcpRegistry, Some(5), Some(".log/mcp-agent-example.md"), None, debug = false)
       }
     } yield agentState
 

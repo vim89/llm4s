@@ -55,13 +55,21 @@ class Agent(client: LLMClient) {
   /**
    * Runs a single step of the agent's reasoning process
    */
-  def runStep(state: AgentState): Result[AgentState] =
+  def runStep(state: AgentState, debug: Boolean = false): Result[AgentState] =
     state.status match {
       case AgentStatus.InProgress =>
         // Get tools from registry and create completion options
         val options = CompletionOptions(tools = state.tools.tools)
 
-        logger.debug("Running completion step with tools: {}", state.tools.tools.map(_.name).mkString(", "))
+        if (debug) {
+          logger.info("[DEBUG] Running completion step")
+          logger.info("[DEBUG] Status: InProgress -> requesting LLM completion")
+          logger.info("[DEBUG] Available tools: {}", state.tools.tools.map(_.name).mkString(", "))
+          logger.info("[DEBUG] Conversation history: {} messages", state.conversation.messages.size)
+        } else {
+          logger.debug("Running completion step with tools: {}", state.tools.tools.map(_.name).mkString(", "))
+        }
+
         // Request next step from LLM using system message injection
         client.complete(state.toApiConversation, options) match {
           case Right(completion) =>
@@ -72,6 +80,26 @@ class Agent(client: LLMClient) {
                 s"[assistant] tools: ${toolCalls.size} tool calls requested ($toolNames)"
             }
 
+            if (debug) {
+              logger.info("[DEBUG] LLM response received")
+              logger.info(
+                "[DEBUG] Response type: {}",
+                if (completion.message.toolCalls.isEmpty) "text" else "tool_calls"
+              )
+              if (completion.message.content != null && completion.message.content.nonEmpty) {
+                logger.info("[DEBUG] Response content: {}", completion.message.content)
+              }
+              if (completion.message.toolCalls.nonEmpty) {
+                logger.info("[DEBUG] Tool calls requested: {}", completion.message.toolCalls.size)
+                completion.message.toolCalls.foreach { tc =>
+                  logger.info("[DEBUG]   - Tool: {}", tc.name)
+                  logger.info("[DEBUG]     ID: {}", tc.id)
+                  logger.info("[DEBUG]     Arguments (raw): {}", tc.arguments)
+                  logger.info("[DEBUG]     Arguments type: {}", tc.arguments.getClass.getSimpleName)
+                }
+              }
+            }
+
             val updatedState = state
               .log(logMessage)
               .addMessage(completion.message)
@@ -79,15 +107,25 @@ class Agent(client: LLMClient) {
             completion.message.toolCalls match {
               case Seq() =>
                 // No tool calls - agent is ready to answer
+                if (debug) {
+                  logger.info("[DEBUG] Status: InProgress -> Complete (no tool calls)")
+                }
                 Right(updatedState.withStatus(AgentStatus.Complete))
 
               case _ =>
                 // Don't process tools yet, just mark as waiting
-                logger.debug("Tool calls identified, setting state to waiting for tools")
+                if (debug) {
+                  logger.info("[DEBUG] Status: InProgress -> WaitingForTools")
+                } else {
+                  logger.debug("Tool calls identified, setting state to waiting for tools")
+                }
                 Right(updatedState.withStatus(AgentStatus.WaitingForTools))
             }
 
           case Left(error) =>
+            if (debug) {
+              logger.error("[DEBUG] LLM completion failed: {}", error.message)
+            }
             Left(error)
         }
 
@@ -103,43 +141,84 @@ class Agent(client: LLMClient) {
             val logMessage   = s"[tools] executing ${assistantMessage.toolCalls.size} tools ($toolNames)"
             val stateWithLog = state.log(logMessage)
 
+            if (debug) {
+              logger.info("[DEBUG] Status: WaitingForTools -> processing tools")
+              logger.info("[DEBUG] Processing {} tool calls: {}", assistantMessage.toolCalls.size, toolNames)
+            }
+
             // Process the tool calls
             Try {
-              logger.debug("Processing {} tool calls", assistantMessage.toolCalls.size)
-              processToolCalls(stateWithLog, assistantMessage.toolCalls)
+              if (debug) {
+                logger.info("[DEBUG] Calling processToolCalls with {} tools", assistantMessage.toolCalls.size)
+              } else {
+                logger.debug("Processing {} tool calls", assistantMessage.toolCalls.size)
+              }
+              processToolCalls(stateWithLog, assistantMessage.toolCalls, debug)
             } match {
               case Success(newState) =>
-                logger.debug("Tool processing successful - continuing")
+                if (debug) {
+                  logger.info("[DEBUG] Tool processing successful")
+                  logger.info("[DEBUG] Status: WaitingForTools -> InProgress")
+                } else {
+                  logger.debug("Tool processing successful - continuing")
+                }
                 Right(newState.withStatus(AgentStatus.InProgress))
               case Failure(error) =>
                 logger.error("Tool processing failed: {}", error.getMessage)
+                if (debug) {
+                  logger.error("[DEBUG] Status: WaitingForTools -> Failed")
+                  logger.error("[DEBUG] Error: {}", error.getMessage)
+                }
                 Right(stateWithLog.withStatus(AgentStatus.Failed(error.getMessage)))
             }
 
           case None =>
             // Shouldn't happen, but handle gracefully
+            if (debug) {
+              logger.error("[DEBUG] No tool calls found in conversation - this should not happen!")
+            }
             Right(state.withStatus(AgentStatus.Failed("No tool calls found in conversation")))
         }
 
       case _ =>
         // If the agent is already complete or failed, don't do anything
+        if (debug) {
+          logger.info("[DEBUG] Agent already in terminal state: {}", state.status)
+        }
         Right(state)
     }
 
   /**
    * Process tool calls and add the results to the conversation
    */
-  private def processToolCalls(state: AgentState, toolCalls: Seq[ToolCall]): AgentState = {
+  private def processToolCalls(state: AgentState, toolCalls: Seq[ToolCall], debug: Boolean): AgentState = {
     val toolRegistry = state.tools
 
+    if (debug) {
+      logger.info("[DEBUG] processToolCalls: Processing {} tool calls", toolCalls.size)
+    }
+
     // Process each tool call and create tool messages
-    val toolMessages = toolCalls.map { toolCall =>
+    val toolMessages = toolCalls.zipWithIndex.map { case (toolCall, index) =>
       val startTime = System.currentTimeMillis()
 
-      logger.info("Executing tool: {} with arguments: {}", toolCall.name, toolCall.arguments)
+      if (debug) {
+        logger.info("[DEBUG] Tool call {}/{}: {}", index + 1, toolCalls.size, toolCall.name)
+        logger.info("[DEBUG]   Tool call ID: {}", toolCall.id)
+        logger.info("[DEBUG]   Arguments (raw JSON): {}", toolCall.arguments)
+        logger.info("[DEBUG]   Arguments type: {}", toolCall.arguments.getClass.getSimpleName)
+      } else {
+        logger.info("Executing tool: {} with arguments: {}", toolCall.name, toolCall.arguments)
+      }
 
       val request = ToolCallRequest(toolCall.name, toolCall.arguments)
-      val result  = toolRegistry.execute(request)
+
+      if (debug) {
+        logger.info("[DEBUG]   Created ToolCallRequest")
+        logger.info("[DEBUG]   Executing via ToolRegistry...")
+      }
+
+      val result = toolRegistry.execute(request)
 
       val endTime  = System.currentTimeMillis()
       val duration = endTime - startTime
@@ -147,10 +226,21 @@ class Agent(client: LLMClient) {
       val resultContent = result match {
         case Right(json) =>
           val jsonStr = json.render()
-          logger.info("Tool {} completed successfully in {}ms. Result: {}", toolCall.name, duration, jsonStr)
+          if (debug) {
+            logger.info("[DEBUG]   Tool {} SUCCESS in {}ms", toolCall.name, duration)
+            logger.info("[DEBUG]   Result (raw JSON): {}", jsonStr)
+            logger.info("[DEBUG]   Result type: {}", json.getClass.getSimpleName)
+          } else {
+            logger.info("Tool {} completed successfully in {}ms. Result: {}", toolCall.name, duration, jsonStr)
+          }
           jsonStr
         case Left(error) =>
           val errorMessage = error.getFormattedMessage
+          if (debug) {
+            logger.error("[DEBUG]   Tool {} FAILED in {}ms", toolCall.name, duration)
+            logger.error("[DEBUG]   Error type: {}", error.getClass.getSimpleName)
+            logger.error("[DEBUG]   Error message: {}", errorMessage)
+          }
           // Escape the error message for JSON
           val escapedMessage = errorMessage
             .replace("\\", "\\\\")
@@ -159,12 +249,23 @@ class Agent(client: LLMClient) {
             .replace("\r", "\\r")
             .replace("\t", "\\t")
           val errorJson = s"""{ "isError": true, "error": "$escapedMessage" }"""
-          logger.warn("Tool {} failed in {}ms with error: {}", toolCall.name, duration, errorMessage)
+          if (!debug) {
+            logger.warn("Tool {} failed in {}ms with error: {}", toolCall.name, duration, errorMessage)
+          }
           errorJson
+      }
+
+      if (debug) {
+        logger.info("[DEBUG]   Creating ToolMessage with ID: {}", toolCall.id)
       }
 
       state.log(s"[tool] ${toolCall.name} (${duration}ms): $resultContent")
       ToolMessage(resultContent, toolCall.id)
+    }
+
+    if (debug) {
+      logger.info("[DEBUG] All {} tool calls processed successfully", toolCalls.size)
+      logger.info("[DEBUG] Adding {} tool messages to conversation", toolMessages.size)
     }
 
     // Add the tool messages to the conversation
@@ -308,21 +409,41 @@ class Agent(client: LLMClient) {
    * @param initialState The initial agent state to run from
    * @param maxSteps Optional limit on the number of steps to execute
    * @param traceLogPath Optional path to write a markdown trace file
+   * @param debug Enable detailed debug logging for tool calls and agent loop iterations
    * @return Either an error or the final agent state
    */
   def run(
     initialState: AgentState,
     maxSteps: Option[Int] = None,
-    traceLogPath: Option[String] = None
+    traceLogPath: Option[String] = None,
+    debug: Boolean = false
   ): Result[AgentState] = {
+    if (debug) {
+      logger.info("[DEBUG] ========================================")
+      logger.info("[DEBUG] Starting Agent.run")
+      logger.info("[DEBUG] Max steps: {}", maxSteps.getOrElse("unlimited"))
+      logger.info("[DEBUG] Trace log: {}", traceLogPath.getOrElse("disabled"))
+      logger.info("[DEBUG] Initial status: {}", initialState.status)
+      logger.info("[DEBUG] ========================================")
+    }
+
     // Write initial state if tracing is enabled
     traceLogPath.foreach(path => writeTraceLog(initialState, path))
 
     @tailrec
-    def runUntilCompletion(state: AgentState, stepsRemaining: Option[Int] = maxSteps): Result[AgentState] =
+    def runUntilCompletion(
+      state: AgentState,
+      stepsRemaining: Option[Int] = maxSteps,
+      iteration: Int = 1
+    ): Result[AgentState] =
       (state.status, stepsRemaining) match {
         // Check for step limit before executing either type of step
         case (s, Some(0)) if s == AgentStatus.InProgress || s == AgentStatus.WaitingForTools =>
+          if (debug) {
+            logger.warn("[DEBUG] ========================================")
+            logger.warn("[DEBUG] ITERATION {}: Step limit reached!", iteration)
+            logger.warn("[DEBUG] ========================================")
+          }
           // Step limit reached
           val updatedState =
             state.log("[system] Step limit reached").withStatus(AgentStatus.Failed("Maximum step limit reached"))
@@ -333,7 +454,16 @@ class Agent(client: LLMClient) {
 
         // Continue if we're in progress or waiting for tools
         case (s, _) if s == AgentStatus.InProgress || s == AgentStatus.WaitingForTools =>
-          runStep(state) match {
+          if (debug) {
+            logger.info("[DEBUG] ========================================")
+            logger.info("[DEBUG] ITERATION {}", iteration)
+            logger.info("[DEBUG] Current status: {}", state.status)
+            logger.info("[DEBUG] Steps remaining: {}", stepsRemaining.map(_.toString).getOrElse("unlimited"))
+            logger.info("[DEBUG] Conversation messages: {}", state.conversation.messages.size)
+            logger.info("[DEBUG] ========================================")
+          }
+
+          runStep(state, debug) match {
             case Right(newState) =>
               // Only decrement steps when going from InProgress to WaitingForTools or back to InProgress
               // This means one "logical step" includes both the LLM call and tool execution
@@ -343,16 +473,36 @@ class Agent(client: LLMClient) {
 
               val nextSteps = if (shouldDecrementStep) stepsRemaining.map(_ - 1) else stepsRemaining
 
+              if (debug && shouldDecrementStep) {
+                logger.info(
+                  "[DEBUG] Step completed. Next steps remaining: {}",
+                  nextSteps.map(_.toString).getOrElse("unlimited")
+                )
+              }
+
               // Write updated state if tracing is enabled
               traceLogPath.foreach(path => writeTraceLog(newState, path))
 
-              runUntilCompletion(newState, nextSteps)
+              runUntilCompletion(newState, nextSteps, iteration + 1)
 
             case Left(error) =>
+              if (debug) {
+                logger.error("[DEBUG] ========================================")
+                logger.error("[DEBUG] ITERATION {}: Agent failed with error", iteration)
+                logger.error("[DEBUG] Error: {}", error.message)
+                logger.error("[DEBUG] ========================================")
+              }
               Left(error)
           }
 
         case (_, _) =>
+          if (debug) {
+            logger.info("[DEBUG] ========================================")
+            logger.info("[DEBUG] Agent completed")
+            logger.info("[DEBUG] Final status: {}", state.status)
+            logger.info("[DEBUG] Total iterations: {}", iteration)
+            logger.info("[DEBUG] ========================================")
+          }
           // Write final state if tracing is enabled
           traceLogPath.foreach(path => writeTraceLog(state, path))
           Right(state) // Complete or Failed
@@ -369,6 +519,7 @@ class Agent(client: LLMClient) {
    * @param maxSteps Optional limit on the number of steps to execute
    * @param traceLogPath Optional path to write a markdown trace file
    * @param systemPromptAddition Optional additional text to append to the default system prompt
+   * @param debug Enable detailed debug logging for tool calls and agent loop iterations
    * @return Either an error or the final agent state
    */
   def run(
@@ -376,9 +527,17 @@ class Agent(client: LLMClient) {
     tools: ToolRegistry,
     maxSteps: Option[Int],
     traceLogPath: Option[String],
-    systemPromptAddition: Option[String]
+    systemPromptAddition: Option[String],
+    debug: Boolean
   ): Result[AgentState] = {
+    if (debug) {
+      logger.info("[DEBUG] ========================================")
+      logger.info("[DEBUG] Initializing new agent with query")
+      logger.info("[DEBUG] Query: {}", query)
+      logger.info("[DEBUG] Tools: {}", tools.tools.map(_.name).mkString(", "))
+      logger.info("[DEBUG] ========================================")
+    }
     val initialState = initialize(query, tools, systemPromptAddition)
-    run(initialState, maxSteps, traceLogPath)
+    run(initialState, maxSteps, traceLogPath, debug)
   }
 }
