@@ -22,9 +22,15 @@ class Agent(client: LLMClient) {
    * @param query The user query to process
    * @param tools The registry of available tools
    * @param systemPromptAddition Optional additional text to append to the default system prompt
+   * @param completionOptions Optional completion options for LLM calls (temperature, maxTokens, etc.)
    * @return A new AgentState initialized with the query and tools
    */
-  def initialize(query: String, tools: ToolRegistry, systemPromptAddition: Option[String] = None): AgentState = {
+  def initialize(
+    query: String,
+    tools: ToolRegistry,
+    systemPromptAddition: Option[String] = None,
+    completionOptions: CompletionOptions = CompletionOptions()
+  ): AgentState = {
     val baseSystemPrompt = """You are a helpful assistant with access to tools. 
         |Follow these steps:
         |1. Analyze the user's question and determine which tools you need to use
@@ -48,7 +54,8 @@ class Agent(client: LLMClient) {
       conversation = Conversation(initialMessages),
       tools = tools,
       userQuery = query,
-      systemMessage = Some(systemMsg)
+      systemMessage = Some(systemMsg),
+      completionOptions = completionOptions
     )
   }
 
@@ -58,8 +65,8 @@ class Agent(client: LLMClient) {
   def runStep(state: AgentState, debug: Boolean = false): Result[AgentState] =
     state.status match {
       case AgentStatus.InProgress =>
-        // Get tools from registry and create completion options
-        val options = CompletionOptions(tools = state.tools.tools)
+        // Get tools from registry and merge with completion options from state
+        val options = state.completionOptions.copy(tools = state.tools.tools)
 
         if (debug) {
           logger.info("[DEBUG] Running completion step")
@@ -414,9 +421,9 @@ class Agent(client: LLMClient) {
    */
   def run(
     initialState: AgentState,
-    maxSteps: Option[Int] = None,
-    traceLogPath: Option[String] = None,
-    debug: Boolean = false
+    maxSteps: Option[Int],
+    traceLogPath: Option[String],
+    debug: Boolean
   ): Result[AgentState] = {
     if (debug) {
       logger.info("[DEBUG] ========================================")
@@ -519,16 +526,18 @@ class Agent(client: LLMClient) {
    * @param maxSteps Optional limit on the number of steps to execute
    * @param traceLogPath Optional path to write a markdown trace file
    * @param systemPromptAddition Optional additional text to append to the default system prompt
+   * @param completionOptions Optional completion options for LLM calls (temperature, maxTokens, etc.)
    * @param debug Enable detailed debug logging for tool calls and agent loop iterations
    * @return Either an error or the final agent state
    */
   def run(
     query: String,
     tools: ToolRegistry,
-    maxSteps: Option[Int],
-    traceLogPath: Option[String],
-    systemPromptAddition: Option[String],
-    debug: Boolean
+    maxSteps: Option[Int] = None,
+    traceLogPath: Option[String] = None,
+    systemPromptAddition: Option[String] = None,
+    completionOptions: CompletionOptions = CompletionOptions(),
+    debug: Boolean = false
   ): Result[AgentState] = {
     if (debug) {
       logger.info("[DEBUG] ========================================")
@@ -537,7 +546,7 @@ class Agent(client: LLMClient) {
       logger.info("[DEBUG] Tools: {}", tools.tools.map(_.name).mkString(", "))
       logger.info("[DEBUG] ========================================")
     }
-    val initialState = initialize(query, tools, systemPromptAddition)
+    val initialState = initialize(query, tools, systemPromptAddition, completionOptions)
     run(initialState, maxSteps, traceLogPath, debug)
   }
 }
