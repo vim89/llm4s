@@ -13,7 +13,8 @@ case class AgentState(
   userQuery: String,
   status: AgentStatus = AgentStatus.InProgress,
   logs: Seq[String] = Seq.empty,
-  systemMessage: Option[SystemMessage] = None
+  systemMessage: Option[SystemMessage] = None,
+  completionOptions: CompletionOptions = CompletionOptions()
 ) {
 
   /**

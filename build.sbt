@@ -87,6 +87,13 @@ lazy val commonSettings = Seq(
   crossScalaVersions := Seq(scala213, scala3),
   Compile / scalacOptions := scalacOptionsForVersion(scalaVersion.value),
   Test / scalacOptions    := scalacOptionsForVersion(scalaVersion.value),
+  // Suppress ScalaDoc warnings from third-party libraries (e.g., ScalaTest)
+  Compile / doc / scalacOptions ++= {
+    CrossVersion.partialVersion(scalaVersion.value) match {
+      case Some((3, _)) => Seq("-Wconf:cat=scaladoc:silent")
+      case _ => Seq.empty
+    }
+  },
   semanticdbEnabled       := CrossVersion.partialVersion(scalaVersion.value).exists(_._1 == 3),
   Test / scalafix / unmanagedSources := Seq.empty,
   Compile / packageDoc / publishArtifact := !isSnapshot.value,
