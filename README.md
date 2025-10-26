@@ -528,9 +528,10 @@ Stay updated with talks, workshops, and presentations about **LLM4S** happening 
   <img src="docs/image_assets/talks/scaladays2025-llm4s-team.jpg" alt="Scala Days 2025 – LLM4S Team Photo" width="400" style="margin-right: 10px;"/>
   <img src="docs/image_assets/talks/scaladays2025-szork-innerworld-slide.jpg" alt="Scala Days 2025 – Szork Innerworld Demo Slide" width="400" style="margin-right: 10px;"/>
   <img src="docs/image_assets/talks/ZurichScalaEnthusiasts_2025_Banner.jpg" alt="Zurich Scala Enthusiasts 2025 Banner" width="400"/>
-  <img src="docs/image_assets/talks/GSoC_2025_Lighting_talks_switzerland.jpg" alt="Google Summer of Code 2025 – Lightning Talks hosted by Scala Center, Switzerland" width="400"/>
+  <img src="docs/image_assets/gsoc_assets/gsoc_2025/talks/gsoc_lighting_talks_2025/GSoC_2025_Lighting_talks_switzerland.jpg" alt="Google Summer of Code 2025 – Lightning Talks hosted by Scala Center, Switzerland" width="400"/>
   <img src="docs/image_assets/talks/ICFP2025_Mentoring_in_the_Scala_Ecosystem_Insights_from_GSoC_Kannupriya_Kalra.png" alt="ICFP2025_Mentoring_in_the_Scala_Ecosystem_Insights_from_GSoC_Kannupriya_Kalra, Singapore" width="400"/>
-  <img src="docs/image_assets/gsoc_assets/gsoc_2025/gsoc_llm4s_images/main logo.png" alt="Google Summer of Code 2025 – LLM4S Mentor Summit Banner" width="400"/>
+  <img src="docs/image_assets/talks/GenAI_London_Building_Reliable_AI_Systems__From_Hype_to_Practical_Toolkits_Kannupriya_Kalra.png" alt="GenAI_London_Building_Reliable_AI_Systems, London" width="400"/>
+  <img src="docs/image_assets/gsoc_assets/gsoc_2025/talks/gsoc_mentor_summit_2025/LLM4S x GSoC 2025 Engineering GenAI Agents in Functional Scala_Kannupriya_Kalra.png" alt="Google Summer of Code 2025 – LLM4S Mentor Summit Banner" width="400"/>
 </p>
 <p align="center">
 <br>
