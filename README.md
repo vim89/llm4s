@@ -730,6 +730,8 @@ Our **Google Summer of Code (GSoC) 2025** contributors have actively documented 
   - [From Documents to Embeddings](https://gopitrinadh.site/diving-into-llmclient/)
   - [Universal Extraction + Embedding Client = One step closer to RAG](https://gopitrinadh.site/embedding-anything/)
   - [Midterm Milestone- Modular RAG in Motion](https://gopitrinadh.site/blog/#)
+  - [ GSoC Final Report URL](https://gopitrinadh.site/final-work-submission/)
+
 
 #### **Anshuman Awasthi**
 
