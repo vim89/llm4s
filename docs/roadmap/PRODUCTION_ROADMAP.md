@@ -37,9 +37,9 @@ Once these steps are complete and the roadmap is agreed upon, this DRAFT marker 
 
 ---
 
-## Executive Summary
+## Executive summary
 
-LLM4S is a comprehensive framework for building LLM-powered applications in Scala. While the project has made significant progress with multi-provider support, agent frameworks, RAG capabilities, and observability features, several key areas require attention before reaching production readiness.
+LLM4S is a framework for building LLM-powered applications in Scala. The project already has multi-provider support, an agent framework, RAG pieces, and observability hooks, but a few important gaps still stand between the current state and a production-ready 1.0.
 
 This roadmap outlines a structured path to achieve production-grade quality across seven key pillars: **Testing & Quality Assurance**, **API Stability**, **Performance & Scalability**, **Security & Compliance**, **Documentation & Developer Experience**, **Observability & Operations**, and **Community & Ecosystem**.
 
@@ -140,7 +140,7 @@ This section tracks the completion status of major LLM4S features and capabiliti
 | **Prompt Management** | P2 | Template system with variable substitution | Phase 2 |
 | **Caching Layer** | P2 | Cache LLM responses for cost/latency optimization | Phase 2 |
 | **Function Calling v2** | P2 | Parallel tool calls, tool choice strategies | Phase 2 |
-| **Guardrails** | P2 | Input/output validation and safety checks | Phase 3 |
+| **Guardrails** | P2 | Higher-level policies and presets on top of existing guardrails (input/output/tool) | Phase 3 |
 | **Cost Tracking** | P2 | Token usage tracking and cost estimation | Phase 2 |
 
 #### ❌ Deferred Features
@@ -170,6 +170,19 @@ MCP Support (Full)
   └── Server Implementation (P1) ← Blocks MCP adoption
 ```
 
+```mermaid
+graph TD
+    RAG[RAG pipeline] --> VDB[Vector DB integrations]
+    RAG --> CH[Document chunking]
+    RAG --> SS[Semantic search]
+
+    AF[Agent framework] --> SP[State persistence]
+    AF --> MAC[Multi-agent communication]
+    AF --> TC[Tool composition]
+
+    MCP[MCP support] --> MS[Server implementation]
+```
+
 ### Feature Completion Roadmap
 
 **Phase 1 (Months 1-3): Core Feature Completion**
@@ -189,35 +202,33 @@ MCP Support (Full)
 
 ---
 
-## Production Readiness Framework
+## Production readiness framework
 
-We adopt a **Seven-Pillar Framework** for production readiness:
+To make “production ready” concrete, we use seven pillars. Each pillar answers a simple question: what has to be true before we trust this library in production?
 
-```
-┌────────────────────────────────────────────────────────────┐
-│                   PRODUCTION READINESS                      │
-├────────────────────────────────────────────────────────────┤
-│  1. Testing & Quality Assurance                            │
-│  2. API Stability & Versioning                             │
-│  3. Performance & Scalability                              │
-│  4. Security & Compliance                                  │
-│  5. Documentation & Developer Experience                   │
-│  6. Observability & Operations                             │
-│  7. Community & Ecosystem                                  │
-└────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    PR[Production readiness]
+    PR --> P1[Testing and quality]
+    PR --> P2[API stability and versioning]
+    PR --> P3[Performance and scalability]
+    PR --> P4[Security and compliance]
+    PR --> P5[Docs and developer experience]
+    PR --> P6[Observability and operations]
+    PR --> P7[Community and ecosystem]
 ```
 
-Each pillar has specific criteria that must be met before declaring production readiness.
+Each pillar has its own set of tasks and exit criteria.
 
 ---
 
-## Detailed Roadmap
+## Detailed roadmap
 
 ### Pillar 1: Testing & Quality Assurance
 
-**Goal:** Achieve 80%+ statement coverage with comprehensive unit, integration, and end-to-end tests.
+**Goal:** Catch most mistakes before they ever reach a running system by having solid tests at every level.
 
-#### Phase 1.1: Unit Test Coverage (Priority: P0)
+#### Phase 1.1: Unit test coverage (Priority: P0)
 **Timeline:** Months 1-2
 **Owner:** Core Team + Community
 
@@ -238,12 +249,12 @@ Each pillar has specific criteria that must be met before declaring production r
   - [ ] `workspaceShared`: Protocol validation
 - [ ] **Enable Coverage Enforcement**
   - Set `coverageFailOnMinimum := true` in `build.sbt`
-  - Add coverage reports to CI/CD pipeline
+  - Add coverage reports to CI/CD pipeline and document targets in `docs/TEST_COVERAGE.md`
 
 **Related Issues:** None yet
 **Dependencies:** None
 
-#### Phase 1.2: Integration Testing (Priority: P0)
+#### Phase 1.2: Integration testing (Priority: P0)
 **Timeline:** Months 2-3
 **Owner:** Core Team
 
@@ -306,9 +317,9 @@ Each pillar has specific criteria that must be met before declaring production r
 
 ### Pillar 2: API Stability & Versioning
 
-**Goal:** Stable 1.0 API with clear versioning policy and backward compatibility guarantees.
+**Goal:** Let users upgrade safely by keeping a clear, stable public API and a documented story for breaking changes.
 
-#### Phase 2.1: API Audit (Priority: P0)
+#### Phase 2.1: API audit (Priority: P0)
 **Timeline:** Month 1
 **Owner:** Core Team
 
@@ -327,14 +338,14 @@ Each pillar has specific criteria that must be met before declaring production r
 **Related Docs:** `docs/MIGRATION_GUIDE.md`
 **Dependencies:** None
 
-#### Phase 2.2: Binary Compatibility Checks (Priority: P0)
+#### Phase 2.2: Binary compatibility checks (Priority: P0)
 **Timeline:** Month 2
 **Owner:** Core Team
 
 **Tasks:**
 - [ ] **Enable MiMa (Migration Manager)**
   - Already in `build.sbt`: `mimaPreviousArtifacts := Set(...)`
-  - Configure for 1.0.0 baseline
+  - Configure for 1.0.0 baseline and agree on the first stable previous version
 - [ ] **Document Breaking Change Process**
   - Add to `CONTRIBUTING.md`
   - Require MiMa checks in CI/CD
@@ -345,7 +356,7 @@ Each pillar has specific criteria that must be met before declaring production r
 **Related Issues:** None yet
 **Dependencies:** Phase 2.1
 
-#### Phase 2.3: API Freeze for 1.0 (Priority: P0)
+#### Phase 2.3: API freeze for 1.0 (Priority: P0)
 **Timeline:** Month 5 (before 1.0-RC1)
 **Owner:** Core Team
 
@@ -367,9 +378,9 @@ Each pillar has specific criteria that must be met before declaring production r
 
 ### Pillar 3: Performance & Scalability
 
-**Goal:** Achieve predictable performance with benchmarks for all critical paths.
+**Goal:** Know how the system behaves under load, and keep it within predictable performance and resource bounds.
 
-#### Phase 3.1: Performance Benchmarking Framework (Priority: P1)
+#### Phase 3.1: Performance benchmarking framework (Priority: P1)
 **Timeline:** Months 2-3
 **Owner:** Core Team
 
@@ -383,11 +394,11 @@ Each pillar has specific criteria that must be met before declaring production r
   - Benchmark RAG pipeline performance
 - [ ] **Baseline Metrics**
   - Establish performance baselines for 1.0
-  - Document in `docs/PERFORMANCE.md`
+  - Document in `docs/PERFORMANCE.md` and update on each minor release
 
 **Dependencies:** None
 
-#### Phase 3.2: Memory and Resource Optimization (Priority: P1)
+#### Phase 3.2: Memory and resource optimization (Priority: P1)
 **Timeline:** Month 4
 **Owner:** Core Team
 
@@ -403,7 +414,7 @@ Each pillar has specific criteria that must be met before declaring production r
 **Related Docs:** `docs/workspace-agent-protocol.md`
 **Dependencies:** Phase 3.1
 
-#### Phase 3.3: Scalability Testing (Priority: P2)
+#### Phase 3.3: Scalability testing (Priority: P2)
 **Timeline:** Month 5
 **Owner:** Community + Core Team
 
@@ -420,17 +431,56 @@ Each pillar has specific criteria that must be met before declaring production r
 
 **Dependencies:** Phase 3.1, Phase 3.2
 
+#### Phase 3.4: Reliable calling (priority: P0)
+**Timeline:** Months 3-4
+**Owner:** Core Team
+
+**Tasks:**
+- [ ] **Error classification**
+  - Decide which `LLMError` values are safe to retry (for example: rate limits, timeouts, transient network failures).
+- [ ] **Implement reliable client behaviour**
+  - Implement retry with backoff using `ReliableCallOptions`.
+  - Enforce optional total deadline for a call.
+  - Add hooks for hedging and circuit breaking behind feature flags.
+- [ ] **Wire into clients and samples**
+  - Provide helpers to wrap a plain `LLMClient` with `ReliableClient` from configuration.
+  - Use the reliable wrapper in at least one sample application.
+- [ ] **Telemetry and tests**
+  - Emit fields like `retryCount`, `backoffMs`, and `deadlineExceeded` into tracing/metrics.
+  - Add fault-injection tests that simulate rate limits and timeouts.
+
+**Related Docs:** `modules/core/src/main/scala/org/llm4s/reliability`
+**Dependencies:** Phase 3.1
+
+```mermaid
+sequenceDiagram
+  participant App as Application code
+  participant Rel as ReliableClient
+  participant LLM as LLMClient
+  participant API as Provider API
+
+  App->>Rel: complete(conversation, options)
+  Rel->>LLM: complete(conversation, options)
+  LLM-->>Rel: error (retryable)
+  Rel->>LLM: retry with backoff
+  LLM-->>Rel: completion
+  Rel-->>App: completion with telemetry
+```
+
 ---
 
 ### Pillar 4: Security & Compliance
 
-**Goal:** Secure-by-default with clear security policies and regular audits.
+**Goal:** Make it hard to accidentally leak secrets or data, and easy to see how data flows through the system.
 
-#### Phase 4.1: Security Audit (Priority: P0)
+#### Phase 4.1: Security audit (Priority: P0)
 **Timeline:** Month 3
 **Owner:** Core Team + External Auditor
 
 **Tasks:**
+- [ ] **Threat model and data flows**
+  - Draw a simple data-flow diagram for prompts, tools, workspace, and storage.
+  - Call out main threat types (prompt injection, data exfiltration, sandbox escape).
 - [ ] **Code Security Review**
   - Review for SQL injection, XSS, command injection
   - Review API key handling (ensure `ApiKey` type prevents logging)
@@ -483,9 +533,9 @@ Each pillar has specific criteria that must be met before declaring production r
 
 ### Pillar 5: Documentation & Developer Experience
 
-**Goal:** Comprehensive, up-to-date documentation that enables rapid onboarding.
+**Goal:** Help developers get from “clone” to “first working example” quickly, with docs that stay in sync with the code.
 
-#### Phase 5.1: Documentation Audit (Priority: P0)
+#### Phase 5.1: Documentation audit (Priority: P0)
 **Timeline:** Month 2
 **Owner:** Community + Core Team
 
@@ -548,9 +598,9 @@ Each pillar has specific criteria that must be met before declaring production r
 
 ### Pillar 6: Observability & Operations
 
-**Goal:** Production-grade observability with monitoring, alerting, and debugging capabilities.
+**Goal:** See what agents and providers are doing in production, and react quickly when things go wrong.
 
-#### Phase 6.1: Enhanced Tracing (Priority: P1)
+#### Phase 6.1: Enhanced tracing (Priority: P1)
 **Timeline:** Month 3
 **Owner:** Core Team
 
@@ -563,12 +613,12 @@ Each pillar has specific criteria that must be met before declaring production r
   - Document log levels and verbosity
 - [ ] **Custom Metrics**
   - Add Prometheus metrics exporter
-  - Track: request latency, token usage, error rates
+  - Track: request latency, token usage, error rates, retry counts, backoff timing, deadline hits, and guardrail activity
 
 **Related Docs:** `docs/langfuse-workflow-patterns.md`
 **Dependencies:** None
 
-#### Phase 6.2: Production Monitoring Guide (Priority: P1)
+#### Phase 6.2: Production monitoring guide (Priority: P1)
 **Timeline:** Month 4
 **Owner:** Core Team
 
@@ -586,7 +636,7 @@ Each pillar has specific criteria that must be met before declaring production r
 **Related Docs:** `docs/workspace-agent-protocol.md`
 **Dependencies:** Phase 6.1
 
-#### Phase 6.3: Operational Runbooks (Priority: P2)
+#### Phase 6.3: Operational runbooks (Priority: P2)
 **Timeline:** Month 5
 **Owner:** Core Team
 
@@ -602,11 +652,46 @@ Each pillar has specific criteria that must be met before declaring production r
 
 ---
 
+## Reference deployment patterns
+
+To make “production-ready” concrete, we will document three reference deployment setups in `docs/PRODUCTION_DEPLOYMENT.md`:
+
+1. **Laptop / non-production**
+   - Single-node sbt run with one provider or local Ollama.
+   - Langfuse or console tracing only.
+   - Good for experiments and learning, not for live traffic.
+
+2. **Small single-tenant Kubernetes cluster**
+   - llm4s app, workspace runner, Langfuse, and a vector store (for example, pgvector) deployed in one namespace.
+   - Secrets managed via Kubernetes secrets or a cloud secret manager.
+   - Basic SLOs defined for p95 latency and error rate.
+
+3. **Enterprise VPC**
+   - Private networking, managed secrets (Vault or cloud provider), and centralised logging/metrics.
+   - Audit logging enabled for prompts, tool calls, and policy decisions.
+   - PII policies enforced at the edge and in the workspace runner.
+
+Each pattern will come with diagrams, sample manifests, and a short “when to use this” section.
+
+```mermaid
+graph TD
+  Dev[Developer laptop] --> DevLLM[Local provider or single cloud model]
+  K8s[Small k8s cluster] --> AppPod[llm4s app + workspace runner]
+  AppPod --> Langfuse[Langfuse]
+  AppPod --> Vec[Vector store]
+  Ent[Enterprise VPC] --> EntApp[llm4s services]
+  Ent --> Sec[Secrets manager]
+  Ent --> Obs[Central logging and metrics]
+  EntApp --> Audit[Audit log]
+```
+
+---
+
 ### Pillar 7: Community & Ecosystem
 
-**Goal:** Thriving community with active contributors and a growing ecosystem.
+**Goal:** Grow a healthy contributor base and ecosystem so the project outlives its original authors.
 
-#### Phase 7.1: Community Growth (Priority: P1)
+#### Phase 7.1: Community growth (Priority: P1)
 **Timeline:** Ongoing
 **Owner:** Maintainers
 
@@ -675,6 +760,14 @@ Month 5: Stabilization (RC releases)
 Month 6+: Launch & Growth (1.0.0 release)
 ```
 
+```mermaid
+graph TD
+    M1[Months 1–2<br/>Foundation: tests and API audit] --> M2[Months 2–3<br/>Integration and performance baselines]
+    M2 --> M3[Months 3–4<br/>Security and reliability]
+    M3 --> M4[Month 5<br/>Stabilisation and RCs]
+    M4 --> M5[Month 6+<br/>Launch and growth]
+```
+
 ### Detailed Timeline
 
 | Month | Milestone | Deliverables | Exit Criteria |
@@ -722,8 +815,58 @@ Month 6+: Launch & Growth (1.0.0 release)
 - **Developer Satisfaction**: Survey developers on ease of use, documentation quality
 - **API Stability**: Zero unplanned breaking changes in 1.0.x series
 - **Community Health**: Active Discord discussions, regular contributions
-- **Production Readiness**: At least 3 case studies of production deployments
+- **Production Readiness**: At least 3 case studies of production deployments, including one using a reference deployment pattern
 
+### Known Limitations (1.0)
+
+We will also document a short “known limitations” section before release 1.0, covering:
+- Tool registries are not serialised; tools must be re-attached when restoring `AgentState`.
+- Reasoning modes are provider-specific and may not be available on all models.
+- Memory stores have size and TTL limits; long-term retention belongs in external systems.
+
+---
+
+## Roadmap cheatsheet
+
+If you only have five minutes, this section gives you the big-picture view.
+
+### Key phases at a glance
+
+| Phase window | Focus | Main outcomes |
+|--------------|-------|---------------|
+| Months 1–2 | Testing + API audit | Coverage audit, unit tests in place, public API surface documented |
+| Months 2–3 | Integration + perf baselines | Integration tests, RAG/agent flows covered, JMH benchmarks and performance baselines |
+| Months 3–4 | Security + reliability | Security audit and threat model, reliable calling (retries/backoff/deadlines), enhanced tracing |
+| Month 5 | Stabilisation | RC1, API freeze, end-to-end scenarios green |
+| Month 6+ | Launch and growth | 1.0.0 release, docs polished, ecosystem work (plugins/integrations) |
+
+```mermaid
+graph TD
+    M1[Months 1–2<br/>tests + API] --> M2[Months 2–3<br/>integration + perf]
+    M2 --> M3[Months 3–4<br/>security + reliability]
+    M3 --> M4[Month 5<br/>stabilisation]
+    M4 --> M5[Month 6+<br/>launch + growth]
+```
+
+### Pillars and their one-line goals
+
+- **Testing and quality:** Catch most bugs before runtime with solid unit, integration, and end-to-end tests.
+- **API stability and versioning:** Let users upgrade safely with a clear public API and documented breaking-change policy.
+- **Performance and scalability:** Know how the system behaves under load and keep it within predictable limits.
+- **Security and compliance:** Make accidental data leaks and key exposure hard, and data flows easy to reason about.
+- **Docs and developer experience:** Help developers reach a working example quickly, with docs that track the code.
+- **Observability and operations:** See what agents and providers are doing in production and react quickly when things break.
+- **Community and ecosystem:** Build a contributor base and plugin ecosystem that keeps the project healthy.
+
+### One concrete task per pillar
+
+- **Testing:** Enable coverage enforcement in CI and track targets in `docs/TEST_COVERAGE.md`.
+- **API:** Pick a MiMa baseline and write down the rules in `docs/VERSIONING_POLICY.md`.
+- **Performance:** Add `modules/benchmarks` and keep `docs/PERFORMANCE.md` updated each minor release.
+- **Security:** Add a threat model and data-flow diagram under `Phase 4.1`, plus dependency scanning in CI.
+- **Docs:** Add `docs/PRODUCTION_DEPLOYMENT.md` that shows how to deploy the three reference patterns.
+- **Observability:** Emit reliability and guardrail metrics (retry counts, backoff timing, deadline hits, policy decisions).
+- **Community:** Keep a small set of “good first issue” tickets aligned with this roadmap.
 ---
 
 ## Risk Assessment
