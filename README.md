@@ -161,7 +161,7 @@ OPENAI_API_KEY=<your_openai_api_key>
 or Anthropic:
 
 ```
-LLM_MODEL=anthropic/claude-3-7-sonnet-latest
+LLM_MODEL=anthropic/claude-sonnet-4-5-latest
 ANTHROPIC_API_KEY=<your_anthropic_api_key>
 ```
 
@@ -236,15 +236,15 @@ sbt fullCrossTest
 
 Our goal is to implement Scala equivalents of popular Python LLM frameworks, with **multi-provider, multimodal, and observability-first design** as core principles.
 
-### 📋 Production Roadmap
+### 📋 Detailed Roadmap
 
-**For detailed production readiness planning, see the [Production Readiness Roadmap](docs/roadmap/PRODUCTION_ROADMAP.md)**
+**For the full roadmap including core framework features and agent phases, see the [LLM4S Roadmap](https://llm4s.org/reference/roadmap)**
 
-The comprehensive roadmap covers:
-- **Seven Production Pillars**: Testing, API Stability, Performance, Security, Documentation, Observability, Community
-- **6-9 Month Timeline**: Structured path to 1.0.0 production release
-- **Feature Completion Tracking**: RAG, Agents, MCP, and more
-- **Success Metrics**: Clear targets for quality, coverage, and adoption
+The roadmap covers:
+- **Core Framework Features**: Multi-provider LLM, image generation, speech, embeddings, tools, MCP
+- **Agent Framework Phases**: Conversations, guardrails, handoffs, memory, streaming, built-in tools
+- **Production Pillars**: Testing, API Stability, Performance, Security, Documentation, Observability
+- **Path to v1.0.0**: Structured path to production release
 
 ### High-Level Goals
 
@@ -255,7 +255,11 @@ The comprehensive roadmap covers:
   - [x] Logging, tracking, and monitoring ✅ *Complete*
 - [ ] Agentic framework (like PydanticAI, CrewAI)
   - [x] Single-agent workflows ✅ *Complete*
-  - [ ] Multi-agent orchestration 🚧 *In Progress (60%)*
+  - [x] Multi-agent handoffs ✅ *Complete*
+  - [x] Memory system (in-memory, SQLite, vector) ✅ *Complete*
+  - [x] Streaming events ✅ *Complete*
+  - [x] Built-in tools module ✅ *Complete*
+  - [ ] DAG-based orchestration 🚧 *In Progress*
 - [ ] Tokenization utilities (Scala port of tiktoken) ✅ *Complete*
 - [ ] Examples for all supported modalities and workflows ✅ *Complete*
 - [ ] Stable platform with extensive test coverage 🚧 *In Progress*
