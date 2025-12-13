@@ -51,10 +51,28 @@ Add LLM4S to your `build.sbt`:
 
 ```scala
 // For Scala 2.13 or 3.x
-libraryDependencies += "org.llm4s" %% "llm4s-core" % "0.1.0-SNAPSHOT"
+libraryDependencies += "org.llm4s" %% "core" % "0.1.16"
 
 // Cross-compile for both versions
 ThisBuild / scalaVersion := "2.13.16"  // or "3.7.1"
+```
+
+### Maven
+
+```xml
+<!-- For Scala 3 -->
+<dependency>
+    <groupId>org.llm4s</groupId>
+    <artifactId>core_3</artifactId>
+    <version>0.1.16</version>
+</dependency>
+
+<!-- For Scala 2.13 -->
+<dependency>
+    <groupId>org.llm4s</groupId>
+    <artifactId>core_2.13</artifactId>
+    <version>0.1.16</version>
+</dependency>
 ```
 
 ### Multi-Module Project
@@ -67,17 +85,18 @@ lazy val myProject = (project in file("."))
     name := "my-llm-project",
     scalaVersion := "2.13.16",
     libraryDependencies ++= Seq(
-      "org.llm4s" %% "llm4s-core" % "0.1.0-SNAPSHOT"
+      "org.llm4s" %% "core" % "0.1.16"
     )
   )
 ```
 
-### Resolver Configuration
+### Snapshot Versions
 
-LLM4S is currently published as SNAPSHOT builds. Add the Sonatype snapshots resolver:
+To use the latest development snapshot:
 
 ```scala
 resolvers += Resolver.sonatypeRepo("snapshots")
+libraryDependencies += "org.llm4s" %% "core" % "0.1.0-SNAPSHOT"
 ```
 
 ---
@@ -94,7 +113,7 @@ sbt new llm4s/llm4s.g8
 # name [My LLM Project]: my-awesome-agent
 # organization [com.example]: com.mycompany
 # scala_version [2.13.16]:
-# llm4s_version [0.1.0-SNAPSHOT]:
+# llm4s_version [0.1.16]:
 
 cd my-awesome-agent
 sbt run
@@ -114,27 +133,14 @@ The starter kit includes:
 
 ## Optional Dependencies
 
-### For Image Generation
-
-```scala
-libraryDependencies += "org.llm4s" %% "llm4s-imagegeneration" % "0.1.0-SNAPSHOT"
-```
-
-### For Speech Processing
-
-```scala
-libraryDependencies ++= Seq(
-  "org.llm4s" %% "llm4s-speech-stt" % "0.1.0-SNAPSHOT",  // Speech-to-text
-  "org.llm4s" %% "llm4s-speech-tts" % "0.1.0-SNAPSHOT"   // Text-to-speech
-)
-```
+{: .note }
+> Additional modules are coming soon. The core library includes most functionality.
+> Check [Maven Central](https://central.sonatype.com/namespace/org.llm4s) for available artifacts.
 
 ### For Workspace (Containerized Execution)
 
 ```scala
-libraryDependencies ++= Seq(
-  "org.llm4s" %% "llm4s-workspace-client" % "0.1.0-SNAPSHOT"
-)
+libraryDependencies += "org.llm4s" %% "workspaceClient" % "0.1.16"
 ```
 
 And install Docker:
@@ -148,12 +154,6 @@ sudo apt-get install docker.io
 
 # Verify
 docker --version
-```
-
-### For Embeddings and RAG
-
-```scala
-libraryDependencies += "org.llm4s" %% "llm4s-embeddings" % "0.1.0-SNAPSHOT"
 ```
 
 ---
@@ -321,9 +321,11 @@ sbt compile
 
 ### Dependency Resolution Issues
 
-**Problem**: Can't resolve LLM4S snapshot.
+**Problem**: Can't resolve LLM4S dependency.
 
-**Solution**: Add the snapshots resolver:
+**Solution**:
+- For release versions, no additional resolver needed (uses Maven Central)
+- For snapshots, add the resolver:
 ```scala
 resolvers += Resolver.sonatypeRepo("snapshots")
 ```

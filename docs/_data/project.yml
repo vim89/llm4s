@@ -7,7 +7,7 @@
 version: "0.1.0-SNAPSHOT"
 
 # Latest stable release (updated by CI on release)
-latest_release: "0.1.0-SNAPSHOT"
+latest_release: "0.1.16"
 
 # Supported versions
 scala_versions:
@@ -43,4 +43,4 @@ providers:
 repo_url: "https://github.com/llm4s/llm4s"
 discord_url: "https://discord.gg/4uvTPn6qww"
 maven_group: "org.llm4s"
-maven_artifact: "llm4s-core"
+maven_artifact: "core"

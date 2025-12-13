@@ -153,8 +153,8 @@ _(Submit your local meetup!)_
 
 For quick questions:
 
-1. Check the **[FAQ](/community/faq)** first
-2. Search **[existing issues](https://github.com/llm4s/llm4s/issues)**
+1. Search **[existing issues](https://github.com/llm4s/llm4s/issues)**
+2. Check **[GitHub Discussions](https://github.com/llm4s/llm4s/discussions)**
 3. Ask in **[Discord](https://discord.gg/4uvTPn6qww)**
 
 ### Bug Reports
