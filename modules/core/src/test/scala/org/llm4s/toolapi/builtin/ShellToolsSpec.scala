@@ -144,10 +144,13 @@ class ShellToolsSpec extends AnyFlatSpec with Matchers {
 
   it should "truncate large output" in {
     assume(!isWindows, "Unix shell commands not available on Windows")
-    val config = ShellConfig(allowedCommands = Seq("yes"), maxOutputSize = 100, timeoutMs = 100)
+    // Use seq which generates output immediately, and a longer timeout to ensure
+    // truncation happens before timeout (avoiding race condition on slow CI)
+    val config = ShellConfig(allowedCommands = Seq("seq"), maxOutputSize = 100, timeoutMs = 5000)
     val tool   = ShellTool.create(config)
 
-    val params = ujson.Obj("command" -> "yes")
+    // seq 1 10000 generates ~50KB of output immediately
+    val params = ujson.Obj("command" -> "seq 1 10000")
     val result = tool.handler(SafeParameterExtractor(params))
 
     result.isRight shouldBe true
