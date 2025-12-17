@@ -109,10 +109,70 @@ graph TD
 
 | Feature | Progress | Blocking Issues |
 |---------|----------|-----------------|
-| **RAG Pipeline** | ~70% | Vector store integrations, chunking strategies |
+| **RAG Core Engine** | ✅ Complete | Retrieval pipeline shipped |
+| **RAG Evaluation** | ✅ Complete | RAGAS metrics + benchmarking harness |
+| **RAG Benchmarking** | ✅ Complete | Chunking, fusion, embedding comparison |
 | **MCP Full Implementation** | ~50% | Full protocol, server implementation |
 | **Advanced Embeddings** | ~60% | Multi-provider support, caching |
 | **Enhanced Observability** | Planning | Plugin architecture, multi-backend |
+
+### RAG Pipeline Roadmap
+
+The RAG pipeline follows a 5-phase roadmap toward a production-grade retrieval system. The core library (Phases 1-3) lives in LLM4S; deployment tooling (Phases 4-5) may be provided by a separate "RAG in a Box" project that builds on this library.
+
+#### Phase 1: Foundation ✅ COMPLETE
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| VectorStore Abstraction | ✅ Complete | Backend-agnostic trait |
+| SQLite Backend | ✅ Complete | File-based and in-memory |
+| pgvector Backend | ✅ Complete | PostgreSQL + pgvector extension |
+| Qdrant Backend | ✅ Complete | REST API, local + cloud |
+| BM25 Keyword Index | ✅ Complete | SQLite FTS5 with BM25 scoring |
+| Hybrid Search Fusion | ✅ Complete | RRF + weighted score strategies |
+
+#### Phase 2: Intelligence ✅ COMPLETE
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Reranking Pipeline | ✅ Complete | Cohere + LLM-based reranking |
+| Document Chunking | ✅ Complete | Simple, sentence-aware, markdown-aware, semantic chunkers |
+| Ollama Embeddings | ✅ Complete | Local embedding support |
+
+#### Phase 3: Evaluation & Quality ✅ COMPLETE
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| RAGAS Evaluation | ✅ Complete | Faithfulness, answer relevancy, context precision/recall metrics |
+| RAG Benchmarking Harness | ✅ Complete | Systematic comparison of chunking, fusion, embedding strategies |
+| RAG-Specific Guardrails | ✅ Complete | PII detection/masking, prompt injection, grounding, context relevance, source attribution, topic boundary |
+| RAG Cost Tracking | 📋 Planned | Per-query cost, latency percentiles (p50/p95/p99) |
+| Embedding Drift Detection | 📋 Planned | Monitor embedding quality over time |
+| Prompt Tuning & Optimization | 📋 Planned | Systematic prompt improvement, A/B testing, performance tracking |
+
+#### Phase 4: Extended Integrations 📋 PLANNED
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Milvus Backend | 📋 Planned | GPU-accelerated vector search |
+| Pinecone Backend | 📋 Planned | Cloud-managed vector DB |
+| Cohere Embeddings | 📋 Planned | Multilingual embed-v3 |
+| ONNX Embeddings | 📋 Planned | Local sentence-transformers |
+| Embedding Cache | 📋 Planned | Reduce redundant embedding calls |
+| Metadata Extraction | 📋 Planned | Titles, TOC, links, code blocks |
+
+#### Phase 5: Deployment & UX (Separate Project)
+
+These components enable a turnkey "RAG in a Box" deployment and may live in a dedicated project:
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| REST API Layer | 📋 Planned | Document ingestion, query endpoints, streaming |
+| Docker Compose | 📋 Planned | Multi-container RAG stack |
+| Helm Charts | 📋 Planned | Kubernetes deployment |
+| Admin UI | 📋 Planned | Document management, index config, monitoring |
+| Chat UI | 📋 Planned | Testing interface with source highlighting |
+| Multi-tenancy | 📋 Planned | Org isolation, RBAC, quotas |
 
 ---
 
@@ -122,8 +182,13 @@ graph TD
 
 | Feature | Priority | Description |
 |---------|----------|-------------|
-| RAG Vector Integrations | P0 | pgvector, Qdrant, Weaviate, Elasticsearch |
-| RAG Document Chunking | P0 | Smart chunking for different document types |
+| RAG Vector Integrations | ✅ Done | SQLite, pgvector, Qdrant complete |
+| RAG Hybrid Search | ✅ Done | BM25 + vector fusion with RRF |
+| RAG Reranking Pipeline | ✅ Done | Cohere cross-encoder + LLM-based |
+| RAG Document Chunking | ✅ Done | Sentence-aware, semantic, markdown chunking |
+| **RAGAS Evaluation** | ✅ Done | Context precision/recall, faithfulness, answer relevancy |
+| **RAG Benchmarking Harness** | ✅ Done | Systematic comparison of RAG configurations |
+| **RAG Guardrails** | ✅ Done | PII detection/masking, prompt injection, grounding, context relevance, source attribution, topic boundary |
 | Reliable Calling | P0 | Retry with backoff, circuit breakers, deadlines |
 | Performance Benchmarks | P1 | JMH framework, baseline metrics |
 | Security Audit | P1 | Threat model, vulnerability scanning |
@@ -132,10 +197,14 @@ graph TD
 
 | Feature | Priority | Description |
 |---------|----------|-------------|
+| **Prompt Tuning & Optimization** | P1 | Systematic prompt improvement, A/B testing, variant tracking |
+| **RAG Cost & Latency Tracking** | P1 | Per-query metrics, embedding drift detection |
 | Prompt Management | P2 | Template system with variable substitution |
-| Caching Layer | P2 | LLM response caching for cost/latency |
+| Caching Layer | P2 | LLM response + embedding caching for cost/latency |
 | Cost Tracking | P2 | Token usage tracking and estimation |
 | Provider Expansion | P2 | Cohere, Mistral, Gemini, LiteLLM |
+| **Extended Vector DBs** | P2 | Milvus (GPU), Pinecone (cloud) |
+| **ONNX Embeddings** | P2 | Local sentence-transformers runtime |
 
 ### Long Term (Post-1.0)
 
@@ -145,6 +214,7 @@ graph TD
 | Workflow Engines | Camunda/Temporal integration |
 | Plugin Architecture | Community-contributed providers and tools |
 | Advanced Multi-Agent | DAG orchestration, complex workflows |
+| **RAG in a Box** | Separate project: REST API, Docker/Helm deployment, Admin/Chat UI |
 
 ---
 

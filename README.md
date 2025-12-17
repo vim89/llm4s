@@ -56,7 +56,7 @@ LLM4S provides a simple, robust, and scalable framework for building LLM applica
 - **MCP Support**: Integration with Model Context Protocol for richer context management.
 - **Agent Framework**: Build single or multi-agent workflows with standardized interfaces.
 - **Multimodal Generation**: Support for text, image, voice, and other LLM modalities.
-- **RAG (Retrieval-Augmented Generation)**: Built-in tools for search, embedding, and retrieval workflows.
+- **RAG (Retrieval-Augmented Generation)**: Built-in tools for search, embedding, retrieval workflows, and RAGAS evaluation with benchmarking harness.
 - **Observability**: Detailed trace logging, monitoring, and analytics for debugging and performance insights.
 
 ## Architecture
@@ -251,7 +251,8 @@ The roadmap covers:
 - [ ] Single API access to multiple LLM providers (like LiteLLM) - **llmconnect** ✅ *Complete*
 - [ ] Comprehensive toolchain for building LLM apps (LangChain/LangGraph equivalent)
   - [x] Tool calling ✅ *Complete*
-  - [ ] RAG search & retrieval 🚧 *In Progress (70%)*
+  - [x] RAG search & retrieval ✅ *Complete* (vector memory, embeddings, document Q&A)
+  - [x] RAG evaluation & benchmarking ✅ *Complete* (RAGAS metrics, systematic comparison)
   - [x] Logging, tracking, and monitoring ✅ *Complete*
 - [ ] Agentic framework (like PydanticAI, CrewAI)
   - [x] Single-agent workflows ✅ *Complete*
@@ -425,6 +426,16 @@ Use these loaders to convert flat keys and HOCON paths into typed, validated set
   - Input paths: `EMBEDDING_INPUT_PATHS` or `EMBEDDING_INPUT_PATH` → `EmbeddingTargets.load()` → `EmbeddingTargets`
   - Query: `EMBEDDING_QUERY` → `EmbeddingQuery.load()` → `EmbeddingQuery`
   - UI knobs: `MAX_ROWS_PER_FILE`, `TOP_DIMS_PER_ROW`, `GLOBAL_TOPK`, `SHOW_GLOBAL_TOP`, `COLOR`, `TABLE_WIDTH` → `EmbeddingUiSettings.load()` → `EmbeddingUiSettings`
+
+- Embeddings: provider configuration
+  - Key: `EMBEDDING_PROVIDER` or `llm4s.embeddings.provider` (required)
+  - Supported providers: `openai`, `voyage`, `ollama`
+  - Type: `(String, EmbeddingProviderConfig)`
+  - Loader: `ConfigReader.Embeddings()`
+  - Provider-specific keys:
+    - **OpenAI**: `OPENAI_EMBEDDING_BASE_URL`, `OPENAI_EMBEDDING_MODEL`, `OPENAI_API_KEY`
+    - **Voyage**: `VOYAGE_EMBEDDING_BASE_URL`, `VOYAGE_EMBEDDING_MODEL`, `VOYAGE_API_KEY`
+    - **Ollama** (local): `OLLAMA_EMBEDDING_BASE_URL` (default: `http://localhost:11434`), `OLLAMA_EMBEDDING_MODEL`
 
 - Provider API keys and endpoints
   - Keys: `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL`, `AZURE_API_BASE`, `AZURE_API_KEY`, `AZURE_API_VERSION`, `OLLAMA_BASE_URL`
