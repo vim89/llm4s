@@ -40,12 +40,12 @@ import org.llm4s.types.Result
  * val result = evaluator.evaluate(sample)
  * result match {
  *   case Right(eval) =>
- *     println(s"RAGAS Score: ${eval.ragasScore}")
+ *     println(s"RAGAS Score: $${eval.ragasScore}")
  *     eval.metrics.foreach { m =>
- *       println(s"  ${m.metricName}: ${m.score}")
+ *       println(s"  $${m.metricName}: $${m.score}")
  *     }
  *   case Left(error) =>
- *     println(s"Evaluation failed: ${error.message}")
+ *     println(s"Evaluation failed: $${error.message}")
  * }
  * }}}}
  */

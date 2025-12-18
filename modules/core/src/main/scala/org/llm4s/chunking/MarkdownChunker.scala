@@ -21,7 +21,7 @@ import scala.util.matching.Regex
  *
  * chunks.foreach { c =>
  *   val headingPath = c.metadata.headings.mkString(" > ")
- *   println(s"[$headingPath] ${c.content.take(50)}...")
+ *   println(s"[$$headingPath] $${c.content.take(50)}...")
  * }
  * }}}
  */

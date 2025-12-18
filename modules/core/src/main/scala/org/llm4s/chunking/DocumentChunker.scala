@@ -143,7 +143,7 @@ object ChunkingConfig {
  * val chunks = chunker.chunk(documentText, config)
  *
  * chunks.foreach { chunk =>
- *   println(s"Chunk ${chunk.index}: ${chunk.content.take(50)}...")
+ *   println(s"Chunk $${chunk.index}: $${chunk.content.take(50)}...")
  * }
  * }}}
  */

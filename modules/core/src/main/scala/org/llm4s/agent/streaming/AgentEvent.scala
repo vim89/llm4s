@@ -24,7 +24,7 @@ import java.time.Instant
  *   tools = weatherTools,
  *   onEvent = {
  *     case TextDelta(delta, _) => print(delta)
- *     case ToolCallStarted(_, name, _, _) => println(s"[Calling $name]")
+ *     case ToolCallStarted(_, name, _, _) => println(s"[Calling $$name]")
  *     case AgentCompleted(state, _) => println("Done!")
  *     case _ => // ignore
  *   }

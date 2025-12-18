@@ -19,7 +19,7 @@ import scala.util.matching.Regex
  *
  * // Sentences are kept intact
  * chunks.foreach { c =>
- *   println(s"[${c.index}] ${c.content}")
+ *   println(s"[$${c.index}] $${c.content}")
  * }
  * }}}
  */

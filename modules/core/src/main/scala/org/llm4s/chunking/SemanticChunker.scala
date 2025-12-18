@@ -27,7 +27,7 @@ import scala.util.matching.Regex
  * val chunks = chunker.chunk(documentText, ChunkingConfig(targetSize = 800))
  *
  * chunks.foreach { c =>
- *   println(s"[${c.index}] ${c.content.take(50)}...")
+ *   println(s"[$${c.index}] $${c.content.take(50)}...")
  * }
  * }}}
  *

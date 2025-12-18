@@ -18,8 +18,8 @@ import org.llm4s.types.Result
  * val faithfulness = new Faithfulness(llmClient)
  * val result = faithfulness.evaluate(sample)
  * result match {
- *   case Right(r) => println(s"Faithfulness: ${r.score}")
- *   case Left(e) => println(s"Error: ${e.message}")
+ *   case Right(r) => println(s"Faithfulness: $${r.score}")
+ *   case Left(e) => println(s"Error: $${e.message}")
  * }
  * }}}
  */

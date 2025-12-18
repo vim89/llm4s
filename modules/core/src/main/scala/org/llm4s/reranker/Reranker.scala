@@ -88,7 +88,7 @@ final case class RerankProviderConfig(
  * )
  * val response = reranker.rerank(request)
  * response.foreach { r =>
- *   r.results.foreach(rr => println(s"Score ${rr.score}: ${rr.document.take(50)}..."))
+ *   r.results.foreach(rr => println(s"Score $${rr.score}: $${rr.document.take(50)}..."))
  * }
  * }}}
  */

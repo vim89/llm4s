@@ -19,8 +19,8 @@ import scala.util.{ Try, Using }
  * {{{
  *   val metadata = ModelRegistry.lookup("gpt-4o")
  *   metadata.foreach { m =>
- *     println(s"Context window: ${m.contextWindow}")
- *     println(s"Supports vision: ${m.supports("vision")}")
+ *     println(s"Context window: $${m.contextWindow}")
+ *     println(s"Supports vision: $${m.supports("vision")}")
  *   }
  * }}}
  */

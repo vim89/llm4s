@@ -1055,7 +1055,7 @@ class Agent(client: LLMClient) {
    * Runs the agent with streaming events for real-time progress tracking.
    *
    * This method provides fine-grained visibility into agent execution through
-   * a callback that receives [[AgentEvent]] instances as they occur. Events include:
+   * a callback that receives [[org.llm4s.agent.streaming.AgentEvent]] instances as they occur. Events include:
    * - Token-level streaming during LLM generation
    * - Tool call start/complete notifications
    * - Agent lifecycle events (start, step, complete, fail)
@@ -1082,8 +1082,8 @@ class Agent(client: LLMClient) {
    *   tools = weatherTools,
    *   onEvent = {
    *     case TextDelta(delta, _) => print(delta)
-   *     case ToolCallStarted(_, name, _, _) => println(s"[Calling $name]")
-   *     case AgentCompleted(_, steps, ms, _) => println(s"Done in $steps steps")
+   *     case ToolCallStarted(_, name, _, _) => println(s"[Calling $$name]")
+   *     case AgentCompleted(_, steps, ms, _) => println(s"Done in $$steps steps")
    *     case _ =>
    *   }
    * )

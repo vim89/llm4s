@@ -48,16 +48,16 @@ package org.llm4s.agent
  *       print(delta)  // Stream to console
  *
  *     case ToolCallStarted(_, name, args, _) =>
- *       println(s"\n[Calling $name with $args]")
+ *       println(s"\n[Calling $$name with $$args]")
  *
  *     case ToolCallCompleted(_, name, result, _, _, _) =>
- *       println(s"[Tool $name returned: $result]")
+ *       println(s"[Tool $$name returned: $$result]")
  *
  *     case AgentCompleted(state, steps, duration, _) =>
- *       println(s"\n[Done in $steps steps, ${duration}ms]")
+ *       println(s"\n[Done in $$steps steps, $${duration}ms]")
  *
  *     case AgentFailed(error, _, _) =>
- *       println(s"\n[Error: $error]")
+ *       println(s"\n[Error: $$error]")
  *
  *     case _ => // Ignore other events
  *   }
