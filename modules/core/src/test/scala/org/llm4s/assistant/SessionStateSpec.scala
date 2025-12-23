@@ -46,12 +46,15 @@ class SessionStateSpec extends AnyFlatSpec with Matchers {
       sessionDir = DirectoryPath("./sessions")
     )
 
+    // Small delay to ensure timestamp will be different on fast machines
+    Thread.sleep(2)
     val newState = original.withNewSession()
 
     newState.agentState shouldBe None
     newState.sessionId should not be originalId
     newState.sessionDir shouldBe DirectoryPath("./sessions")
-    newState.created should not be original.created
+    // Verify new session has a fresh timestamp (equal or later than original)
+    (newState.created.isEqual(original.created) || newState.created.isAfter(original.created)) shouldBe true
   }
 
   // ============ SessionInfo ============

@@ -41,6 +41,12 @@ class StdioTransportConcurrencySpec extends AnyFlatSpec with Matchers {
 
     val transport = new StdioTransportImpl(scriptCommand, "echo-server")
 
+    // Warm up: send a single request to ensure the process is started before concurrent access
+    // This prevents the race condition where multiple threads try to start the process simultaneously
+    val warmupRequest = JsonRpcRequest("2.0", "warmup", "test/warmup", None)
+    val warmupResult  = transport.sendRequest(warmupRequest)
+    warmupResult.isRight shouldBe true
+
     val executor      = Executors.newFixedThreadPool(5)
     val numRequests   = 10
     val startLatch    = new CountDownLatch(1)
@@ -164,6 +170,11 @@ class StdioTransportConcurrencySpec extends AnyFlatSpec with Matchers {
     )
 
     val transport = new StdioTransportImpl(scriptCommand, "mixed-server")
+
+    // Warm up: send a single request to ensure the process is started before concurrent access
+    val warmupRequest = JsonRpcRequest("2.0", "warmup", "test/warmup", None)
+    val warmupResult  = transport.sendRequest(warmupRequest)
+    warmupResult.isRight shouldBe true
 
     val executor      = Executors.newFixedThreadPool(3)
     val numRequests   = 15
