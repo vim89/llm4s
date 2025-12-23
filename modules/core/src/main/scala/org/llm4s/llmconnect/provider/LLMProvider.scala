@@ -1,10 +1,86 @@
 package org.llm4s.llmconnect.provider
 
-sealed trait LLMProvider
+/**
+ * Enumeration of supported LLM providers.
+ *
+ * Defines the available language model service providers that can be used
+ * with llm4s. Each provider has specific configuration requirements and
+ * API characteristics.
+ *
+ * @see [[org.llm4s.llmconnect.config.ProviderConfig]] for provider-specific configuration
+ */
+sealed trait LLMProvider {
+
+  /** Returns the lowercase string identifier for this provider */
+  def name: String = this match {
+    case LLMProvider.OpenAI     => "openai"
+    case LLMProvider.Azure      => "azure"
+    case LLMProvider.Anthropic  => "anthropic"
+    case LLMProvider.OpenRouter => "openrouter"
+    case LLMProvider.Ollama     => "ollama"
+  }
+}
+
+/**
+ * Companion object providing LLM provider instances and utilities.
+ */
 object LLMProvider {
-  case object OpenAI     extends LLMProvider
-  case object Azure      extends LLMProvider
-  case object Anthropic  extends LLMProvider
+
+  /**
+   * OpenAI provider for GPT models.
+   *
+   * Supports GPT-4, GPT-3.5-turbo, and other OpenAI models.
+   * Requires an OpenAI API key.
+   */
+  case object OpenAI extends LLMProvider
+
+  /**
+   * Azure OpenAI Service provider.
+   *
+   * Provides access to OpenAI models via Azure cloud infrastructure.
+   * Requires Azure-specific configuration including endpoint and API version.
+   */
+  case object Azure extends LLMProvider
+
+  /**
+   * Anthropic provider for Claude models.
+   *
+   * Supports Claude 3.5 Sonnet, Claude 3 Opus, and other Anthropic models.
+   * Features extended thinking capability for complex reasoning tasks.
+   */
+  case object Anthropic extends LLMProvider
+
+  /**
+   * OpenRouter provider for unified model access.
+   *
+   * Provides access to multiple LLM providers through a single API.
+   * Supports reasoning effort parameter for compatible models.
+   */
   case object OpenRouter extends LLMProvider
-  case object Ollama     extends LLMProvider
+
+  /**
+   * Ollama provider for local model inference.
+   *
+   * Runs models locally without external API dependencies.
+   * Supports various open-source models like Llama, Mistral, etc.
+   */
+  case object Ollama extends LLMProvider
+
+  /** All available providers */
+  val all: Seq[LLMProvider] = Seq(OpenAI, Azure, Anthropic, OpenRouter, Ollama)
+
+  /**
+   * Parses a provider name string to LLMProvider.
+   *
+   * @param name provider name (case-insensitive)
+   * @return Some(provider) if valid, None otherwise
+   */
+  def fromName(name: String): Option[LLMProvider] = name.toLowerCase match {
+    case "openai"     => Some(OpenAI)
+    case "azure"      => Some(Azure)
+    case "anthropic"  => Some(Anthropic)
+    case "openrouter" => Some(OpenRouter)
+    case "ollama"     => Some(Ollama)
+    case _            => None
+  }
 }

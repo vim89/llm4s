@@ -8,8 +8,32 @@ import ujson.{ Arr, Obj, read }
 
 import scala.util.Try
 
+/**
+ * OpenAI embedding provider implementation.
+ *
+ * Provides text embeddings using OpenAI's embedding API (text-embedding-3-small,
+ * text-embedding-3-large, text-embedding-ada-002). Supports batch embedding of
+ * multiple texts in a single request.
+ *
+ * == Supported Models ==
+ *  - `text-embedding-3-small` - Efficient, lower cost (recommended)
+ *  - `text-embedding-3-large` - Higher quality, higher cost
+ *  - `text-embedding-ada-002` - Legacy model
+ *
+ * == Token Usage ==
+ * The response includes token usage information when available from the API.
+ *
+ * @see [[EmbeddingProvider]] for the provider interface
+ * @see [[org.llm4s.llmconnect.config.EmbeddingProviderConfig]] for configuration
+ */
 object OpenAIEmbeddingProvider {
 
+  /**
+   * Creates an OpenAI embedding provider from configuration.
+   *
+   * @param cfg embedding provider configuration with API key and base URL
+   * @return configured EmbeddingProvider instance
+   */
   def fromConfig(cfg: EmbeddingProviderConfig): EmbeddingProvider = new EmbeddingProvider {
     private val backend = DefaultSyncBackend()
     private val logger  = LoggerFactory.getLogger(getClass)

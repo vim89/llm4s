@@ -2,8 +2,18 @@ package org.llm4s.shared
 
 import upickle.default.{ ReadWriter, macroRW }
 
-// Core trait for all workspace commands
+/**
+ * Core trait for all workspace agent commands.
+ *
+ * Commands are sent from the client to the workspace agent to perform
+ * file operations, execute shell commands, or query workspace information.
+ * Each command has a unique commandId for request-response correlation.
+ *
+ * @see [[WorkspaceAgentResponse]] for corresponding responses
+ */
 sealed trait WorkspaceAgentCommand {
+
+  /** Unique identifier for correlating responses with requests */
   def commandId: String
 }
 
@@ -19,8 +29,19 @@ object WorkspaceAgentCommand {
   )
 }
 
-// Core trait for all workspace responses
+/**
+ * Core trait for all workspace agent responses.
+ *
+ * Responses are sent from the workspace agent back to the client
+ * in response to commands. Each response includes the commandId
+ * to correlate with the original request.
+ *
+ * @see [[WorkspaceAgentCommand]] for corresponding commands
+ * @see [[WorkspaceAgentErrorResponse]] for error cases
+ */
 sealed trait WorkspaceAgentResponse {
+
+  /** The commandId of the request this response corresponds to */
   def commandId: String
 }
 
