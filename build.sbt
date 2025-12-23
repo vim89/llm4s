@@ -47,11 +47,11 @@ inThisBuild(
     ThisBuild / coverageMinimumStmtTotal := 80,
     ThisBuild / coverageFailOnMinimum    := false,
     ThisBuild / coverageHighlighting     := true,
-    ThisBuild / coverageExcludedPackages :=
-      """
-        |org\.llm4s\.runner\..*
-        |org\.llm4s\.samples\..*
-      """.stripMargin.replaceAll("\n", ";"),
+    ThisBuild / coverageExcludedPackages := Seq(
+      "org\\.llm4s\\.runner\\..*",
+      "org\\.llm4s\\.samples\\..*",
+      "org\\.llm4s\\.workspace\\..*"
+    ).mkString(";"),
     ThisBuild / (coverageReport / aggregate) := false,
     // --- scalafix ---
     ThisBuild / scalafixDependencies += "ch.epfl.scala" %% "scalafix-rules" % "0.12.1",
@@ -154,7 +154,8 @@ lazy val workspaceShared = (project in file("modules/workspace/workspaceShared")
   .settings(
     name := "workspaceShared",
     commonSettings,
-    Compile / discoveredMainClasses := Seq.empty
+    Compile / discoveredMainClasses := Seq.empty,
+    coverageEnabled := false
   )
 
 lazy val workspaceClient = (project in file("modules/workspace/workspaceClient"))
@@ -163,6 +164,7 @@ lazy val workspaceClient = (project in file("modules/workspace/workspaceClient")
     name := "workspaceShared",
     commonSettings,
     Compile / discoveredMainClasses := Seq.empty,
+    coverageEnabled := false,
     libraryDependencies ++= Seq(
       Deps.azureOpenAI,
       Deps.anthropic,
@@ -201,7 +203,8 @@ lazy val workspaceRunner = (project in file("modules/workspace/workspaceRunner")
       Deps.config,
       Deps.hikariCP
     ),
-    publish / skip := true
+    publish / skip := true,
+    coverageEnabled := false
   )
   .settings(WorkspaceRunnerDocker.settings)
 
@@ -210,7 +213,8 @@ lazy val samples = (project in file("modules//samples"))
   .settings(
     name := "samples",
     commonSettings,
-    publish / skip := true
+    publish / skip := true,
+    coverageEnabled := false
   )
 
 lazy val workspaceSamples = (project in file("modules/workspace/workspaceSamples"))
@@ -218,7 +222,8 @@ lazy val workspaceSamples = (project in file("modules/workspace/workspaceSamples
   .settings(
     name := "workspaceSamples",
     commonSettings,
-    publish / skip := true
+    publish / skip := true,
+    coverageEnabled := false
   )
 
 lazy val crossTestScala2 = (project in file("modules/crosstest/scala2"))
