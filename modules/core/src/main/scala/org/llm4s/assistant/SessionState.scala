@@ -7,7 +7,15 @@ import java.util.UUID
 import upickle.default.{ ReadWriter => RW, macroRW, ReadWriter, readwriter }
 
 /**
- * Represents the state of an interactive assistant session
+ * Represents the state of an interactive assistant session.
+ *
+ * Encapsulates the agent state, session identity, and metadata
+ * for persistence and session management.
+ *
+ * @param agentState Optional underlying agent state with conversation history
+ * @param sessionId Unique identifier for this session
+ * @param sessionDir Directory path for session file storage
+ * @param created Timestamp when the session was created
  */
 case class SessionState(
   agentState: Option[AgentState],
@@ -36,7 +44,17 @@ object SessionState {
 }
 
 /**
- * Information about a saved session
+ * Information about a saved session file.
+ *
+ * Contains metadata about a persisted session including file location
+ * and statistics about the conversation.
+ *
+ * @param id Unique session identifier
+ * @param title Human-readable session title
+ * @param filePath Path to the session JSON file
+ * @param created Timestamp when the session was created
+ * @param messageCount Number of messages in the conversation
+ * @param fileSize Size of the session file in bytes
  */
 case class SessionInfo(
   id: SessionId,
@@ -53,7 +71,15 @@ object SessionInfo {
 }
 
 /**
- * Summary of a session for listing purposes
+ * Summary of a session for listing and display purposes.
+ *
+ * Lightweight representation of a session containing only
+ * essential information for session selection UI.
+ *
+ * @param id Unique session identifier
+ * @param title Human-readable session title
+ * @param filename Base filename of the session file
+ * @param created Timestamp when the session was created
  */
 case class SessionSummary(
   id: SessionId,

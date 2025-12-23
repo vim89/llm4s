@@ -10,21 +10,61 @@ import scala.concurrent.duration._
 
 // Transport type definitions
 
-// Base trait for MCP transport mechanisms
+/**
+ * Base trait for MCP transport mechanism configurations.
+ *
+ * Defines how to connect to an MCP server. Each transport type
+ * specifies the connection parameters and protocol to use.
+ *
+ * @see [[StdioTransport]] for subprocess communication
+ * @see [[SSETransport]] for legacy HTTP/SSE transport
+ * @see [[StreamableHTTPTransport]] for modern HTTP transport
+ */
 sealed trait MCPTransport {
+
+  /** Unique identifier for this transport instance */
   def name: String
 }
 
-// Stdio transport using subprocess communication
+/**
+ * Stdio transport configuration using subprocess communication.
+ *
+ * Launches the MCP server as a subprocess and communicates via stdin/stdout.
+ * Suitable for local MCP servers and development environments.
+ *
+ * @param command Command line to launch the server process (e.g., `Seq("npx", "@playwright/mcp@latest")`)
+ * @param name Unique identifier for this transport instance
+ */
 case class StdioTransport(command: Seq[String], name: String) extends MCPTransport
 
-// Server-Sent Events transport using HTTP (2024-11-05 spec)
+/**
+ * Server-Sent Events transport configuration using HTTP (MCP 2024-11-05 spec).
+ *
+ * Connects to server via HTTP with SSE for streaming responses.
+ * This is the legacy transport protocol for backwards compatibility.
+ *
+ * @param url HTTP URL of the SSE endpoint
+ * @param name Unique identifier for this transport instance
+ */
 case class SSETransport(url: String, name: String) extends MCPTransport
 
-// Streamable HTTP transport using single endpoint (2025-03-26 spec)
+/**
+ * Streamable HTTP transport configuration (MCP 2025-03-26 spec).
+ *
+ * Connects to server via HTTP with support for streaming responses.
+ * This is the modern transport protocol supporting single-endpoint design.
+ *
+ * @param url HTTP URL of the MCP endpoint
+ * @param name Unique identifier for this transport instance
+ */
 case class StreamableHTTPTransport(url: String, name: String) extends MCPTransport
 
-// Base trait for transport implementations
+/**
+ * Base trait for transport implementations.
+ *
+ * Provides the interface for sending JSON-RPC requests and notifications
+ * to an MCP server and managing the connection lifecycle.
+ */
 trait MCPTransportImpl {
   def name: String
   // Sends a JSON-RPC request and waits for response

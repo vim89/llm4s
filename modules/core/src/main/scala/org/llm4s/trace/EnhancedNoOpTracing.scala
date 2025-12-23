@@ -5,7 +5,19 @@ import org.llm4s.llmconnect.model.{ TokenUsage, Completion }
 import org.llm4s.types.Result
 
 /**
- * Enhanced NoOp tracing implementation - does nothing but implements the interface
+ * No-operation implementation of [[EnhancedTracing]] that silently discards all events.
+ *
+ * All methods return `Right(())` immediately without performing any operations.
+ * Use this implementation when tracing is disabled or not needed.
+ *
+ * @example
+ * {{{
+ * val tracing: EnhancedTracing = new EnhancedNoOpTracing()
+ * tracing.traceEvent(TraceEvent.CustomEvent("test", ujson.Obj())) // Returns Right(())
+ * }}}
+ *
+ * @see [[EnhancedConsoleTracing]] for development/debugging
+ * @see [[EnhancedLangfuseTracing]] for production observability
  */
 class EnhancedNoOpTracing extends EnhancedTracing {
   def traceEvent(event: TraceEvent): Result[Unit]                                        = Right(())

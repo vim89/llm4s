@@ -7,6 +7,29 @@ import org.llm4s.llmconnect.model.{ AssistantMessage, ToolMessage }
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 
+/**
+ * Console-based tracing implementation with colored, formatted output.
+ *
+ * Prints trace events to standard output with ANSI color formatting
+ * for improved readability during development and debugging.
+ *
+ * Features:
+ *   - Color-coded output by event type (errors in red, success in green, etc.)
+ *   - Visual separators and headers for different trace sections
+ *   - Token usage visualization with bar charts
+ *   - Truncation of long content for readability
+ *   - Timestamps on all events
+ *
+ * @example
+ * {{{
+ * val tracing: Tracing = new PrintTracing()
+ * tracing.traceEvent("Agent started")
+ * tracing.traceToolCall("calculator", "{\"a\": 1}", "2")
+ * }}}
+ *
+ * @see [[NoOpTracing]] for silent tracing
+ * @see [[LangfuseTracing]] for production observability
+ */
 class PrintTracing extends Tracing {
   private def timestamp: String = DateTimeFormatter.ISO_INSTANT.format(Instant.now())
 

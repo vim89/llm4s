@@ -7,7 +7,30 @@ import org.llm4s.types.Result
 import scala.util.Try
 
 /**
- * Enhanced console tracing with type-safe events and better formatting
+ * Console-based implementation of [[EnhancedTracing]] with colored, formatted output.
+ *
+ * Prints trace events to standard output with ANSI color formatting
+ * for improved readability during development and debugging.
+ * Returns `Result[Unit]` to support functional composition.
+ *
+ * Features:
+ *   - Color-coded output by event type (errors in red, success in green, etc.)
+ *   - Visual separators and headers for different trace sections
+ *   - Formatted display of all TraceEvent types
+ *   - Truncation of long JSON content for readability
+ *   - Timestamps on all events
+ *
+ * @example
+ * {{{
+ * val tracing: EnhancedTracing = new EnhancedConsoleTracing()
+ * for {
+ *   _ <- tracing.traceEvent(TraceEvent.AgentInitialized("query", Vector("tool1")))
+ *   _ <- tracing.traceTokenUsage(TokenUsage(100, 50, 150), "gpt-4", "completion")
+ * } yield ()
+ * }}}
+ *
+ * @see [[EnhancedNoOpTracing]] for silent tracing
+ * @see [[EnhancedLangfuseTracing]] for production observability
  */
 class EnhancedConsoleTracing extends EnhancedTracing {
   // ANSI color codes for better readability
