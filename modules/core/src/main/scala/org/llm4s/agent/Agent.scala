@@ -28,7 +28,55 @@ private[agent] object HandoffResult {
 }
 
 /**
- * Basic Agent implementation.
+ * Core agent implementation for orchestrating LLM interactions with tool calling.
+ *
+ * The Agent class provides a flexible framework for running LLM-powered workflows
+ * with support for tools, guardrails, handoffs, and streaming events.
+ *
+ * == Key Features ==
+ *  - '''Tool Calling''': Automatically executes tools requested by the LLM
+ *  - '''Multi-turn Conversations''': Maintains conversation state across interactions
+ *  - '''Handoffs''': Delegates to specialist agents when appropriate
+ *  - '''Guardrails''': Input/output validation with composable guardrail chains
+ *  - '''Streaming Events''': Real-time event callbacks during execution
+ *
+ * == Basic Usage ==
+ * {{{
+ * for {
+ *   client <- LLMConnect.fromEnv()
+ *   agent = new Agent(client)
+ *   tools = new ToolRegistry(Seq(myTool))
+ *   state <- agent.run("What is 2+2?", tools)
+ * } yield state.conversation.messages.last.content
+ * }}}
+ *
+ * == With Guardrails ==
+ * {{{
+ * agent.run(
+ *   query = "Generate JSON",
+ *   tools = tools,
+ *   inputGuardrails = Seq(new LengthCheck(1, 10000)),
+ *   outputGuardrails = Seq(new JSONValidator())
+ * )
+ * }}}
+ *
+ * == With Streaming Events ==
+ * {{{
+ * agent.runWithEvents("Query", tools) { event =>
+ *   event match {
+ *     case AgentEvent.TextDelta(text, _) => print(text)
+ *     case AgentEvent.ToolCallCompleted(name, result, _, _, _, _) =>
+ *       println(s"Tool $name returned: $result")
+ *     case _ => ()
+ *   }
+ * }
+ * }}}
+ *
+ * @param client The LLM client for making completion requests
+ * @see [[AgentState]] for the state management during execution
+ * @see [[Handoff]] for agent-to-agent delegation
+ * @see [[org.llm4s.agent.guardrails.InputGuardrail]] for input validation
+ * @see [[org.llm4s.agent.guardrails.OutputGuardrail]] for output validation
  */
 class Agent(client: LLMClient) {
   private val logger = LoggerFactory.getLogger(getClass)

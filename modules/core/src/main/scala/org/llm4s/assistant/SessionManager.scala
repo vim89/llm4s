@@ -16,7 +16,41 @@ import upickle.default._
 import org.apache.commons.io.FileUtils
 
 /**
- * Manages session persistence using functional programming principles
+ * Manages session persistence for the interactive assistant.
+ *
+ * SessionManager handles saving and loading conversation sessions to disk,
+ * enabling users to resume previous conversations and maintain context
+ * across multiple interactions.
+ *
+ * == Key Features ==
+ *  - '''Session Save''': Persists AgentState as JSON with markdown companion
+ *  - '''Session Load''': Restores sessions with tool registry reconstruction
+ *  - '''Session Listing''': Shows recent sessions sorted by modification time
+ *  - '''Filename Sanitization''': Safely handles special characters in titles
+ *
+ * == Storage Format ==
+ * Sessions are stored as two files:
+ *  - `{title}.json` - Machine-readable session state for loading
+ *  - `{title}.md` - Human-readable markdown for viewing/sharing
+ *
+ * == Usage Example ==
+ * {{{
+ * val manager = new SessionManager(DirectoryPath("/path/to/sessions"), agent)
+ *
+ * // Save current session
+ * val info = manager.saveSession(sessionState, Some("My Conversation"))
+ *
+ * // List recent sessions
+ * val sessions = manager.listRecentSessions(limit = 5)
+ *
+ * // Load a previous session
+ * val loaded = manager.loadSession("My Conversation", tools)
+ * }}}
+ *
+ * @param sessionDir Directory path where sessions are stored
+ * @param agent Agent instance for markdown formatting
+ * @see [[SessionState]] for the state being persisted
+ * @see [[SessionInfo]] for session metadata returned after save
  */
 class SessionManager(sessionDir: DirectoryPath, agent: Agent) {
   private val logger = LoggerFactory.getLogger(getClass)
