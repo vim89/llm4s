@@ -281,60 +281,6 @@ class TracingSpec extends AnyFlatSpec with Matchers {
     recorded.totalCostUsd shouldBe Some(0.003)
   }
 
-  // ============ LegacyTracing.fromTracing ============
-
-  "LegacyTracing.fromTracing" should "wrap Tracing in legacy interface" in {
-    @scala.annotation.nowarn("cat=deprecation")
-    def testLegacy(): Unit = {
-      val tracing = new NoOpTracing()
-      val legacy  = LegacyTracing.fromTracing(tracing)
-
-      // Should work as legacy Tracing
-      noException should be thrownBy {
-        legacy.traceEvent("test")
-        legacy.traceToolCall("tool", "input", "output")
-        legacy.traceError(new RuntimeException("test"))
-      }
-    }
-    testLegacy()
-  }
-
-  it should "delegate traceAgentState to underlying tracing" in {
-    @scala.annotation.nowarn("cat=deprecation")
-    def testLegacy(): Unit = {
-      val tracing = new NoOpTracing()
-      val legacy  = LegacyTracing.fromTracing(tracing)
-      val state   = createTestAgentState()
-
-      noException should be thrownBy legacy.traceAgentState(state)
-    }
-    testLegacy()
-  }
-
-  it should "delegate traceCompletion to underlying tracing" in {
-    @scala.annotation.nowarn("cat=deprecation")
-    def testLegacy(): Unit = {
-      val tracing    = new NoOpTracing()
-      val legacy     = LegacyTracing.fromTracing(tracing)
-      val completion = createTestCompletion()
-
-      noException should be thrownBy legacy.traceCompletion(completion, "gpt-4")
-    }
-    testLegacy()
-  }
-
-  it should "delegate traceTokenUsage to underlying tracing" in {
-    @scala.annotation.nowarn("cat=deprecation")
-    def testLegacy(): Unit = {
-      val tracing = new NoOpTracing()
-      val legacy  = LegacyTracing.fromTracing(tracing)
-      val usage   = TokenUsage(100, 50, 150)
-
-      noException should be thrownBy legacy.traceTokenUsage(usage, "gpt-4", "completion")
-    }
-    testLegacy()
-  }
-
   // ============ Helper Methods and Classes ============
 
   private def createTestAgentState(): AgentState =
