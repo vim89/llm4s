@@ -5,9 +5,47 @@ import org.llm4s.llmconnect.model.{ Completion, EmbeddingUsage, TokenUsage }
 import org.llm4s.types.Result
 
 /**
- * Enhanced type-safe tracing interface using functional composition
+ * Type-safe tracing interface for observability and debugging.
+ *
+ * Provides a functional approach to tracing with `Result[Unit]` return types
+ * for proper error handling and composition. Supports multiple backends
+ * including console output, Langfuse, and custom implementations.
+ *
+ * == Implementations ==
+ *
+ *  - [[LangfuseTracing]] - Production observability via Langfuse
+ *  - [[ConsoleTracing]] - Colored console output for development
+ *  - [[NoOpTracing]] - Silent implementation for testing/disabled tracing
+ *
+ * == Usage ==
+ *
+ * {{{
+ * // Create from settings
+ * val tracing = Tracing.create(settings)
+ *
+ * // Or use directly
+ * val tracing: Tracing = new ConsoleTracing()
+ *
+ * // Trace events functionally
+ * for {
+ *   _ <- tracing.traceEvent(TraceEvent.AgentInitialized("query", tools))
+ *   _ <- tracing.traceTokenUsage(usage, "gpt-4", "completion")
+ * } yield ()
+ * }}}
+ *
+ * == Composition ==
+ *
+ * Tracers can be composed using [[TracingComposer]]:
+ *
+ * {{{
+ * val combined = TracingComposer.combine(consoleTracer, langfuseTracer)
+ * val filtered = TracingComposer.filter(tracer)(_.eventType == "error_occurred")
+ * }}}
+ *
+ * @see [[TraceEvent]] for available event types
+ * @see [[TracingComposer]] for composition utilities
  */
-trait EnhancedTracing {
+trait Tracing {
   def traceEvent(event: TraceEvent): Result[Unit]
   def traceAgentState(state: AgentState): Result[Unit]
   def traceToolCall(toolName: String, input: String, output: String): Result[Unit]
@@ -90,23 +128,60 @@ trait EnhancedTracing {
 }
 
 /**
- * Composable tracing using functional composition
+ * Utilities for composing multiple tracers.
+ *
+ * Provides functional composition patterns for combining, filtering,
+ * and transforming trace events across multiple tracing backends.
+ *
+ * == Combining Tracers ==
+ *
+ * Send events to multiple backends simultaneously:
+ *
+ * {{{
+ * val combined = TracingComposer.combine(consoleTracer, langfuseTracer)
+ * combined.traceEvent(event) // Sends to both
+ * }}}
+ *
+ * == Filtering Events ==
+ *
+ * Only trace events matching a predicate:
+ *
+ * {{{
+ * val errorsOnly = TracingComposer.filter(tracer)(_.eventType == "error_occurred")
+ * }}}
+ *
+ * == Transforming Events ==
+ *
+ * Modify events before tracing:
+ *
+ * {{{
+ * val enriched = TracingComposer.transform(tracer) {
+ *   case e: TraceEvent.CustomEvent => e.copy(name = "prefix_" + e.name)
+ *   case other => other
+ * }
+ * }}}
  */
 trait TracingComposer {
-  def combine(tracers: EnhancedTracing*): EnhancedTracing = new CompositeTracing(tracers.toVector)
-  def filter(tracer: EnhancedTracing)(predicate: TraceEvent => Boolean): EnhancedTracing =
+
+  /** Combine multiple tracers into one that sends events to all backends. */
+  def combine(tracers: Tracing*): Tracing = new CompositeTracing(tracers.toVector)
+
+  /** Filter events before sending to the underlying tracer. */
+  def filter(tracer: Tracing)(predicate: TraceEvent => Boolean): Tracing =
     new FilteredTracing(tracer, predicate)
-  def transform(tracer: EnhancedTracing)(f: TraceEvent => TraceEvent): EnhancedTracing =
+
+  /** Transform events before sending to the underlying tracer. */
+  def transform(tracer: Tracing)(f: TraceEvent => TraceEvent): Tracing =
     new TransformedTracing(tracer, f)
 }
 
 object TracingComposer extends TracingComposer
 
-private class CompositeTracing(tracers: Vector[EnhancedTracing]) extends EnhancedTracing {
+/** Internal composite tracing implementation. */
+private class CompositeTracing(tracers: Vector[Tracing]) extends Tracing {
   def traceEvent(event: TraceEvent): Result[Unit] = {
     val results = tracers.map(_.traceEvent(event))
-    // Collect all errors, succeed if at least one succeeds
-    val errors = results.collect { case Left(error) => error }
+    val errors  = results.collect { case Left(error) => error }
     if (errors.size == results.size) Left(errors.head) else Right(())
   }
 
@@ -145,7 +220,7 @@ private class CompositeTracing(tracers: Vector[EnhancedTracing]) extends Enhance
   }
 }
 
-private class FilteredTracing(underlying: EnhancedTracing, predicate: TraceEvent => Boolean) extends EnhancedTracing {
+private class FilteredTracing(underlying: Tracing, predicate: TraceEvent => Boolean) extends Tracing {
   def traceEvent(event: TraceEvent): Result[Unit] =
     if (predicate(event)) underlying.traceEvent(event) else Right(())
 
@@ -159,8 +234,7 @@ private class FilteredTracing(underlying: EnhancedTracing, predicate: TraceEvent
     underlying.traceTokenUsage(usage, model, operation)
 }
 
-private class TransformedTracing(underlying: EnhancedTracing, transform: TraceEvent => TraceEvent)
-    extends EnhancedTracing {
+private class TransformedTracing(underlying: Tracing, transform: TraceEvent => TraceEvent) extends Tracing {
   def traceEvent(event: TraceEvent): Result[Unit] =
     underlying.traceEvent(transform(event))
 
@@ -193,13 +267,33 @@ object TracingMode {
 }
 
 /**
- * Enhanced factory for creating tracing instances
+ * Factory for creating [[Tracing]] instances.
+ *
+ * Creates the appropriate tracing implementation based on configuration settings.
+ *
+ * {{{
+ * // From TracingSettings
+ * val tracing = Tracing.create(settings)
+ *
+ * // Direct instantiation
+ * val console = new ConsoleTracing()
+ * val noop = new NoOpTracing()
+ * }}}
+ *
+ * @see [[TracingMode]] for available modes
  */
-object EnhancedTracing {
-  def create(settings: org.llm4s.llmconnect.config.TracingSettings): EnhancedTracing = settings.mode match {
+object Tracing {
+
+  /**
+   * Create a tracing instance from configuration settings.
+   *
+   * @param settings Tracing configuration including mode and backend-specific options
+   * @return Configured tracing instance
+   */
+  def create(settings: org.llm4s.llmconnect.config.TracingSettings): Tracing = settings.mode match {
     case TracingMode.Langfuse =>
       val lf = settings.langfuse
-      new EnhancedLangfuseTracing(
+      new LangfuseTracing(
         lf.url,
         lf.publicKey.getOrElse(""),
         lf.secretKey.getOrElse(""),
@@ -207,7 +301,7 @@ object EnhancedTracing {
         lf.release,
         lf.version
       )
-    case TracingMode.Console => new EnhancedConsoleTracing()
-    case TracingMode.NoOp    => new EnhancedNoOpTracing()
+    case TracingMode.Console => new ConsoleTracing()
+    case TracingMode.NoOp    => new NoOpTracing()
   }
 }

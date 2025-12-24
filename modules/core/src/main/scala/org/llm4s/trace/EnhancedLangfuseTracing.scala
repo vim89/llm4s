@@ -12,16 +12,72 @@ import java.util.UUID
 import scala.util.Try
 
 /**
- * Enhanced Langfuse tracing with type-safe events
+ * Langfuse [[Tracing]] implementation for production observability.
+ *
+ * Sends trace events to Langfuse for centralized observability,
+ * debugging, and LLM application monitoring. Supports all trace
+ * event types with type-safe `Result[Unit]` return values.
+ *
+ * == Features ==
+ *
+ *  - Real-time event streaming to Langfuse
+ *  - Hierarchical trace structure (traces with child spans)
+ *  - Token usage and cost tracking
+ *  - Error logging with stack traces
+ *  - Agent state snapshots with conversation history
+ *
+ * == Configuration ==
+ *
+ * Configure via environment variables or direct instantiation:
+ *
+ * {{{
+ * // Environment variables
+ * LANGFUSE_PUBLIC_KEY=pk-lf-...
+ * LANGFUSE_SECRET_KEY=sk-lf-...
+ * LANGFUSE_URL=https://cloud.langfuse.com (optional)
+ *
+ * // Or programmatic configuration
+ * val tracing = new LangfuseTracing(
+ *   langfuseUrl = "https://cloud.langfuse.com",
+ *   publicKey = "pk-lf-...",
+ *   secretKey = "sk-lf-...",
+ *   environment = "production",
+ *   release = "1.0.0",
+ *   version = "1.0.0"
+ * )
+ * }}}
+ *
+ * == Usage ==
+ *
+ * {{{
+ * val tracing: Tracing = LangfuseTracing.from(config)
+ *
+ * for {
+ *   _ <- tracing.traceEvent(TraceEvent.AgentInitialized("query", tools))
+ *   _ <- tracing.traceCompletion(completion, "gpt-4")
+ *   _ <- tracing.traceTokenUsage(usage, "gpt-4", "completion")
+ * } yield ()
+ * }}}
+ *
+ * @param langfuseUrl Langfuse API URL (default: https://cloud.langfuse.com)
+ * @param publicKey Langfuse public key for authentication
+ * @param secretKey Langfuse secret key for authentication
+ * @param environment Environment name (e.g., "production", "staging")
+ * @param release Release/version identifier
+ * @param version API version
+ *
+ * @see [[ConsoleTracing]] for local development
+ * @see [[NoOpTracing]] for disabled tracing
+ * @see [[TracingMode]] for configuration modes
  */
-class EnhancedLangfuseTracing(
+class LangfuseTracing(
   langfuseUrl: String,
   publicKey: String,
   secretKey: String,
   environment: String,
   release: String,
   version: String
-) extends EnhancedTracing {
+) extends Tracing {
 
   private val logger         = LoggerFactory.getLogger(getClass)
   private def nowIso: String = DateTimeFormatter.ISO_INSTANT.format(Instant.now())
@@ -465,4 +521,26 @@ class EnhancedLangfuseTracing(
     val event = TraceEvent.TokenUsageRecorded(usage, model, operation)
     traceEvent(event)
   }
+}
+
+/**
+ * Factory methods for [[LangfuseTracing]].
+ */
+object LangfuseTracing {
+
+  /**
+   * Create a LangfuseTracing instance from configuration.
+   *
+   * @param cfg Langfuse configuration with URL, keys, and metadata
+   * @return Configured LangfuseTracing instance
+   */
+  def from(cfg: org.llm4s.llmconnect.config.LangfuseConfig): LangfuseTracing =
+    new LangfuseTracing(
+      langfuseUrl = cfg.url,
+      publicKey = cfg.publicKey.getOrElse(""),
+      secretKey = cfg.secretKey.getOrElse(""),
+      environment = cfg.env,
+      release = cfg.release,
+      version = cfg.version
+    )
 }

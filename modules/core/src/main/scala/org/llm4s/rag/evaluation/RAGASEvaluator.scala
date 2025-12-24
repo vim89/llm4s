@@ -4,7 +4,7 @@ import org.llm4s.llmconnect.LLMClient
 import org.llm4s.llmconnect.EmbeddingClient
 import org.llm4s.llmconnect.config.EmbeddingModelConfig
 import org.llm4s.rag.evaluation.metrics._
-import org.llm4s.trace.EnhancedTracing
+import org.llm4s.trace.Tracing
 import org.llm4s.types.Result
 
 /**
@@ -55,7 +55,7 @@ class RAGASEvaluator(
   embeddingModelConfig: EmbeddingModelConfig,
   metrics: Seq[RAGASMetric] = Seq.empty,
   options: EvaluatorOptions = EvaluatorOptions(),
-  private val tracer: Option[EnhancedTracing] = None
+  private val tracer: Option[Tracing] = None
 ) {
 
   // Traced embedding client for metrics that use embeddings
@@ -235,7 +235,7 @@ class RAGASEvaluator(
    * @param newTracer The tracer to use for cost tracking
    * @return A new evaluator with tracing enabled
    */
-  def withTracing(newTracer: EnhancedTracing): RAGASEvaluator =
+  def withTracing(newTracer: Tracing): RAGASEvaluator =
     new RAGASEvaluator(llmClient, embeddingClient, embeddingModelConfig, metrics, options, Some(newTracer))
 }
 

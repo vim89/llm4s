@@ -8,7 +8,7 @@ import org.llm4s.llmconnect.LLMConnect
 import org.llm4s.samples.util.{ BenchmarkUtil, TracingUtil }
 import org.llm4s.toolapi.ToolRegistry
 import org.llm4s.toolapi.tools.CalculatorTool
-import org.llm4s.trace.{ EnhancedTracing, TracingComposer, TracingMode }
+import org.llm4s.trace.{ Tracing, TracingComposer, TracingMode }
 import org.llm4s.types.Result
 import org.slf4j.LoggerFactory
 
@@ -65,12 +65,12 @@ object AgentLLMCallingExample {
   /**
    * Create comprehensive tracing with all three modes combined
    */
-  private def createComprehensiveTracing(settings: TracingSettings): Result[EnhancedTracing] = Safety.fromTry {
+  private def createComprehensiveTracing(settings: TracingSettings): Result[Tracing] = Safety.fromTry {
     Try {
       // Create individual tracers using typed settings
-      val langfuseTracing = EnhancedTracing.create(settings.copy(mode = TracingMode.Langfuse))
-      val consoleTracing  = EnhancedTracing.create(settings.copy(mode = TracingMode.Console))
-      val noOpTracing     = EnhancedTracing.create(settings.copy(mode = TracingMode.NoOp))
+      val langfuseTracing = Tracing.create(settings.copy(mode = TracingMode.Langfuse))
+      val consoleTracing  = Tracing.create(settings.copy(mode = TracingMode.Console))
+      val noOpTracing     = Tracing.create(settings.copy(mode = TracingMode.NoOp))
 
       logger.info("✅ All tracing modes initialized successfully")
 
@@ -89,7 +89,7 @@ object AgentLLMCallingExample {
   /**
    * Simple Calculator Agent Demo
    */
-  private def demonstrateCalculatorAgent(tracing: EnhancedTracing) = {
+  private def demonstrateCalculatorAgent(tracing: Tracing) = {
     logger.info("🧮 Calculator Agent Demo")
     logger.info("Testing calculator tool with agent framework")
 
@@ -162,7 +162,7 @@ object AgentLLMCallingExample {
   private def executeAgentWithRealTracing(
     agent: Agent,
     agentState: AgentState,
-    tracing: EnhancedTracing,
+    tracing: Tracing,
     timer: BenchmarkUtil.Timer
   ): AgentExecutionResult = {
 
@@ -232,7 +232,7 @@ object AgentLLMCallingExample {
       }
 
     // Process agent state until it reaches a stable state (not WaitingForTools or InProgress)
-    def processUntilStable(state: ExecutionState, tracing: EnhancedTracing, stepCount: Int): ExecutionState =
+    def processUntilStable(state: ExecutionState, tracing: Tracing, stepCount: Int): ExecutionState =
       if (
         state.agentState.status != AgentStatus.WaitingForTools &&
         state.agentState.status != AgentStatus.InProgress
@@ -260,7 +260,7 @@ object AgentLLMCallingExample {
       }
 
     // Process tool messages and update state
-    def processToolMessages(state: ExecutionState, tracing: EnhancedTracing): ExecutionState = {
+    def processToolMessages(state: ExecutionState, tracing: Tracing): ExecutionState = {
       val allToolMessages = state.agentState.conversation.messages.collect {
         case toolMsg: org.llm4s.llmconnect.model.ToolMessage => toolMsg
       }

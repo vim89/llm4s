@@ -10,7 +10,7 @@ import org.llm4s.llmconnect.provider.{
   VoyageAIEmbeddingProvider
 }
 import org.llm4s.model.ModelRegistry
-import org.llm4s.trace.EnhancedTracing
+import org.llm4s.trace.Tracing
 import org.llm4s.types.Result
 import org.slf4j.LoggerFactory
 
@@ -18,7 +18,7 @@ import java.nio.file.Path
 
 class EmbeddingClient(
   provider: EmbeddingProvider,
-  tracer: Option[EnhancedTracing] = None,
+  tracer: Option[Tracing] = None,
   operation: String = "embedding"
 ) {
   private val logger = LoggerFactory.getLogger(getClass)
@@ -61,7 +61,7 @@ class EmbeddingClient(
   }
 
   /** Create a new client with tracing enabled. */
-  def withTracing(tracer: EnhancedTracing): EmbeddingClient =
+  def withTracing(tracer: Tracing): EmbeddingClient =
     new EmbeddingClient(provider, Some(tracer), operation)
 
   /** Create a new client with a specific operation label for tracing. */

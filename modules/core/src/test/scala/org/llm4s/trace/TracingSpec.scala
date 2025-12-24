@@ -4,11 +4,14 @@ import org.llm4s.agent.{ AgentState, AgentStatus }
 import org.llm4s.llmconnect.model._
 import org.llm4s.llmconnect.config.{ LangfuseConfig, TracingSettings }
 import org.llm4s.toolapi.ToolRegistry
+import org.llm4s.types.Result
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
+import scala.collection.mutable
+
 /**
- * Tests for Tracing trait and factory methods
+ * Tests for Tracing trait and implementations
  */
 class TracingSpec extends AnyFlatSpec with Matchers {
 
@@ -42,36 +45,71 @@ class TracingSpec extends AnyFlatSpec with Matchers {
 
   // ============ NoOpTracing ============
 
-  "NoOpTracing" should "implement all methods without side effects" in {
+  "NoOpTracing" should "return success for all operations" in {
     val tracing = new NoOpTracing()
 
-    // All methods should complete without throwing
-    noException should be thrownBy {
-      tracing.traceEvent("test event")
-      tracing.traceToolCall("tool", "input", "output")
-      tracing.traceError(new RuntimeException("test"))
-    }
+    tracing.traceEvent(TraceEvent.CustomEvent("test", ujson.Obj())) shouldBe Right(())
+    tracing.traceAgentState(createTestAgentState()) shouldBe Right(())
+    tracing.traceToolCall("tool", "input", "output") shouldBe Right(())
+    tracing.traceError(new RuntimeException("test")) shouldBe Right(())
+    tracing.traceCompletion(createTestCompletion(), "gpt-4") shouldBe Right(())
+    tracing.traceTokenUsage(TokenUsage(100, 50, 150), "gpt-4", "completion") shouldBe Right(())
   }
 
-  it should "trace agent state without error" in {
+  it should "support convenience methods" in {
     val tracing = new NoOpTracing()
+
+    tracing.traceEvent("custom event string") shouldBe Right(())
+    tracing.traceEmbeddingUsage(EmbeddingUsage(500, 500), "text-embedding-3-small", "indexing", 10) shouldBe Right(())
+    tracing.traceCost(0.005, "gpt-4", "completion", 1000, "total") shouldBe Right(())
+    tracing.traceRAGOperation("search", 150L) shouldBe Right(())
+  }
+
+  // ============ ConsoleTracing ============
+
+  "ConsoleTracing" should "return success for all operations" in {
+    val tracing = new ConsoleTracing()
+
+    // These will print to console but should return success
+    tracing.traceEvent(TraceEvent.CustomEvent("test", ujson.Obj())).isRight shouldBe true
+    tracing.traceToolCall("tool", "input", "output").isRight shouldBe true
+    tracing.traceError(new RuntimeException("test"), "context").isRight shouldBe true
+  }
+
+  it should "handle agent state tracing" in {
+    val tracing = new ConsoleTracing()
     val state   = createTestAgentState()
 
-    noException should be thrownBy tracing.traceAgentState(state)
+    tracing.traceAgentState(state).isRight shouldBe true
   }
 
-  it should "trace completion without error" in {
-    val tracing    = new NoOpTracing()
+  it should "handle completion tracing" in {
+    val tracing    = new ConsoleTracing()
     val completion = createTestCompletion()
 
-    noException should be thrownBy tracing.traceCompletion(completion, "gpt-4")
+    tracing.traceCompletion(completion, "gpt-4").isRight shouldBe true
   }
 
-  it should "trace token usage without error" in {
-    val tracing = new NoOpTracing()
+  it should "handle token usage tracing" in {
+    val tracing = new ConsoleTracing()
     val usage   = TokenUsage(100, 50, 150)
 
-    noException should be thrownBy tracing.traceTokenUsage(usage, "gpt-4", "completion")
+    tracing.traceTokenUsage(usage, "gpt-4", "completion").isRight shouldBe true
+  }
+
+  it should "trace all event types without error" in {
+    val tracing = new ConsoleTracing()
+
+    // Test each event type
+    tracing.traceEvent(TraceEvent.AgentInitialized("query", Vector("tool1"))).isRight shouldBe true
+    tracing.traceEvent(TraceEvent.CompletionReceived("id", "model", 0, "content")).isRight shouldBe true
+    tracing.traceEvent(TraceEvent.ToolExecuted("tool", "in", "out", 100L, true)).isRight shouldBe true
+    tracing.traceEvent(TraceEvent.ErrorOccurred(new Exception("e"), "ctx")).isRight shouldBe true
+    tracing.traceEvent(TraceEvent.TokenUsageRecorded(TokenUsage(1, 1, 2), "m", "o")).isRight shouldBe true
+    tracing.traceEvent(TraceEvent.AgentStateUpdated("running", 5, 10)).isRight shouldBe true
+    tracing.traceEvent(TraceEvent.EmbeddingUsageRecorded(EmbeddingUsage(100, 100), "m", "o", 5)).isRight shouldBe true
+    tracing.traceEvent(TraceEvent.CostRecorded(0.001, "m", "o", 100, "t")).isRight shouldBe true
+    tracing.traceEvent(TraceEvent.RAGOperationCompleted("search", 150L)).isRight shouldBe true
   }
 
   // ============ Tracing.create ============
@@ -84,8 +122,7 @@ class TracingSpec extends AnyFlatSpec with Matchers {
 
     val tracing = Tracing.create(settings)
 
-    // Should not throw when used
-    noException should be thrownBy tracing.traceEvent("test")
+    tracing shouldBe a[NoOpTracing]
   }
 
   it should "create Console tracing for Console mode" in {
@@ -96,53 +133,209 @@ class TracingSpec extends AnyFlatSpec with Matchers {
 
     val tracing = Tracing.create(settings)
 
-    // Should not throw when used (will print to console)
-    noException should be thrownBy {
-      // We don't actually call these to avoid console output in tests
-      // Just verify creation succeeded
-      tracing shouldBe a[Tracing]
+    tracing shouldBe a[ConsoleTracing]
+  }
+
+  it should "create Langfuse tracing for Langfuse mode" in {
+    val settings = TracingSettings(
+      mode = TracingMode.Langfuse,
+      langfuse = LangfuseConfig(
+        url = "https://api.langfuse.com",
+        publicKey = Some("pk-test"),
+        secretKey = Some("sk-test"),
+        env = "test",
+        release = "1.0.0",
+        version = "1.0.0"
+      )
+    )
+
+    val tracing = Tracing.create(settings)
+
+    tracing shouldBe a[LangfuseTracing]
+  }
+
+  // ============ TracingComposer ============
+
+  "TracingComposer.combine" should "combine multiple tracers" in {
+    val events1 = mutable.Buffer.empty[TraceEvent]
+    val events2 = mutable.Buffer.empty[TraceEvent]
+
+    val tracer1 = new TestTracing(events1)
+    val tracer2 = new TestTracing(events2)
+
+    val combined = TracingComposer.combine(tracer1, tracer2)
+    val event    = TraceEvent.CustomEvent("test", ujson.Obj())
+
+    combined.traceEvent(event) shouldBe Right(())
+
+    events1 should contain(event)
+    events2 should contain(event)
+  }
+
+  it should "succeed if at least one tracer succeeds" in {
+    val successEvents = mutable.Buffer.empty[TraceEvent]
+    val successTracer = new TestTracing(successEvents)
+    val failingTracer = new FailingTracing()
+
+    val combined = TracingComposer.combine(successTracer, failingTracer)
+    val event    = TraceEvent.CustomEvent("test", ujson.Obj())
+
+    combined.traceEvent(event) shouldBe Right(())
+    successEvents should contain(event)
+  }
+
+  it should "fail if all tracers fail" in {
+    val failing1 = new FailingTracing()
+    val failing2 = new FailingTracing()
+
+    val combined = TracingComposer.combine(failing1, failing2)
+    val event    = TraceEvent.CustomEvent("test", ujson.Obj())
+
+    combined.traceEvent(event).isLeft shouldBe true
+  }
+
+  "TracingComposer.filter" should "only trace events matching predicate" in {
+    val events   = mutable.Buffer.empty[TraceEvent]
+    val tracer   = new TestTracing(events)
+    val filtered = TracingComposer.filter(tracer)(_.eventType == "custom_event")
+
+    val customEvent = TraceEvent.CustomEvent("test", ujson.Obj())
+    val agentEvent  = TraceEvent.AgentInitialized("query", Vector.empty)
+
+    filtered.traceEvent(customEvent) shouldBe Right(())
+    filtered.traceEvent(agentEvent) shouldBe Right(())
+
+    events should contain(customEvent)
+    events should not contain agentEvent
+  }
+
+  it should "delegate other methods to underlying tracer" in {
+    val events   = mutable.Buffer.empty[TraceEvent]
+    val tracer   = new TestTracing(events)
+    val filtered = TracingComposer.filter(tracer)(_ => true)
+
+    filtered.traceToolCall("tool", "in", "out") shouldBe Right(())
+    filtered.traceError(new Exception("e"), "ctx") shouldBe Right(())
+  }
+
+  "TracingComposer.transform" should "transform events before tracing" in {
+    val events = mutable.Buffer.empty[TraceEvent]
+    val tracer = new TestTracing(events)
+    val transformed = TracingComposer.transform(tracer) {
+      case e: TraceEvent.CustomEvent => e.copy(name = "transformed_" + e.name)
+      case other                     => other
     }
+
+    val event = TraceEvent.CustomEvent("original", ujson.Obj())
+    transformed.traceEvent(event) shouldBe Right(())
+
+    events.head.asInstanceOf[TraceEvent.CustomEvent].name shouldBe "transformed_original"
   }
 
-  // ============ Tracing.createFromEnhanced ============
+  // ============ Convenience Methods ============
 
-  "Tracing.createFromEnhanced" should "wrap EnhancedTracing in legacy interface" in {
-    val enhanced = new EnhancedNoOpTracing()
-    val legacy   = Tracing.createFromEnhanced(enhanced)
+  "Tracing convenience methods" should "create correct events for traceEmbeddingUsage" in {
+    val events = mutable.Buffer.empty[TraceEvent]
+    val tracer = new TestTracing(events)
+    val usage  = EmbeddingUsage(500, 500)
 
-    // Should work as legacy Tracing
-    noException should be thrownBy {
-      legacy.traceEvent("test")
-      legacy.traceToolCall("tool", "input", "output")
-      legacy.traceError(new RuntimeException("test"))
+    tracer.traceEmbeddingUsage(usage, "text-embedding-3-small", "indexing", 10) shouldBe Right(())
+
+    events should have size 1
+    events.head shouldBe a[TraceEvent.EmbeddingUsageRecorded]
+    val recorded = events.head.asInstanceOf[TraceEvent.EmbeddingUsageRecorded]
+    recorded.usage shouldBe usage
+    recorded.model shouldBe "text-embedding-3-small"
+    recorded.operation shouldBe "indexing"
+    recorded.inputCount shouldBe 10
+  }
+
+  it should "create correct events for traceCost" in {
+    val events = mutable.Buffer.empty[TraceEvent]
+    val tracer = new TestTracing(events)
+
+    tracer.traceCost(0.005, "gpt-4", "completion", 1000, "total") shouldBe Right(())
+
+    events should have size 1
+    events.head shouldBe a[TraceEvent.CostRecorded]
+    val recorded = events.head.asInstanceOf[TraceEvent.CostRecorded]
+    recorded.costUsd shouldBe 0.005
+    recorded.model shouldBe "gpt-4"
+    recorded.tokenCount shouldBe 1000
+  }
+
+  it should "create correct events for traceRAGOperation" in {
+    val events = mutable.Buffer.empty[TraceEvent]
+    val tracer = new TestTracing(events)
+
+    tracer.traceRAGOperation("search", 150L, Some(100), Some(200), Some(50), Some(0.003)) shouldBe Right(())
+
+    events should have size 1
+    events.head shouldBe a[TraceEvent.RAGOperationCompleted]
+    val recorded = events.head.asInstanceOf[TraceEvent.RAGOperationCompleted]
+    recorded.operation shouldBe "search"
+    recorded.durationMs shouldBe 150L
+    recorded.embeddingTokens shouldBe Some(100)
+    recorded.llmPromptTokens shouldBe Some(200)
+    recorded.llmCompletionTokens shouldBe Some(50)
+    recorded.totalCostUsd shouldBe Some(0.003)
+  }
+
+  // ============ LegacyTracing.fromTracing ============
+
+  "LegacyTracing.fromTracing" should "wrap Tracing in legacy interface" in {
+    @scala.annotation.nowarn("cat=deprecation")
+    def testLegacy(): Unit = {
+      val tracing = new NoOpTracing()
+      val legacy  = LegacyTracing.fromTracing(tracing)
+
+      // Should work as legacy Tracing
+      noException should be thrownBy {
+        legacy.traceEvent("test")
+        legacy.traceToolCall("tool", "input", "output")
+        legacy.traceError(new RuntimeException("test"))
+      }
     }
+    testLegacy()
   }
 
-  it should "delegate traceAgentState to enhanced tracing" in {
-    val enhanced = new EnhancedNoOpTracing()
-    val legacy   = Tracing.createFromEnhanced(enhanced)
-    val state    = createTestAgentState()
+  it should "delegate traceAgentState to underlying tracing" in {
+    @scala.annotation.nowarn("cat=deprecation")
+    def testLegacy(): Unit = {
+      val tracing = new NoOpTracing()
+      val legacy  = LegacyTracing.fromTracing(tracing)
+      val state   = createTestAgentState()
 
-    noException should be thrownBy legacy.traceAgentState(state)
+      noException should be thrownBy legacy.traceAgentState(state)
+    }
+    testLegacy()
   }
 
-  it should "delegate traceCompletion to enhanced tracing" in {
-    val enhanced   = new EnhancedNoOpTracing()
-    val legacy     = Tracing.createFromEnhanced(enhanced)
-    val completion = createTestCompletion()
+  it should "delegate traceCompletion to underlying tracing" in {
+    @scala.annotation.nowarn("cat=deprecation")
+    def testLegacy(): Unit = {
+      val tracing    = new NoOpTracing()
+      val legacy     = LegacyTracing.fromTracing(tracing)
+      val completion = createTestCompletion()
 
-    noException should be thrownBy legacy.traceCompletion(completion, "gpt-4")
+      noException should be thrownBy legacy.traceCompletion(completion, "gpt-4")
+    }
+    testLegacy()
   }
 
-  it should "delegate traceTokenUsage to enhanced tracing" in {
-    val enhanced = new EnhancedNoOpTracing()
-    val legacy   = Tracing.createFromEnhanced(enhanced)
-    val usage    = TokenUsage(100, 50, 150)
+  it should "delegate traceTokenUsage to underlying tracing" in {
+    @scala.annotation.nowarn("cat=deprecation")
+    def testLegacy(): Unit = {
+      val tracing = new NoOpTracing()
+      val legacy  = LegacyTracing.fromTracing(tracing)
+      val usage   = TokenUsage(100, 50, 150)
 
-    noException should be thrownBy legacy.traceTokenUsage(usage, "gpt-4", "completion")
+      noException should be thrownBy legacy.traceTokenUsage(usage, "gpt-4", "completion")
+    }
+    testLegacy()
   }
 
-  // ============ Helper Methods ============
+  // ============ Helper Methods and Classes ============
 
   private def createTestAgentState(): AgentState =
     AgentState(
@@ -162,4 +355,59 @@ class TracingSpec extends AnyFlatSpec with Matchers {
       message = AssistantMessage(Some("Hello"), Seq.empty),
       usage = Some(TokenUsage(100, 50, 150))
     )
+
+  /** Test tracer that records events */
+  private class TestTracing(events: mutable.Buffer[TraceEvent]) extends Tracing {
+    def traceEvent(event: TraceEvent): Result[Unit] = {
+      events += event
+      Right(())
+    }
+
+    def traceAgentState(state: AgentState): Result[Unit] = {
+      events += TraceEvent.AgentStateUpdated(
+        state.status.toString,
+        state.conversation.messages.length,
+        state.logs.length
+      )
+      Right(())
+    }
+
+    def traceToolCall(toolName: String, input: String, output: String): Result[Unit] = {
+      events += TraceEvent.ToolExecuted(toolName, input, output, 0L, true)
+      Right(())
+    }
+
+    def traceError(error: Throwable, context: String): Result[Unit] = {
+      events += TraceEvent.ErrorOccurred(error, context)
+      Right(())
+    }
+
+    def traceCompletion(completion: Completion, model: String): Result[Unit] = {
+      events += TraceEvent.CompletionReceived(
+        completion.id,
+        model,
+        completion.message.toolCalls.size,
+        completion.message.content
+      )
+      Right(())
+    }
+
+    def traceTokenUsage(usage: TokenUsage, model: String, operation: String): Result[Unit] = {
+      events += TraceEvent.TokenUsageRecorded(usage, model, operation)
+      Right(())
+    }
+  }
+
+  /** Test tracer that always fails */
+  private class FailingTracing extends Tracing {
+    import org.llm4s.error.SimpleError
+
+    def traceEvent(event: TraceEvent): Result[Unit]                                  = Left(SimpleError("Always fails"))
+    def traceAgentState(state: AgentState): Result[Unit]                             = Left(SimpleError("Always fails"))
+    def traceToolCall(toolName: String, input: String, output: String): Result[Unit] = Left(SimpleError("Always fails"))
+    def traceError(error: Throwable, context: String): Result[Unit]                  = Left(SimpleError("Always fails"))
+    def traceCompletion(completion: Completion, model: String): Result[Unit]         = Left(SimpleError("Always fails"))
+    def traceTokenUsage(usage: TokenUsage, model: String, operation: String): Result[Unit] =
+      Left(SimpleError("Always fails"))
+  }
 }

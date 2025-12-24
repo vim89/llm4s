@@ -83,17 +83,16 @@ object FusionStrategy {
  *
  * Usage:
  * {{{
- * val vectorStore = VectorStoreFactory.inMemory().toOption.get
- * val keywordIndex = KeywordIndex.inMemory().toOption.get
- *
- * val searcher = HybridSearcher(vectorStore, keywordIndex)
- *
- * // Add documents to both stores
- * vectorStore.upsert(VectorRecord("doc-1", embedding, Some("content")))
- * keywordIndex.index(KeywordDocument("doc-1", "content"))
- *
- * // Search with hybrid fusion
- * val results = searcher.search(queryEmbedding, "search terms", topK = 10)
+ * for {
+ *   vectorStore <- VectorStoreFactory.inMemory()
+ *   keywordIndex <- KeywordIndex.inMemory()
+ *   searcher = HybridSearcher(vectorStore, keywordIndex)
+ *   // Add documents to both stores
+ *   _ <- vectorStore.upsert(VectorRecord("doc-1", embedding, Some("content")))
+ *   _ <- keywordIndex.index(KeywordDocument("doc-1", "content"))
+ *   // Search with hybrid fusion
+ *   results <- searcher.search(queryEmbedding, "search terms", topK = 10)
+ * } yield results
  * }}}
  */
 final class HybridSearcher private (

@@ -2,7 +2,7 @@ package org.llm4s.samples.util
 
 import org.llm4s.agent.AgentState
 import org.llm4s.toolapi.ToolFunction
-import org.llm4s.trace.{ EnhancedTracing, TraceEvent }
+import org.llm4s.trace.{ Tracing, TraceEvent }
 
 import scala.util.Try
 
@@ -15,7 +15,7 @@ import scala.util.Try
 object TracingUtil {
 
   /** Trace the start of a demo or example */
-  def traceDemoStart(tracing: EnhancedTracing, demoName: String): Unit =
+  def traceDemoStart(tracing: Tracing, demoName: String): Unit =
     tracing.traceEvent(
       TraceEvent.CustomEvent(
         "demo_start",
@@ -27,7 +27,7 @@ object TracingUtil {
     )
 
   /** Trace agent initialization */
-  def traceAgentInitialization(tracing: EnhancedTracing, query: String, tools: Seq[ToolFunction[_, _]]): Unit =
+  def traceAgentInitialization(tracing: Tracing, query: String, tools: Seq[ToolFunction[_, _]]): Unit =
     tracing.traceEvent(
       TraceEvent.AgentInitialized(
         query = query,
@@ -36,7 +36,7 @@ object TracingUtil {
     )
 
   /** Trace agent state updates */
-  def traceAgentStateUpdate(tracing: EnhancedTracing, agentState: AgentState): Unit =
+  def traceAgentStateUpdate(tracing: Tracing, agentState: AgentState): Unit =
     tracing.traceEvent(
       TraceEvent.AgentStateUpdated(
         status = agentState.status.toString,
@@ -47,7 +47,7 @@ object TracingUtil {
 
   /** Trace successful tool execution with detailed results */
   def traceToolExecution(
-    tracing: EnhancedTracing,
+    tracing: Tracing,
     toolName: String,
     operation: String,
     parameters: Map[String, String],
@@ -71,7 +71,7 @@ object TracingUtil {
 
   /** Trace agent completion with performance metrics */
   def traceAgentCompletion(
-    tracing: EnhancedTracing,
+    tracing: Tracing,
     durationMs: Long,
     steps: Vector[String],
     toolsUsed: Vector[String],
@@ -92,7 +92,7 @@ object TracingUtil {
 
   /** Trace agent step errors */
   def traceAgentStepError(
-    tracing: EnhancedTracing,
+    tracing: Tracing,
     stepCount: Int,
     errorMessage: String,
     errorType: String = "LegacyLLMError"

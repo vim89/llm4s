@@ -7,48 +7,44 @@ import org.llm4s.types.Result
 import scala.util.Try
 
 /**
- * Console-based implementation of [[EnhancedTracing]] with colored, formatted output.
+ * Console-based [[Tracing]] implementation with colored, formatted output.
  *
  * Prints trace events to standard output with ANSI color formatting
  * for improved readability during development and debugging.
  * Returns `Result[Unit]` to support functional composition.
  *
- * Features:
- *   - Color-coded output by event type (errors in red, success in green, etc.)
- *   - Visual separators and headers for different trace sections
- *   - Formatted display of all TraceEvent types
- *   - Truncation of long JSON content for readability
- *   - Timestamps on all events
+ * == Features ==
  *
- * @example
+ *  - Color-coded output by event type (errors in red, success in green, etc.)
+ *  - Visual separators and headers for different trace sections
+ *  - Formatted display of all [[TraceEvent]] types
+ *  - Truncation of long JSON content for readability
+ *  - Timestamps on all events
+ *
+ * == Usage ==
+ *
  * {{{
- * val tracing: EnhancedTracing = new EnhancedConsoleTracing()
+ * val tracing: Tracing = new ConsoleTracing()
+ *
+ * // Trace events functionally
  * for {
  *   _ <- tracing.traceEvent(TraceEvent.AgentInitialized("query", Vector("tool1")))
  *   _ <- tracing.traceTokenUsage(TokenUsage(100, 50, 150), "gpt-4", "completion")
  * } yield ()
  * }}}
  *
- * @see [[EnhancedNoOpTracing]] for silent tracing
- * @see [[EnhancedLangfuseTracing]] for production observability
+ * @see [[NoOpTracing]] for silent tracing
+ * @see [[LangfuseTracing]] for production observability
+ * @see [[AnsiColors]] for color constants used
  */
-class EnhancedConsoleTracing extends EnhancedTracing {
-  // ANSI color codes for better readability
-  private val RESET   = "\u001b[0m"
-  private val BLUE    = "\u001b[34m"
-  private val GREEN   = "\u001b[32m"
-  private val YELLOW  = "\u001b[33m"
-  private val RED     = "\u001b[31m"
-  private val CYAN    = "\u001b[36m"
-  private val MAGENTA = "\u001b[35m"
-  private val GRAY    = "\u001b[90m"
-  private val BOLD    = "\u001b[1m"
+class ConsoleTracing extends Tracing {
+  import AnsiColors._
 
   private def printHeader(title: String): Unit = {
-    val separator = "=" * 60
-    println(s"$CYAN$BOLD$separator$RESET")
+    val sep = separator()
+    println(s"$CYAN$BOLD$sep$RESET")
     println(s"$CYAN$BOLD$title$RESET")
-    println(s"$CYAN$BOLD$separator$RESET")
+    println(s"$CYAN$BOLD$sep$RESET")
   }
 
   private def printSubHeader(title: String, color: String): Unit =

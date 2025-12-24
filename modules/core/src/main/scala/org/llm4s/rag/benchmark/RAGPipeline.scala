@@ -4,7 +4,7 @@ import org.llm4s.chunking.{ ChunkerFactory, DocumentChunk, DocumentChunker }
 import org.llm4s.llmconnect.{ EmbeddingClient, LLMClient }
 import org.llm4s.llmconnect.config.{ EmbeddingModelConfig, EmbeddingProviderConfig }
 import org.llm4s.llmconnect.model._
-import org.llm4s.trace.EnhancedTracing
+import org.llm4s.trace.Tracing
 import org.llm4s.types.Result
 import org.llm4s.vectorstore._
 
@@ -29,7 +29,7 @@ final class RAGPipeline private (
   val embeddingModelConfig: EmbeddingModelConfig,
   val hybridSearcher: HybridSearcher,
   val chunker: DocumentChunker,
-  private val tracer: Option[EnhancedTracing]
+  private val tracer: Option[Tracing]
 ) {
 
   // Embedding client with tracing enabled if tracer is provided
@@ -328,7 +328,7 @@ object RAGPipeline {
     config: RAGExperimentConfig,
     llmClient: LLMClient,
     embeddingClient: EmbeddingClient,
-    tracer: Option[EnhancedTracing] = None
+    tracer: Option[Tracing] = None
   ): Result[RAGPipeline] = {
     val embeddingModelConfig = EmbeddingModelConfig(
       config.embeddingConfig.model,
@@ -374,7 +374,7 @@ object RAGPipeline {
     embeddingClient: EmbeddingClient,
     vectorStore: VectorStore,
     keywordIndex: KeywordIndex,
-    tracer: Option[EnhancedTracing] = None
+    tracer: Option[Tracing] = None
   ): RAGPipeline = {
     val embeddingModelConfig = EmbeddingModelConfig(
       config.embeddingConfig.model,

@@ -4,7 +4,7 @@ import org.llm4s.config.Llm4sConfig
 import org.llm4s.llmconnect.model.{ AssistantMessage, Conversation, SystemMessage, ToolCall, ToolMessage, UserMessage }
 import org.llm4s.toolapi.ToolRegistry
 import org.llm4s.agent.{ AgentState, AgentStatus }
-import org.llm4s.trace.{ EnhancedConsoleTracing, Tracing }
+import org.llm4s.trace.{ ConsoleTracing, Tracing }
 
 object LangfuseSampleTraceRunner {
   def main(args: Array[String]): Unit =
@@ -31,7 +31,7 @@ object LangfuseSampleTraceRunner {
     val tracer = Llm4sConfig
       .tracing()
       .map(Tracing.create)
-      .fold(_ => Tracing.createFromEnhanced(new EnhancedConsoleTracing()), identity)
+      .fold(_ => new ConsoleTracing(), identity)
     tracer.traceAgentState(fakeState)
   }
 }

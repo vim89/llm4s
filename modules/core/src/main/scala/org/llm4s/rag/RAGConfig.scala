@@ -3,7 +3,7 @@ package org.llm4s.rag
 import org.llm4s.chunking.{ ChunkerFactory, ChunkingConfig }
 import org.llm4s.llmconnect.LLMClient
 import org.llm4s.rag.loader.{ DirectoryLoader, DocumentLoader, LoadingConfig }
-import org.llm4s.trace.EnhancedTracing
+import org.llm4s.trace.Tracing
 import org.llm4s.vectorstore.FusionStrategy
 
 /**
@@ -48,7 +48,7 @@ final case class RAGConfig(
   llmClient: Option[LLMClient] = None,
   systemPrompt: Option[String] = None,
   // Observability
-  tracer: Option[EnhancedTracing] = None,
+  tracer: Option[Tracing] = None,
   // Document loading
   documentLoaders: Seq[DocumentLoader] = Seq.empty,
   loadingConfig: LoadingConfig = LoadingConfig.default
@@ -159,7 +159,7 @@ final case class RAGConfig(
   // ========== Observability Configuration ==========
 
   /** Enable tracing for cost tracking and observability */
-  def withTracing(tracer: EnhancedTracing): RAGConfig =
+  def withTracing(tracer: Tracing): RAGConfig =
     copy(tracer = Some(tracer))
 
   // ========== Document Loading Configuration ==========

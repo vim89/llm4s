@@ -8,7 +8,7 @@ import org.llm4s.llmconnect.extractors.UniversalExtractor
 import org.llm4s.llmconnect.model._
 import org.llm4s.rag.loader._
 import org.llm4s.reranker.{ RerankProviderConfig, Reranker, RerankerFactory }
-import org.llm4s.trace.EnhancedTracing
+import org.llm4s.trace.Tracing
 import org.llm4s.types.Result
 import org.llm4s.vectorstore._
 
@@ -57,7 +57,7 @@ final class RAG private (
   private val hybridSearcher: HybridSearcher,
   private val reranker: Option[Reranker],
   private val llmClient: Option[LLMClient],
-  private val tracer: Option[EnhancedTracing],
+  private val tracer: Option[Tracing],
   private val registry: DocumentRegistry
 ) extends Closeable {
 
