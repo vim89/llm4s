@@ -20,14 +20,14 @@ class IntegrationSpec extends AnyFlatSpec with Matchers with ScalaFutures {
 
   "Complete document processing workflow" should "execute successfully" in {
     // Agent 1: Document preprocessor
-    val preprocessor = Agent.fromFunction[Document, ProcessedDocument]("preprocessor") { doc =>
+    val preprocessor = TypedAgent.fromFunction[Document, ProcessedDocument]("preprocessor") { doc =>
       val processed = doc.content.toLowerCase.trim
       val wordCount = processed.split("\\s+").length
       Right(ProcessedDocument(doc.content, processed, wordCount))
     }
 
     // Agent 2: Content analyzer
-    val analyzer = Agent.fromFunction[ProcessedDocument, AnalysisResult]("analyzer") { doc =>
+    val analyzer = TypedAgent.fromFunction[ProcessedDocument, AnalysisResult]("analyzer") { doc =>
       val sentiment =
         if (doc.processedContent.contains("good") || doc.processedContent.contains("great")) "positive" else "neutral"
       val keyTopics  = doc.processedContent.split("\\s+").distinct.take(3).toList
@@ -36,14 +36,14 @@ class IntegrationSpec extends AnyFlatSpec with Matchers with ScalaFutures {
     }
 
     // Agent 3: Summary generator
-    val summarizer = Agent.fromFunction[AnalysisResult, String]("summarizer") { analysis =>
+    val summarizer = TypedAgent.fromFunction[AnalysisResult, String]("summarizer") { analysis =>
       Right(
         s"Summary: ${analysis.sentiment} sentiment with ${analysis.keyTopics.size} key topics (confidence: ${analysis.confidence})"
       )
     }
 
     // Agent 4: Result aggregator (combines multiple inputs - simplified for testing)
-    val aggregator = Agent.fromFunction[String, WorkflowResult]("aggregator") { summary =>
+    val aggregator = TypedAgent.fromFunction[String, WorkflowResult]("aggregator") { summary =>
       // In a real implementation, this would receive multiple inputs
       Right(
         WorkflowResult(
@@ -91,15 +91,15 @@ class IntegrationSpec extends AnyFlatSpec with Matchers with ScalaFutures {
 
   "Error recovery in complex workflow" should "handle partial failures gracefully" in {
     // Create a workflow where one branch fails but others succeed
-    val successfulProcessor = Agent.fromFunction[Document, ProcessedDocument]("success-processor") { doc =>
+    val successfulProcessor = TypedAgent.fromFunction[Document, ProcessedDocument]("success-processor") { doc =>
       Right(ProcessedDocument(doc.content, doc.content.toUpperCase, doc.content.length))
     }
 
-    val failingProcessor = Agent.fromFunction[Document, ProcessedDocument]("failing-processor") { _ =>
+    val failingProcessor = TypedAgent.fromFunction[Document, ProcessedDocument]("failing-processor") { _ =>
       Left(OrchestrationError.NodeExecutionError("failing", "failing-processor", "Simulated processing failure"))
     }
 
-    val robustAggregator = Agent.fromFunction[ProcessedDocument, String]("robust-aggregator") { doc =>
+    val robustAggregator = TypedAgent.fromFunction[ProcessedDocument, String]("robust-aggregator") { doc =>
       Right(s"Processed: ${doc.processedContent}")
     }
 
@@ -133,7 +133,7 @@ class IntegrationSpec extends AnyFlatSpec with Matchers with ScalaFutures {
 
   "Performance test with parallel execution" should "demonstrate concurrency benefits" in {
     // Create multiple independent processing tasks
-    val heavyProcessor = Agent.fromFuture[Int, String]("heavy-processor") { input =>
+    val heavyProcessor = TypedAgent.fromFuture[Int, String]("heavy-processor") { input =>
       Future {
         Thread.sleep(50)
         Right(s"processed-$input")
@@ -177,11 +177,11 @@ class IntegrationSpec extends AnyFlatSpec with Matchers with ScalaFutures {
 
   "Complex DAG with multiple merge points" should "execute correctly" in {
     // Create a complex workflow: A -> B, A -> C, B -> D, C -> D, D -> E
-    val sourceAgent = Agent.fromFunction[String, String]("source")(s => Right(s"source:$s"))
-    val branchB     = Agent.fromFunction[String, String]("branchB")(s => Right(s"B:$s"))
-    val branchC     = Agent.fromFunction[String, String]("branchC")(s => Right(s"C:$s"))
-    val merger      = Agent.fromFunction[String, String]("merger")(s => Right(s"merged:$s"))
-    val finalizer   = Agent.fromFunction[String, String]("finalizer")(s => Right(s"final:$s"))
+    val sourceAgent = TypedAgent.fromFunction[String, String]("source")(s => Right(s"source:$s"))
+    val branchB     = TypedAgent.fromFunction[String, String]("branchB")(s => Right(s"B:$s"))
+    val branchC     = TypedAgent.fromFunction[String, String]("branchC")(s => Right(s"C:$s"))
+    val merger      = TypedAgent.fromFunction[String, String]("merger")(s => Right(s"merged:$s"))
+    val finalizer   = TypedAgent.fromFunction[String, String]("finalizer")(s => Right(s"final:$s"))
 
     val nodeA = Node("source", sourceAgent)
     val nodeB = Node("branchB", branchB)
@@ -216,7 +216,7 @@ class IntegrationSpec extends AnyFlatSpec with Matchers with ScalaFutures {
   "Workflow with policies and error handling" should "demonstrate production-ready resilience" in {
     // Create a realistic workflow with various failure modes
     var networkCallCount = 0
-    val unreliableNetworkAgent = Agent.fromFuture[String, String]("network-call") { data =>
+    val unreliableNetworkAgent = TypedAgent.fromFuture[String, String]("network-call") { data =>
       networkCallCount += 1
       if (networkCallCount < 3) {
         Future.failed(new RuntimeException("Network timeout"))
@@ -225,7 +225,7 @@ class IntegrationSpec extends AnyFlatSpec with Matchers with ScalaFutures {
       }
     }
 
-    val fallbackAgent = Agent.fromFunction[String, String]("fallback")(data => Right(s"cached-result:$data"))
+    val fallbackAgent = TypedAgent.fromFunction[String, String]("fallback")(data => Right(s"cached-result:$data"))
 
     // Apply comprehensive policies
     val resilientNetworkAgent = Policies.withPolicies(
@@ -235,7 +235,7 @@ class IntegrationSpec extends AnyFlatSpec with Matchers with ScalaFutures {
       fallback = Some(fallbackAgent)
     )
 
-    val processingAgent = Agent.fromFunction[String, String]("processor")(data => Right(s"processed:$data"))
+    val processingAgent = TypedAgent.fromFunction[String, String]("processor")(data => Right(s"processed:$data"))
 
     val nodeNetwork   = Node("network", resilientNetworkAgent)
     val nodeProcessor = Node("processor", processingAgent)

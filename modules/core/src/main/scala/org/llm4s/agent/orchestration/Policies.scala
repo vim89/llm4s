@@ -68,11 +68,11 @@ object Policies {
    * Add retry policy to an agent using LLM4S ErrorRecovery patterns
    */
   def withRetry[I, O](
-    agent: Agent[I, O],
+    agent: TypedAgent[I, O],
     maxAttempts: Int,
     backoff: FiniteDuration = 1.second
-  ): Agent[I, O] =
-    new Agent[I, O] {
+  ): TypedAgent[I, O] =
+    new TypedAgent[I, O] {
       val id: AgentId                          = AgentId.generate()
       val name: String                         = s"${agent.name}-retry"
       override val description: Option[String] = Some(s"Retry wrapper for ${agent.name} (max: $maxAttempts)")
@@ -140,10 +140,10 @@ object Policies {
    * Add timeout policy to an agent using proper error types
    */
   def withTimeout[I, O](
-    agent: Agent[I, O],
+    agent: TypedAgent[I, O],
     timeout: FiniteDuration
-  ): Agent[I, O] =
-    new Agent[I, O] {
+  ): TypedAgent[I, O] =
+    new TypedAgent[I, O] {
       val id: AgentId                          = AgentId.generate()
       val name: String                         = s"${agent.name}-timeout"
       override val description: Option[String] = Some(s"Timeout wrapper for ${agent.name} (${timeout.toString})")
@@ -192,10 +192,10 @@ object Policies {
    * Add fallback policy to an agent with proper error context
    */
   def withFallback[I, O](
-    primary: Agent[I, O],
-    fallback: Agent[I, O]
-  ): Agent[I, O] =
-    new Agent[I, O] {
+    primary: TypedAgent[I, O],
+    fallback: TypedAgent[I, O]
+  ): TypedAgent[I, O] =
+    new TypedAgent[I, O] {
       val id: AgentId                          = AgentId.generate()
       val name: String                         = s"${primary.name}-fallback"
       override val description: Option[String] = Some(s"Fallback from ${primary.name} to ${fallback.name}")
@@ -248,11 +248,11 @@ object Policies {
    * Combine multiple policies with proper ordering and error handling
    */
   def withPolicies[I, O](
-    agent: Agent[I, O],
+    agent: TypedAgent[I, O],
     retry: Option[(Int, FiniteDuration)] = None,
     timeout: Option[FiniteDuration] = None,
-    fallback: Option[Agent[I, O]] = None
-  ): Agent[I, O] = {
+    fallback: Option[TypedAgent[I, O]] = None
+  ): TypedAgent[I, O] = {
     logger.debug(
       "Applying policies to agent {}: retry={}, timeout={}, fallback={}",
       agent.name,

@@ -266,7 +266,7 @@ class PlanRunner(maxConcurrentNodes: Int = 10) {
         Try {
           // This cast is necessary due to type erasure in the DAG structure
           // We validate types at DAG construction time, but runtime verification is limited
-          val agent = node.agent.asInstanceOf[Agent[Any, Any]]
+          val agent = node.agent.asInstanceOf[TypedAgent[Any, Any]]
 
           // Race agent execution against cancellation
           Future.firstCompletedOf(

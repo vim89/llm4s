@@ -9,7 +9,7 @@ package org.llm4s.agent.orchestration
  */
 case class Node[I, O](
   id: String,
-  agent: Agent[I, O],
+  agent: TypedAgent[I, O],
   description: Option[String] = None
 ) {
   def inputType: String  = "I" // Simplified for now - runtime reflection not available in Scala 3

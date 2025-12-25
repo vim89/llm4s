@@ -9,9 +9,9 @@ import org.scalatest.matchers.should.Matchers
 class DAGSpec extends AnyFlatSpec with Matchers {
 
   // Test agents for DAG construction
-  val agentA = Agent.fromFunction[String, Int]("agent-a")(s => Right(s.length))
-  val agentB = Agent.fromFunction[Int, String]("agent-b")(i => Right(s"processed-$i"))
-  val agentC = Agent.fromFunction[String, Boolean]("agent-c")(s => Right(s.contains("processed")))
+  val agentA = TypedAgent.fromFunction[String, Int]("agent-a")(s => Right(s.length))
+  val agentB = TypedAgent.fromFunction[Int, String]("agent-b")(i => Right(s"processed-$i"))
+  val agentC = TypedAgent.fromFunction[String, Boolean]("agent-c")(s => Right(s.contains("processed")))
 
   "Node" should "be created with proper agent wrapping" in {
     val node = Node("test-node", agentA, Some("Test node description"))
@@ -78,7 +78,7 @@ class DAGSpec extends AnyFlatSpec with Matchers {
   "Plan.validate" should "detect cycles" in {
     val nodeA = Node("a", agentA)
     val nodeB = Node("b", agentB)
-    val nodeC = Node("c", Agent.fromFunction[String, String]("agent-c")(s => Right(s)))
+    val nodeC = Node("c", TypedAgent.fromFunction[String, String]("agent-c")(s => Right(s)))
 
     val plan = Plan.builder
       .addNode(nodeA)
@@ -125,8 +125,8 @@ class DAGSpec extends AnyFlatSpec with Matchers {
     // Create a diamond-shaped DAG: A -> B, A -> C, B -> D, C -> D
     val nodeA = Node("a", agentA)
     val nodeB = Node("b", agentB)
-    val nodeC = Node("c", Agent.fromFunction[Int, String]("agent-c")(i => Right(s"alt-$i")))
-    val nodeD = Node("d", Agent.fromFunction[String, Boolean]("agent-d")(s => Right(s.nonEmpty)))
+    val nodeC = Node("c", TypedAgent.fromFunction[Int, String]("agent-c")(i => Right(s"alt-$i")))
+    val nodeD = Node("d", TypedAgent.fromFunction[String, Boolean]("agent-d")(s => Right(s.nonEmpty)))
 
     val plan = Plan.builder
       .addNode(nodeA)
@@ -158,7 +158,7 @@ class DAGSpec extends AnyFlatSpec with Matchers {
   "Plan with disconnected components" should "handle multiple entry points" in {
     val nodeA = Node("a", agentA)
     val nodeB = Node("b", agentB)
-    val nodeC = Node("c", Agent.fromFunction[String, String]("isolated")(s => Right(s"isolated: $s")))
+    val nodeC = Node("c", TypedAgent.fromFunction[String, String]("isolated")(s => Right(s"isolated: $s")))
 
     val plan = Plan.builder
       .addNode(nodeA)

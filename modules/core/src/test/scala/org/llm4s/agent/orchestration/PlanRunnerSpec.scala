@@ -19,15 +19,15 @@ class PlanRunnerSpec extends AnyFlatSpec with Matchers with ScalaFutures {
   case class FinalOutput(summary: String, success: Boolean)
 
   // Test agents
-  val processorAgent = Agent.fromFunction[InputData, ProcessedData]("processor") { input =>
+  val processorAgent = TypedAgent.fromFunction[InputData, ProcessedData]("processor") { input =>
     Right(ProcessedData(s"processed: ${input.value}", input.value.length))
   }
 
-  val summarizerAgent = Agent.fromFunction[ProcessedData, FinalOutput]("summarizer") { data =>
+  val summarizerAgent = TypedAgent.fromFunction[ProcessedData, FinalOutput]("summarizer") { data =>
     Right(FinalOutput(s"Summary: ${data.result} (length: ${data.length})", data.length > 0))
   }
 
-  val failingAgent = Agent.fromFunction[InputData, ProcessedData]("failing") { _ =>
+  val failingAgent = TypedAgent.fromFunction[InputData, ProcessedData]("failing") { _ =>
     Left(OrchestrationError.NodeExecutionError("test-node", "failing-agent", "Simulated failure"))
   }
 
@@ -58,11 +58,11 @@ class PlanRunnerSpec extends AnyFlatSpec with Matchers with ScalaFutures {
 
   "PlanRunner" should "handle parallel execution" in {
     // Create two independent processing chains
-    val processor1 = Agent.fromFunction[InputData, ProcessedData]("processor1") { input =>
+    val processor1 = TypedAgent.fromFunction[InputData, ProcessedData]("processor1") { input =>
       Right(ProcessedData(s"path1: ${input.value}", input.value.length))
     }
 
-    val processor2 = Agent.fromFunction[InputData, ProcessedData]("processor2") { input =>
+    val processor2 = TypedAgent.fromFunction[InputData, ProcessedData]("processor2") { input =>
       Right(ProcessedData(s"path2: ${input.value}", input.value.length))
     }
 
@@ -98,7 +98,8 @@ class PlanRunnerSpec extends AnyFlatSpec with Matchers with ScalaFutures {
   "PlanRunner" should "handle plan validation errors" in {
     // Create a plan with a cycle
     val nodeA = Node("a", processorAgent)
-    val nodeB = Node("b", Agent.fromFunction[ProcessedData, InputData]("reverser")(d => Right(InputData(d.result))))
+    val nodeB =
+      Node("b", TypedAgent.fromFunction[ProcessedData, InputData]("reverser")(d => Right(InputData(d.result))))
 
     val invalidPlan = Plan.builder
       .addNode(nodeA)
@@ -156,12 +157,12 @@ class PlanRunnerSpec extends AnyFlatSpec with Matchers with ScalaFutures {
 
   "PlanRunner" should "execute diamond-shaped DAG correctly" in {
     // A -> B, A -> C, B -> D, C -> D
-    val nodeA = Node("source", Agent.fromFunction[InputData, String]("source")(d => Right(d.value)))
-    val nodeB = Node("pathB", Agent.fromFunction[String, String]("pathB")(s => Right(s"B:$s")))
-    val nodeC = Node("pathC", Agent.fromFunction[String, String]("pathC")(s => Right(s"C:$s")))
+    val nodeA = Node("source", TypedAgent.fromFunction[InputData, String]("source")(d => Right(d.value)))
+    val nodeB = Node("pathB", TypedAgent.fromFunction[String, String]("pathB")(s => Right(s"B:$s")))
+    val nodeC = Node("pathC", TypedAgent.fromFunction[String, String]("pathC")(s => Right(s"C:$s")))
     val nodeD = Node(
       "merger",
-      Agent.fromFunction[String, String]("merger") { s =>
+      TypedAgent.fromFunction[String, String]("merger") { s =>
         // This is a simplification - in reality we'd need both B and C outputs
         Right(s"merged:$s")
       }
@@ -193,7 +194,7 @@ class PlanRunnerSpec extends AnyFlatSpec with Matchers with ScalaFutures {
   }
 
   "PlanRunner" should "handle slow agents gracefully" in {
-    val slowAgent = Agent.fromFuture[InputData, ProcessedData]("slow") { input =>
+    val slowAgent = TypedAgent.fromFuture[InputData, ProcessedData]("slow") { input =>
       Future {
         Thread.sleep(100)
         Right(ProcessedData(s"slow: ${input.value}", input.value.length))

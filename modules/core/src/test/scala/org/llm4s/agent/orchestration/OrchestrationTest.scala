@@ -10,8 +10,8 @@ class OrchestrationTest extends AnyFunSuite with Matchers {
 
   test("PlanRunner should execute simple DAG with cancellation support") {
     // Create simple agents
-    val agent1 = Agent.fromFunction[Int, Int]("doubler")(x => Right(x * 2))
-    val agent2 = Agent.fromFunction[Int, String]("stringifier")(x => Right(s"Result: $x"))
+    val agent1 = TypedAgent.fromFunction[Int, Int]("doubler")(x => Right(x * 2))
+    val agent2 = TypedAgent.fromFunction[Int, String]("stringifier")(x => Right(s"Result: $x"))
 
     // Build DAG
     val node1 = Node("n1", agent1)
@@ -33,7 +33,7 @@ class OrchestrationTest extends AnyFunSuite with Matchers {
 
   test("Policies should use non-blocking delays") {
     var attempts = 0
-    val flakyAgent = Agent.fromFunction[String, String]("flaky") { input =>
+    val flakyAgent = TypedAgent.fromFunction[String, String]("flaky") { input =>
       attempts += 1
       if (attempts < 3) {
         Left(OrchestrationError.NodeExecutionError("flaky", "flaky", "Simulated failure"))
@@ -93,7 +93,7 @@ class OrchestrationTest extends AnyFunSuite with Matchers {
     val activeCount = new java.util.concurrent.atomic.AtomicInteger(0)
     val maxActive   = new java.util.concurrent.atomic.AtomicInteger(0)
 
-    val slowAgent = Agent.fromFuture[Int, Int]("slow") { x =>
+    val slowAgent = TypedAgent.fromFuture[Int, Int]("slow") { x =>
       Future {
         val current = activeCount.incrementAndGet()
         maxActive.updateAndGet(max => math.max(max, current))

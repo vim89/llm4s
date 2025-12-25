@@ -7,7 +7,7 @@ import org.llm4s.error.LLMError
 import org.llm4s.llmconnect.LLMConnect
 import org.llm4s.samples.util.{ BenchmarkUtil, TracingUtil }
 import org.llm4s.toolapi.ToolRegistry
-import org.llm4s.toolapi.tools.CalculatorTool
+import org.llm4s.toolapi.builtin.core.CalculatorTool
 import org.llm4s.trace.{ Tracing, TracingComposer, TracingMode }
 import org.llm4s.types.Result
 import org.slf4j.LoggerFactory

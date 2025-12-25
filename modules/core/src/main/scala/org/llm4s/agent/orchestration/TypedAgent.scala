@@ -8,7 +8,7 @@ import scala.concurrent.{ Future, ExecutionContext }
 /**
  * Typed agent abstraction for multi-agent orchestration.
  *
- * An Agent represents a computation that takes input of type I and produces output of type O.
+ * A TypedAgent represents a computation that takes input of type I and produces output of type O.
  * Agents are composable and can be wired together in DAGs with compile-time type safety.
  *
  * Follows LLM4S patterns:
@@ -21,7 +21,7 @@ import scala.concurrent.{ Future, ExecutionContext }
  * @tparam I Input type
  * @tparam O Output type
  */
-trait Agent[I, O] {
+trait TypedAgent[I, O] {
 
   /**
    * Execute the agent with the given input
@@ -47,14 +47,14 @@ trait Agent[I, O] {
   def description: Option[String] = None
 }
 
-object Agent {
+object TypedAgent {
   private val logger = LoggerFactory.getLogger(getClass)
 
   /**
    * Create a simple functional agent from a function using Result.safely
    */
-  def fromFunction[I, O](agentName: String)(f: I => Result[O]): Agent[I, O] =
-    new Agent[I, O] {
+  def fromFunction[I, O](agentName: String)(f: I => Result[O]): TypedAgent[I, O] =
+    new TypedAgent[I, O] {
       val id: AgentId  = AgentId.generate()
       val name: String = agentName
 
@@ -69,14 +69,14 @@ object Agent {
   /**
    * Create a functional agent from an unsafe function (auto-wrapped with Result.safely)
    */
-  def fromUnsafeFunction[I, O](agentName: String)(f: I => O): Agent[I, O] =
+  def fromUnsafeFunction[I, O](agentName: String)(f: I => O): TypedAgent[I, O] =
     fromFunction(agentName)(input => ResultObject.safely(f(input)))
 
   /**
    * Create an effectful agent from a Future-returning function
    */
-  def fromFuture[I, O](agentName: String)(f: I => Future[Result[O]]): Agent[I, O] =
-    new Agent[I, O] {
+  def fromFuture[I, O](agentName: String)(f: I => Future[Result[O]]): TypedAgent[I, O] =
+    new TypedAgent[I, O] {
       val id: AgentId  = AgentId.generate()
       val name: String = agentName
 
@@ -99,7 +99,7 @@ object Agent {
   /**
    * Create an agent from an unsafe Future operation (auto-wrapped with error handling)
    */
-  def fromUnsafeFuture[I, O](agentName: String)(f: I => Future[O]): Agent[I, O] =
+  def fromUnsafeFuture[I, O](agentName: String)(f: I => Future[O]): TypedAgent[I, O] =
     fromFuture(agentName) { input =>
       f(input)
         .map(Right(_))(scala.concurrent.ExecutionContext.global)
@@ -118,19 +118,19 @@ object Agent {
   /**
    * Create an agent that always succeeds with a constant value
    */
-  def constant[I, O](agentName: String, value: O): Agent[I, O] =
+  def constant[I, O](agentName: String, value: O): TypedAgent[I, O] =
     fromFunction(agentName)(_ => Right(value))
 
   /**
    * Create an agent that always fails with a specific error
    */
-  def failure[I, O](agentName: String, error: OrchestrationError): Agent[I, O] =
+  def failure[I, O](agentName: String, error: OrchestrationError): TypedAgent[I, O] =
     fromFunction(agentName)(_ => Left(error))
 
   /**
    * Create an agent that always fails with a simple error message
    */
-  def simpleFailure[I, O](agentName: String, errorMessage: String): Agent[I, O] = {
+  def simpleFailure[I, O](agentName: String, errorMessage: String): TypedAgent[I, O] = {
     val agentId = AgentId.generate()
     failure(
       agentName,

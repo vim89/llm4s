@@ -13,18 +13,18 @@ class PoliciesSpec extends AnyFlatSpec with Matchers with ScalaFutures {
   implicit val ec: ExecutionContext = ExecutionContext.global
 
   // Test agents
-  val successAgent = Agent.fromFunction[String, String]("success")(s => Right(s"success: $s"))
+  val successAgent = TypedAgent.fromFunction[String, String]("success")(s => Right(s"success: $s"))
 
-  val recoverableFailureAgent = Agent.fromFunction[String, String]("recoverable-failure") { _ =>
+  val recoverableFailureAgent = TypedAgent.fromFunction[String, String]("recoverable-failure") { _ =>
     Left(OrchestrationError.NodeExecutionError("test", "recoverable", "Recoverable error"))
   }
 
-  val nonRecoverableFailureAgent = Agent.fromFunction[String, String]("non-recoverable-failure") { _ =>
+  val nonRecoverableFailureAgent = TypedAgent.fromFunction[String, String]("non-recoverable-failure") { _ =>
     Left(OrchestrationError.PlanValidationError("Non-recoverable error"))
   }
 
   var attemptCounter = 0
-  val flakyAgent = Agent.fromFunction[String, String]("flaky") { s =>
+  val flakyAgent = TypedAgent.fromFunction[String, String]("flaky") { s =>
     attemptCounter += 1
     if (attemptCounter < 3) {
       Left(OrchestrationError.NodeExecutionError("flaky", "flaky", "Temporary failure"))
@@ -62,7 +62,7 @@ class PoliciesSpec extends AnyFlatSpec with Matchers with ScalaFutures {
   }
 
   "Policies.withTimeout" should "timeout slow operations" in {
-    val slowAgent = Agent.fromFuture[String, String]("slow") { s =>
+    val slowAgent = TypedAgent.fromFuture[String, String]("slow") { s =>
       Future {
         Thread.sleep(500)
         Right(s"slow: $s")
@@ -80,7 +80,7 @@ class PoliciesSpec extends AnyFlatSpec with Matchers with ScalaFutures {
   }
 
   "Policies.withTimeout" should "succeed for fast operations" in {
-    val fastAgent = Agent.fromFuture[String, String]("fast") { s =>
+    val fastAgent = TypedAgent.fromFuture[String, String]("fast") { s =>
       Future {
         Thread.sleep(10)
         Right(s"fast: $s")
@@ -94,7 +94,7 @@ class PoliciesSpec extends AnyFlatSpec with Matchers with ScalaFutures {
 
   "Policies.withFallback" should "use fallback when primary fails" in {
     val primaryAgent  = recoverableFailureAgent
-    val fallbackAgent = Agent.fromFunction[String, String]("fallback")(s => Right(s"fallback: $s"))
+    val fallbackAgent = TypedAgent.fromFunction[String, String]("fallback")(s => Right(s"fallback: $s"))
 
     val fallbackWrapped = Policies.withFallback(primaryAgent, fallbackAgent)
 
@@ -103,7 +103,7 @@ class PoliciesSpec extends AnyFlatSpec with Matchers with ScalaFutures {
 
   "Policies.withFallback" should "use primary when it succeeds" in {
     val primaryAgent  = successAgent
-    val fallbackAgent = Agent.fromFunction[String, String]("fallback")(s => Right(s"fallback: $s"))
+    val fallbackAgent = TypedAgent.fromFunction[String, String]("fallback")(s => Right(s"fallback: $s"))
 
     val fallbackWrapped = Policies.withFallback(primaryAgent, fallbackAgent)
 
@@ -111,10 +111,10 @@ class PoliciesSpec extends AnyFlatSpec with Matchers with ScalaFutures {
   }
 
   "Policies.withFallback" should "return primary error when both fail" in {
-    val primaryAgent = Agent.fromFunction[String, String]("primary") { _ =>
+    val primaryAgent = TypedAgent.fromFunction[String, String]("primary") { _ =>
       Left(OrchestrationError.NodeExecutionError("primary", "primary", "Primary failure"))
     }
-    val fallbackAgent = Agent.fromFunction[String, String]("fallback") { _ =>
+    val fallbackAgent = TypedAgent.fromFunction[String, String]("fallback") { _ =>
       Left(OrchestrationError.NodeExecutionError("fallback", "fallback", "Fallback failure"))
     }
 
@@ -132,7 +132,7 @@ class PoliciesSpec extends AnyFlatSpec with Matchers with ScalaFutures {
   "Policies.withPolicies" should "combine multiple policies correctly" in {
     // Create an agent that fails twice then succeeds
     var policyAttempts = 0
-    val testAgent = Agent.fromFunction[String, String]("policy-test") { s =>
+    val testAgent = TypedAgent.fromFunction[String, String]("policy-test") { s =>
       policyAttempts += 1
       if (policyAttempts < 3) {
         Left(OrchestrationError.NodeExecutionError("test", "test", "Temporary failure"))
@@ -141,7 +141,7 @@ class PoliciesSpec extends AnyFlatSpec with Matchers with ScalaFutures {
       }
     }
 
-    val fallbackAgent = Agent.fromFunction[String, String]("fallback")(s => Right(s"fallback: $s"))
+    val fallbackAgent = TypedAgent.fromFunction[String, String]("fallback")(s => Right(s"fallback: $s"))
 
     policyAttempts = 0 // Reset counter
 
@@ -160,11 +160,11 @@ class PoliciesSpec extends AnyFlatSpec with Matchers with ScalaFutures {
   }
 
   "Policies.withPolicies" should "use fallback when retries are exhausted" in {
-    val alwaysFailingAgent = Agent.fromFunction[String, String]("always-failing") { _ =>
+    val alwaysFailingAgent = TypedAgent.fromFunction[String, String]("always-failing") { _ =>
       Left(OrchestrationError.NodeExecutionError("failing", "failing", "Always fails"))
     }
 
-    val fallbackAgent = Agent.fromFunction[String, String]("fallback")(s => Right(s"fallback: $s"))
+    val fallbackAgent = TypedAgent.fromFunction[String, String]("fallback")(s => Right(s"fallback: $s"))
 
     val enhancedAgent = Policies.withPolicies(
       alwaysFailingAgent,
@@ -177,14 +177,14 @@ class PoliciesSpec extends AnyFlatSpec with Matchers with ScalaFutures {
 
   "Policy composition" should "have correct ordering (timeout -> retry -> fallback)" in {
     // This test verifies that policies are applied in the correct order
-    val slowAgent = Agent.fromFuture[String, String]("slow-then-success") { s =>
+    val slowAgent = TypedAgent.fromFuture[String, String]("slow-then-success") { s =>
       Future {
         Thread.sleep(200)
         Right(s"slow: $s")
       }
     }
 
-    val fallbackAgent = Agent.fromFunction[String, String]("fallback")(s => Right(s"fallback: $s"))
+    val fallbackAgent = TypedAgent.fromFunction[String, String]("fallback")(s => Right(s"fallback: $s"))
 
     val enhancedAgent = Policies.withPolicies(
       slowAgent,

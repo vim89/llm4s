@@ -85,20 +85,8 @@ object TraceHelper {
         )
       )
 
-      val generationOutput = ujson.Obj(
-        "role"    -> "assistant",
-        "content" -> content
-      )
-
-      if (am.toolCalls.nonEmpty) {
-        val conversationInput = contextMessages.map(msg =>
-          ujson.Obj(
-            "role"    -> msg.role.name,
-            "content" -> msg.content
-          )
-        )
-
-        val generationOutput = ujson.Obj(
+      val generationOutput = if (am.toolCalls.nonEmpty) {
+        ujson.Obj(
           "role"    -> "assistant",
           "content" -> content,
           "tool_calls" -> ujson.Arr(
@@ -114,49 +102,33 @@ object TraceHelper {
             ): _*
           )
         )
-
-        ujson.Obj(
-          "id"        -> uuid,
-          "timestamp" -> now,
-          "type"      -> "generation-create",
-          "body" -> ujson.Obj(
-            "id"              -> s"${traceId}-gen-$idx",
-            "traceId"         -> traceId,
-            "name"            -> s"LLM Generation $idx",
-            "startTime"       -> now,
-            "endTime"         -> now,
-            "input"           -> ujson.Arr(conversationInput: _*),
-            "output"          -> generationOutput,
-            "model"           -> modelName,
-            "modelParameters" -> ujson.Obj(),
-            "metadata" -> ujson.Obj(
-              "messageIndex"  -> idx,
-              "toolCallCount" -> toolCalls.length
-            )
-          )
-        )
       } else {
         ujson.Obj(
-          "id"        -> uuid,
-          "timestamp" -> now,
-          "type"      -> "generation-create",
-          "body" -> ujson.Obj(
-            "id"              -> s"${traceId}-gen-$idx",
-            "traceId"         -> traceId,
-            "name"            -> s"LLM Generation $idx",
-            "startTime"       -> now,
-            "endTime"         -> now,
-            "input"           -> ujson.Arr(conversationInput: _*),
-            "output"          -> generationOutput,
-            "model"           -> modelName,
-            "modelParameters" -> ujson.Obj(),
-            "metadata" -> ujson.Obj(
-              "messageIndex"  -> idx,
-              "toolCallCount" -> 0
-            )
-          )
+          "role"    -> "assistant",
+          "content" -> content
         )
       }
+
+      ujson.Obj(
+        "id"        -> uuid,
+        "timestamp" -> now,
+        "type"      -> "generation-create",
+        "body" -> ujson.Obj(
+          "id"              -> s"${traceId}-gen-$idx",
+          "traceId"         -> traceId,
+          "name"            -> s"LLM Generation $idx",
+          "startTime"       -> now,
+          "endTime"         -> now,
+          "input"           -> ujson.Arr(conversationInput: _*),
+          "output"          -> generationOutput,
+          "model"           -> modelName,
+          "modelParameters" -> ujson.Obj(),
+          "metadata" -> ujson.Obj(
+            "messageIndex"  -> idx,
+            "toolCallCount" -> toolCalls.length
+          )
+        )
+      )
 
     case tm @ ToolMessage(toolCallId, content) =>
       val toolCallName = tm.findToolCallName(contextMessages)

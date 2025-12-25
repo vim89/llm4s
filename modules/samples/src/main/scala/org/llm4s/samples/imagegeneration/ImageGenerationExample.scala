@@ -1,4 +1,4 @@
-package org.llm4s.imagegeneration.examples
+package org.llm4s.samples.imagegeneration
 
 import org.llm4s.imagegeneration._
 import org.slf4j.LoggerFactory
@@ -39,14 +39,14 @@ object ImageGenerationExample {
 
     ImageGeneration.generateWithStableDiffusion(prompt) match {
       case Right(image) =>
-        logger.info(s"✓ Generated image: ${image.size.description}")
+        logger.info(s"Generated image: ${image.size.description}")
 
         // Save to file
         val outputPath = Paths.get("sunset.png")
-        image.saveToFile(outputPath).foreach(savedImage => logger.info(s"✓ Saved to: ${savedImage.filePath.get}"))
+        image.saveToFile(outputPath).foreach(savedImage => logger.info(s"Saved to: ${savedImage.filePath.get}"))
 
       case Left(error) =>
-        logger.error(s"✗ Generation failed: ${error.message}")
+        logger.error(s"Generation failed: ${error.message}")
     }
   }
 
@@ -69,13 +69,13 @@ object ImageGenerationExample {
 
     ImageGeneration.generateImage(prompt, config, options) match {
       case Right(image) =>
-        logger.info(s"✓ Generated cyberpunk image with seed: ${image.seed.get}")
+        logger.info(s"Generated cyberpunk image with seed: ${image.seed.get}")
 
         val filename = s"cyberpunk_${image.seed.get}.png"
-        image.saveToFile(Paths.get(filename)).foreach(_ => logger.info(s"✓ Saved: $filename"))
+        image.saveToFile(Paths.get(filename)).foreach(_ => logger.info(s"Saved: $filename"))
 
       case Left(error) =>
-        logger.error(s"✗ Advanced generation failed: ${error.message}")
+        logger.error(s"Advanced generation failed: ${error.message}")
     }
   }
 
@@ -87,15 +87,15 @@ object ImageGenerationExample {
 
     ImageGeneration.generateImages(prompt, 3, config) match {
       case Right(images) =>
-        logger.info(s"✓ Generated ${images.length} robot images")
+        logger.info(s"Generated ${images.length} robot images")
 
         images.zipWithIndex.foreach { case (image, index) =>
           val filename = s"robot_${index + 1}.png"
-          image.saveToFile(Paths.get(filename)).foreach(_ => logger.info(s"✓ Saved: $filename"))
+          image.saveToFile(Paths.get(filename)).foreach(_ => logger.info(s"Saved: $filename"))
         }
 
       case Left(error) =>
-        logger.error(s"✗ Multiple generation failed: ${error.message}")
+        logger.error(s"Multiple generation failed: ${error.message}")
     }
   }
 
@@ -113,11 +113,11 @@ object ImageGenerationExample {
       case Left(error) =>
         error match {
           case ServiceError(msg, code) =>
-            logger.info(s"✓ Expected service error: $msg (code: $code)")
+            logger.info(s"Expected service error: $msg (code: $code)")
           case UnknownError(throwable) =>
-            logger.info(s"✓ Expected connection error: ${throwable.getMessage}")
+            logger.info(s"Expected connection error: ${throwable.getMessage}")
           case _ =>
-            logger.info(s"✓ Other expected error: ${error.message}")
+            logger.info(s"Other expected error: ${error.message}")
         }
     }
 
@@ -125,9 +125,9 @@ object ImageGenerationExample {
     val config = StableDiffusionConfig()
     ImageGeneration.healthCheck(config) match {
       case Right(status) =>
-        logger.info(s"✓ Service status: ${status.status} - ${status.message}")
+        logger.info(s"Service status: ${status.status} - ${status.message}")
       case Left(error) =>
-        logger.info(s"✓ Health check failed as expected: ${error.message}")
+        logger.info(s"Health check failed as expected: ${error.message}")
     }
   }
 }
