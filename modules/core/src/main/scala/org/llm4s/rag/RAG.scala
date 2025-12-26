@@ -926,13 +926,28 @@ object RAG {
     }
 
   private def createHybridSearcher(config: RAGConfig): Result[HybridSearcher] =
-    (config.vectorStorePath, config.keywordIndexPath) match {
-      case (Some(vectorPath), Some(keywordPath)) =>
-        HybridSearcher.sqlite(vectorPath, keywordPath)
-      case (Some(vectorPath), None) =>
-        HybridSearcher.sqlite(vectorPath, vectorPath.replace(".db", "-fts.db"))
-      case _ =>
-        HybridSearcher.inMemory()
+    config.pgVectorConnectionString match {
+      case Some(connStr) =>
+        // Use pgvector for vector storage with SQLite for keyword index
+        val user      = config.pgVectorUser.getOrElse("postgres")
+        val password  = config.pgVectorPassword.getOrElse("")
+        val tableName = config.pgVectorTableName.getOrElse("vectors")
+        for {
+          vectorStore <- PgVectorStore(connStr, user, password, tableName)
+          keywordIndex <- config.keywordIndexPath match {
+            case Some(path) => SQLiteKeywordIndex(path)
+            case None       => KeywordIndex.inMemory()
+          }
+        } yield HybridSearcher(vectorStore, keywordIndex)
+      case None =>
+        (config.vectorStorePath, config.keywordIndexPath) match {
+          case (Some(vectorPath), Some(keywordPath)) =>
+            HybridSearcher.sqlite(vectorPath, keywordPath)
+          case (Some(vectorPath), None) =>
+            HybridSearcher.sqlite(vectorPath, vectorPath.replace(".db", "-fts.db"))
+          case _ =>
+            HybridSearcher.inMemory()
+        }
     }
 
   private def createReranker(

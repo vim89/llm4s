@@ -18,13 +18,18 @@ import org.llm4s.vectorstore.FusionStrategy
  * val config = RAGConfig()
  *   .withEmbeddings(EmbeddingProvider.OpenAI)
  *
- * // Full customization
+ * // Full customization with SQLite
  * val config = RAGConfig()
  *   .withEmbeddings(EmbeddingProvider.OpenAI, "text-embedding-3-large")
  *   .withChunking(ChunkerFactory.Strategy.Sentence, 800, 150)
  *   .withRRF(60)
  *   .withSQLite("./rag.db")
  *   .withLLM(llmClient)
+ *
+ * // Using PostgreSQL with pgvector
+ * val config = RAGConfig()
+ *   .withEmbeddings(EmbeddingProvider.OpenAI)
+ *   .withPgVector("jdbc:postgresql://localhost:5432/mydb", "user", "pass", "embeddings")
  * }}}
  */
 final case class RAGConfig(
@@ -44,6 +49,11 @@ final case class RAGConfig(
   // Storage settings
   vectorStorePath: Option[String] = None,
   keywordIndexPath: Option[String] = None,
+  // PgVector settings
+  pgVectorConnectionString: Option[String] = None,
+  pgVectorUser: Option[String] = None,
+  pgVectorPassword: Option[String] = None,
+  pgVectorTableName: Option[String] = None,
   // Answer generation
   llmClient: Option[LLMClient] = None,
   systemPrompt: Option[String] = None,
@@ -139,12 +149,54 @@ final case class RAGConfig(
   def withSQLite(dbPath: String): RAGConfig =
     copy(
       vectorStorePath = Some(dbPath),
-      keywordIndexPath = Some(dbPath.replace(".db", "-fts.db"))
+      keywordIndexPath = Some(dbPath.replace(".db", "-fts.db")),
+      pgVectorConnectionString = None
+    )
+
+  /**
+   * Use PostgreSQL with pgvector extension for vector storage.
+   *
+   * Connects to localhost:5432/postgres with user "postgres" by default.
+   * Uses "vectors" as the default table name.
+   */
+  def withPgVector(): RAGConfig =
+    withPgVector("jdbc:postgresql://localhost:5432/postgres", "postgres", "", "vectors")
+
+  /**
+   * Use PostgreSQL with pgvector extension for vector storage.
+   *
+   * Connects to localhost:5432/postgres with user "postgres" by default.
+   *
+   * @param tableName Table name for vectors
+   */
+  def withPgVector(tableName: String): RAGConfig =
+    withPgVector("jdbc:postgresql://localhost:5432/postgres", "postgres", "", tableName)
+
+  /**
+   * Use PostgreSQL with pgvector extension for vector storage.
+   *
+   * @param connectionString JDBC connection string (e.g., "jdbc:postgresql://host:port/database")
+   * @param user Database user
+   * @param password Database password
+   * @param tableName Table name for vectors
+   */
+  def withPgVector(
+    connectionString: String,
+    user: String,
+    password: String,
+    tableName: String
+  ): RAGConfig =
+    copy(
+      vectorStorePath = None,
+      pgVectorConnectionString = Some(connectionString),
+      pgVectorUser = Some(user),
+      pgVectorPassword = Some(password),
+      pgVectorTableName = Some(tableName)
     )
 
   /** Use in-memory storage (default) */
   def inMemory: RAGConfig =
-    copy(vectorStorePath = None, keywordIndexPath = None)
+    copy(vectorStorePath = None, keywordIndexPath = None, pgVectorConnectionString = None)
 
   // ========== Answer Generation Configuration ==========
 

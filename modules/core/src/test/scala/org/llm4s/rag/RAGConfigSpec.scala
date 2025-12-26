@@ -190,6 +190,43 @@ class RAGConfigSpec extends AnyFlatSpec with Matchers {
       .inMemory
     config.vectorStorePath shouldBe None
     config.keywordIndexPath shouldBe None
+    config.pgVectorConnectionString shouldBe None
+  }
+
+  "RAGConfig.withPgVector()" should "set default pgvector configuration" in {
+    val config = RAGConfig().withPgVector()
+    config.pgVectorConnectionString shouldBe Some("jdbc:postgresql://localhost:5432/postgres")
+    config.pgVectorUser shouldBe Some("postgres")
+    config.pgVectorPassword shouldBe Some("")
+    config.pgVectorTableName shouldBe Some("vectors")
+    config.vectorStorePath shouldBe None
+  }
+
+  "RAGConfig.withPgVector(tableName)" should "set pgvector with custom table" in {
+    val config = RAGConfig().withPgVector("my_vectors")
+    config.pgVectorConnectionString shouldBe Some("jdbc:postgresql://localhost:5432/postgres")
+    config.pgVectorTableName shouldBe Some("my_vectors")
+  }
+
+  "RAGConfig.withPgVector(full)" should "set all pgvector parameters" in {
+    val config = RAGConfig().withPgVector(
+      connectionString = "jdbc:postgresql://myhost:5433/mydb",
+      user = "myuser",
+      password = "mypass",
+      tableName = "embeddings"
+    )
+    config.pgVectorConnectionString shouldBe Some("jdbc:postgresql://myhost:5433/mydb")
+    config.pgVectorUser shouldBe Some("myuser")
+    config.pgVectorPassword shouldBe Some("mypass")
+    config.pgVectorTableName shouldBe Some("embeddings")
+  }
+
+  "RAGConfig.withSQLite" should "clear pgvector settings" in {
+    val config = RAGConfig()
+      .withPgVector()
+      .withSQLite("./data/vectors.db")
+    config.pgVectorConnectionString shouldBe None
+    config.vectorStorePath shouldBe Some("./data/vectors.db")
   }
 
   // ==========================================================================
