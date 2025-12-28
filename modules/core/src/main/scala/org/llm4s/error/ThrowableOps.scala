@@ -32,7 +32,7 @@ object ThrowableOps {
     /**
      * Converts this Throwable to an [[LLMError]] using the provided error mapper.
      *
-     * @param em The error mapper to use (defaults to [[DefaultErrorMapper]])
+     * @param em The error mapper to use (defaults to [[org.llm4s.core.safety.DefaultErrorMapper]])
      * @return An appropriate [[LLMError]] subtype based on the exception type
      */
     def toLLMError(implicit em: ErrorMapper = DefaultErrorMapper): LLMError = em(t)

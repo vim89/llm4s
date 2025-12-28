@@ -11,8 +11,8 @@ package org.llm4s.trace
  * {{{
  * import org.llm4s.trace.AnsiColors._
  *
- * println(s"${GREEN}Success!${RESET}")
- * println(s"${RED}${BOLD}Error: Something failed${RESET}")
+ * println(s"$${GREEN}Success!$${RESET}")
+ * println(s"$${RED}$${BOLD}Error: Something failed$${RESET}")
  * }}}
  *
  * @note These codes work on most Unix terminals and Windows Terminal.

@@ -24,9 +24,9 @@ object ProtocolCodec {
   /**
    * Decodes a JSON string to a WorkspaceAgentCommand.
    *
+   * @note Throws `upickle.core.AbortException` if JSON is invalid or doesn't match expected schema
    * @param json JSON string representation of a command
    * @return decoded command
-   * @throws upickle.core.AbortException if JSON is invalid or doesn't match expected schema
    */
   def decodeAgentCommand(json: String): WorkspaceAgentCommand =
     read[WorkspaceAgentCommand](json)
@@ -43,9 +43,9 @@ object ProtocolCodec {
   /**
    * Decodes a JSON string to a WorkspaceAgentResponse.
    *
+   * @note Throws `upickle.core.AbortException` if JSON is invalid or doesn't match expected schema
    * @param json JSON string representation of a response
    * @return decoded response
-   * @throws upickle.core.AbortException if JSON is invalid or doesn't match expected schema
    */
   def decodeAgentResponse(json: String): WorkspaceAgentResponse =
     read[WorkspaceAgentResponse](json)

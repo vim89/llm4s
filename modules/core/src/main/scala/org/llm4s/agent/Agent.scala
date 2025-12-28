@@ -66,7 +66,7 @@ private[agent] object HandoffResult {
  *   event match {
  *     case AgentEvent.TextDelta(text, _) => print(text)
  *     case AgentEvent.ToolCallCompleted(name, result, _, _, _, _) =>
- *       println(s"Tool $name returned: $result")
+ *       println(s"Tool $$name returned: $$result")
  *     case _ => ()
  *   }
  * }
