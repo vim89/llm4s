@@ -21,8 +21,9 @@ inThisBuild(
     ),
     ThisBuild / publishTo := {
       val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
+      val centralReleases = "https://central.sonatype.com/repository/maven-releases/"
       if (isSnapshot.value) Some("central-snapshots".at(centralSnapshots))
-      else localStaging.value
+      else Some("central-releases".at(centralReleases))
     },
     pgpPublicRing := file("/tmp/public.asc"),
     pgpSecretRing := file("/tmp/secret.asc"),
@@ -55,7 +56,7 @@ inThisBuild(
     ThisBuild / (coverageReport / aggregate) := false,
     // --- scalafix ---
     ThisBuild / scalafixDependencies += "ch.epfl.scala" %% "scalafix-rules" % "0.12.1",
-    ThisBuild / scalafixOnCompile := true
+    ThisBuild / scalafixOnCompile := false  // Disabled for now
   )
 )
 
@@ -97,6 +98,9 @@ lazy val commonSettings = Seq(
   semanticdbEnabled       := CrossVersion.partialVersion(scalaVersion.value).exists(_._1 == 3),
   Test / scalafix / unmanagedSources := Seq.empty,
   Compile / packageDoc / publishArtifact := !isSnapshot.value,
+  // Disable test Scaladoc generation during publish (not needed, saves memory in CI)
+  Test / packageDoc / publishArtifact := false,
+  Test / doc / sources := Seq.empty,
   libraryDependencies ++= Seq(
     Deps.cats,
     Deps.upickle,

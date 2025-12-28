@@ -45,6 +45,7 @@ jobs:
       - name: Release
         run: sbt ci-release
         env:
+          SBT_OPTS: "-Xmx4G -XX:+UseG1GC"
           PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
           PGP_SECRET: ${{ secrets.PGP_SECRET }}
           SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
