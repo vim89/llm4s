@@ -19,12 +19,7 @@ inThisBuild(
         url("https://github.com/rorygraves")
       )
     ),
-    ThisBuild / publishTo := {
-      val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
-      val centralReleases = "https://central.sonatype.com/repository/maven-releases/"
-      if (isSnapshot.value) Some("central-snapshots".at(centralSnapshots))
-      else Some("central-releases".at(centralReleases))
-    },
+    // sbt-ci-release 1.11.0+ defaults to Sonatype Central Portal
     pgpPublicRing := file("/tmp/public.asc"),
     pgpSecretRing := file("/tmp/secret.asc"),
     pgpPassphrase := sys.env.get("PGP_PASSPHRASE").map(_.toArray),
