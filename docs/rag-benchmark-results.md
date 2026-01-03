@@ -524,13 +524,16 @@ Create a JSONL file with the following format:
 ### Programmatic Usage
 
 ```scala
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.rag.benchmark._
-import org.llm4s.llmconnect.{ LLMConnect, EmbeddingClient }
+import org.llm4s.llmconnect.{ EmbeddingClient, LLMConnect }
 
 // Initialize clients
 val runner = for {
-  llm <- LLMConnect.fromEnv()
-  embed <- EmbeddingClient.fromEnv()
+  providerConfig <- Llm4sConfig.provider()
+  llm <- LLMConnect.getClient(providerConfig)
+  (embedProvider, embedConfig) <- Llm4sConfig.embeddings()
+  embed <- EmbeddingClient.from(embedProvider, embedConfig)
 } yield BenchmarkRunner(llm, embed)
 
 // Run a suite

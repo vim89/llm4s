@@ -28,12 +28,14 @@ Let's start with the simplest possible LLM4S program - a "Hello World" that asks
 Create `HelloLLM.scala`:
 
 ```scala
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.llmconnect.LLMConnect
 import org.llm4s.llmconnect.model.UserMessage
 
 object HelloLLM extends App {
   val result = for {
-    client <- LLMConnect.create()
+    providerConfig <- Llm4sConfig.provider()
+    client <- LLMConnect.getClient(providerConfig)
     response <- client.complete(
       messages = List(UserMessage("What is Scala?")),
       model = None
@@ -73,14 +75,15 @@ JVM and is known for its strong type system and concurrency support.
 
 Let's break down what's happening:
 
-### 1. LLMConnect.create()
+### 1. Load Config and Build a Client
 
 ```scala
-client <- LLMConnect.create()
+providerConfig <- Llm4sConfig.provider()
+client <- LLMConnect.getClient(providerConfig)
 ```
 
-This creates an LLM client automatically based on your `LLM_MODEL` environment variable:
-- Reads configuration from env vars
+This builds an LLM client based on your configured provider:
+- Loads typed config from env vars / application.conf
 - Selects the appropriate provider (OpenAI, Anthropic, etc.)
 - Returns a `Result[LLMClient]` (Either[LLMError, LLMClient])
 
@@ -119,12 +122,14 @@ This makes error handling **explicit** and **type-safe**.
 Let's make our program more interesting with a multi-turn conversation:
 
 ```scala
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.llmconnect.LLMConnect
 import org.llm4s.llmconnect.model._
 
 object ConversationExample extends App {
   val result = for {
-    client <- LLMConnect.create()
+    providerConfig <- Llm4sConfig.provider()
+    client <- LLMConnect.getClient(providerConfig)
     response <- client.complete(
       messages = List(
         SystemMessage("You are a helpful programming tutor."),
@@ -160,6 +165,7 @@ LLM4S provides three message types:
 Now let's give the LLM access to a tool:
 
 ```scala
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.llmconnect.LLMConnect
 import org.llm4s.llmconnect.model.UserMessage
 import org.llm4s.toolapi.{ ToolFunction, ToolRegistry }
@@ -178,7 +184,8 @@ object ToolExample extends App {
   )
 
   val result = for {
-    client <- LLMConnect.create()
+    providerConfig <- Llm4sConfig.provider()
+    client <- LLMConnect.getClient(providerConfig)
     tools = new ToolRegistry(Seq(weatherTool))
     agent = new Agent(client)
     state <- agent.run("What's the weather in Paris?", tools)
@@ -208,7 +215,8 @@ import org.llm4s.llmconnect.model.UserMessage
 
 object StreamingExample extends App {
   val result = for {
-    client <- LLMConnect.create()
+    providerConfig <- Llm4sConfig.provider()
+    client <- LLMConnect.getClient(providerConfig)
     stream <- client.completeStreaming(
       messages = List(UserMessage("Write a short poem about Scala")),
       model = None
@@ -238,7 +246,8 @@ Output appears token-by-token in real-time, like ChatGPT!
 
 ```scala
 val result = for {
-  client <- LLMConnect.create()
+  providerConfig <- Llm4sConfig.provider()
+  client <- LLMConnect.getClient(providerConfig)
   response <- client.complete(messages, None)
 } yield response
 
@@ -305,6 +314,7 @@ llm {
 Here's a complete example combining everything we've learned:
 
 ```scala
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.llmconnect.LLMConnect
 import org.llm4s.llmconnect.model._
 import org.llm4s.toolapi.{ ToolFunction, ToolRegistry }
@@ -327,7 +337,8 @@ object ComprehensiveExample extends App {
   println("🚀 Starting LLM4S Example...")
 
   val result = for {
-    client <- LLMConnect.create()
+    providerConfig <- Llm4sConfig.provider()
+    client <- LLMConnect.getClient(providerConfig)
     tools = new ToolRegistry(Seq(calcTool))
     agent = new Agent(client)
 
@@ -359,7 +370,8 @@ object ComprehensiveExample extends App {
 
 ```scala
 for {
-  client <- LLMConnect.create()
+  providerConfig <- Llm4sConfig.provider()
+  client <- LLMConnect.getClient(providerConfig)
   response <- client.complete(
     List(UserMessage("Your question here")),
     None
@@ -371,7 +383,8 @@ for {
 
 ```scala
 for {
-  client <- LLMConnect.create()
+  providerConfig <- Llm4sConfig.provider()
+  client <- LLMConnect.getClient(providerConfig)
   response <- client.complete(
     List(
       SystemMessage("You are an expert in..."),
@@ -386,7 +399,8 @@ for {
 
 ```scala
 for {
-  client <- LLMConnect.create()
+  providerConfig <- Llm4sConfig.provider()
+  client <- LLMConnect.getClient(providerConfig)
   tools = new ToolRegistry(myTools)
   agent = new Agent(client)
   state <- agent.run("User query", tools)
@@ -397,7 +411,8 @@ for {
 
 ```scala
 for {
-  client <- LLMConnect.create()
+  providerConfig <- Llm4sConfig.provider()
+  client <- LLMConnect.getClient(providerConfig)
   stream <- client.completeStreaming(messages, None)
 } yield stream.foreach(chunk => print(chunk.content))
 ```

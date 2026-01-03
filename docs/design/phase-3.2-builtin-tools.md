@@ -223,12 +223,14 @@ val customConfig = HttpConfig(
 
 ```scala
 import org.llm4s.agent.Agent
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.llmconnect.LLMConnect
 import org.llm4s.toolapi.ToolRegistry
 import org.llm4s.toolapi.builtin._
 
 for {
-  client <- LLMConnect.fromEnv()
+  providerConfig <- Llm4sConfig.provider()
+  client <- LLMConnect.getClient(providerConfig)
   tools = new ToolRegistry(BuiltinTools.safe())
   agent = new Agent(client)
   state <- agent.run("What is 15% of 850?", tools)

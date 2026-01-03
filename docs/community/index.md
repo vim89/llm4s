@@ -239,7 +239,7 @@ We are committed to providing a welcoming and inclusive community. Please read o
 - **GitHub**: [llm4s/llm4s](https://github.com/llm4s/llm4s)
 - **Discord**: [Join us](https://discord.gg/4uvTPn6qww)
 - **Starter Kit**: [llm4s.g8](https://github.com/llm4s/llm4s.g8)
-- **License**: [Apache 2.0](https://github.com/llm4s/llm4s/blob/main/LICENSE)
+- **License**: [MIT](https://github.com/llm4s/llm4s/blob/main/LICENSE)
 
 ---
 

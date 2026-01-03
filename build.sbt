@@ -79,7 +79,10 @@ addCommandAlias(
 )
 addCommandAlias("compileAll", ";+compile")
 addCommandAlias("testCross", ";++2.13.16 crossTestScala2/test;++3.7.1 crossTestScala3/test")
-addCommandAlias("fullCrossTest", ";clean ;crossTestScala2/clean ;crossTestScala3/clean ;testCross")
+addCommandAlias(
+  "fullCrossTest",
+  ";clean ;crossTestScala2/clean ;crossTestScala3/clean ;+publishLocal ;testCross"
+)
 
 
 
@@ -230,7 +233,7 @@ lazy val workspaceSamples = (project in file("modules/workspace/workspaceSamples
     coverageEnabled := false
   )
 
-lazy val crossTestScala2 = (project in file("modules/crosstest/scala2"))
+lazy val crossTestScala2 = (project in file("modules/crossTest/scala2"))
   .dependsOn(core)
   .settings(
     name         := "crosstest-scala2",
@@ -250,7 +253,7 @@ lazy val crossTestScala2 = (project in file("modules/crosstest/scala2"))
     )
   )
 
-lazy val crossTestScala3 = (project in file("modules/crosstest/scala3"))
+lazy val crossTestScala3 = (project in file("modules/crossTest/scala3"))
   .dependsOn(core)
   .settings(
     name         := "crosstest-scala3",

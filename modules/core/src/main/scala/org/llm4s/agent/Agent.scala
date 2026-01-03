@@ -43,7 +43,8 @@ private[agent] object HandoffResult {
  * == Basic Usage ==
  * {{{
  * for {
- *   client <- LLMConnect.fromEnv()
+ *   providerConfig <- Llm4sConfig.provider()
+ *   client <- LLMConnect.getClient(providerConfig)
  *   agent = new Agent(client)
  *   tools = new ToolRegistry(Seq(myTool))
  *   state <- agent.run("What is 2+2?", tools)

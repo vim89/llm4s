@@ -47,8 +47,8 @@ Choose your path based on what you want to build:
 - Conversation state management
 
 **Start here:**
-1. [Agent Framework Guide](/guide/agents)
-2. [Single-Step Agent Example](/examples/agents#single-step)
+1. [Agent Framework Guide](/examples/#agent-examples)
+2. [Single-Step Agent Example](/examples/#single-step)
 3. [Multi-Turn Conversations](/guide/multi-turn)
 4. [Tool Calling Guide](/guide/tool-calling)
 
@@ -98,7 +98,7 @@ Choose your path based on what you want to build:
 1. [Multi-Turn Conversations](/guide/multi-turn)
 2. [Context Management](/guide/context-management)
 3. [Streaming Guide](/guide/streaming)
-4. [Long Conversation Example](/examples/agents#long-conversation)
+4. [Long Conversation Example](/examples/#long-conversation)
 
 **Example project ideas:**
 - Slack bot
@@ -166,7 +166,7 @@ val agent = new Agent(client)
 val state = agent.run("Your query", tools)
 ```
 
-[Learn more →](/guide/agents)
+[Learn more →](/examples/#agent-examples)
 
 ---
 
@@ -271,14 +271,14 @@ Browse **69 working examples** organized by category:
 [View all basic examples →](/examples/basic)
 
 ### Agent Examples (6)
-- [Single-Step Agent](/examples/agents#single-step)
-- [Multi-Step Agent](/examples/agents#multi-step)
-- [Multi-Turn Conversations](/examples/agents#multi-turn)
-- [Long Conversations](/examples/agents#long-conversation)
-- [Conversation Persistence](/examples/agents#persistence)
-- [MCP Agent](/examples/agents#mcp-agent)
+- [Single-Step Agent](/examples/#single-step)
+- [Multi-Step Agent](/examples/#multi-step)
+- [Multi-Turn Conversations](/examples/#multi-turn)
+- [Long Conversations](/examples/#long-conversation)
+- [Conversation Persistence](/examples/#persistence)
+- [MCP Agent](/examples/#mcp-agent)
 
-[View all agent examples →](/examples/agents)
+[View all agent examples →](/examples/#agent-examples)
 
 ### Tool Examples (5)
 - [Weather Tool](/examples/tools#weather)
@@ -312,12 +312,14 @@ Browse **69 working examples** organized by category:
 ### Recipe 1: Simple Q&A Bot
 
 ```scala
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.llmconnect.LLMConnect
 import org.llm4s.llmconnect.model._
 
 def askQuestion(question: String): String = {
   val result = for {
-    client <- LLMConnect.create()
+    providerConfig <- Llm4sConfig.provider()
+    client <- LLMConnect.getClient(providerConfig)
     response <- client.complete(
       List(
         SystemMessage("You are a helpful Q&A assistant."),
@@ -327,7 +329,7 @@ def askQuestion(question: String): String = {
     )
   } yield response.content
 
-  result.getOrElse("Sorry, I couldn't process that question.")
+  result.fold(_ => "Sorry, I couldn't process that question.", identity)
 }
 ```
 
@@ -335,6 +337,8 @@ def askQuestion(question: String): String = {
 
 ```scala
 import org.llm4s.agent.Agent
+import org.llm4s.config.Llm4sConfig
+import org.llm4s.llmconnect.LLMConnect
 import org.llm4s.toolapi.{ ToolFunction, ToolRegistry }
 
 def getCurrentTime(): String =
@@ -347,7 +351,8 @@ val timeTool = ToolFunction(
 )
 
 val result = for {
-  client <- LLMConnect.create()
+  providerConfig <- Llm4sConfig.provider()
+  client <- LLMConnect.getClient(providerConfig)
   tools = new ToolRegistry(Seq(timeTool))
   agent = new Agent(client)
   state <- agent.run("What time is it?", tools)
@@ -357,9 +362,14 @@ val result = for {
 ### Recipe 3: Streaming Chat
 
 ```scala
+import org.llm4s.config.Llm4sConfig
+import org.llm4s.llmconnect.LLMConnect
+import org.llm4s.llmconnect.model.UserMessage
+
 def streamChat(message: String): Unit = {
   val result = for {
-    client <- LLMConnect.create()
+    providerConfig <- Llm4sConfig.provider()
+    client <- LLMConnect.getClient(providerConfig)
     stream <- client.completeStreaming(
       List(UserMessage(message)),
       None
@@ -457,7 +467,7 @@ val state2 = agent.continueConversation(
 4. Experiment with different providers
 
 ### Week 2: Agents & Tools
-1. Read [Agent Framework](/guide/agents)
+1. Read [Agent Framework](/examples/#agent-examples)
 2. Build a simple agent with one tool
 3. Try [Tool Examples](/examples/tools)
 4. Add multiple tools
@@ -466,7 +476,7 @@ val state2 = agent.continueConversation(
 1. Implement [Multi-Turn Conversations](/guide/multi-turn)
 2. Add [Context Management](/guide/context-management)
 3. Set up [Observability](/guide/observability)
-4. Try [Long Conversation Example](/examples/agents#long-conversation)
+4. Try [Long Conversation Example](/examples/#long-conversation)
 
 ### Week 4: Production
 1. Read [Production Guide](/advanced/production)
@@ -486,7 +496,7 @@ val state2 = agent.continueConversation(
 ### Examples
 - [All Examples](/examples/) - Browse 46 examples
 - [Basic](/examples/basic) - Getting started
-- [Agents](/examples/agents) - Agent patterns
+- [Agents](/examples/#agent-examples) - Agent patterns
 - [Tools](/examples/tools) - Tool integration
 
 ### Reference
@@ -527,7 +537,7 @@ Pick your learning path and start building:
 <div class="grid">
   <div class="grid-item">
     <h3>🤖 Build Agents</h3>
-    <a href="/guide/agents">Agent Framework →</a>
+    <a href="/examples/#agent-examples">Agent Framework →</a>
   </div>
 
   <div class="grid-item">

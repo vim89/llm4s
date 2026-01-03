@@ -1167,7 +1167,7 @@ class HandoffExecutionSpec extends AnyFlatSpec with Matchers {
 class HandoffE2ESpec extends AnyFlatSpec with Matchers {
   "Multi-agent handoff" should "work end-to-end" in {
     // Real LLM clients (requires API keys)
-    val client = LLMConnect.fromEnv().toOption.get
+    val client = Llm4sConfig.provider().flatMap(LLMConnect.getClient).toOption.get
 
     val generalAgent = new Agent(client)
     val mathAgent = new Agent(client)
@@ -1370,14 +1370,16 @@ for {
 ```scala
 package org.llm4s.samples.handoff
 
-import org.llm4s.agent.{Agent, Handoff}
+import org.llm4s.agent.{ Agent, Handoff }
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.llmconnect.LLMConnect
 import org.llm4s.llmconnect.model.SystemMessage
 import org.llm4s.toolapi.ToolRegistry
 
 object SimpleTriageHandoffExample extends App {
   val result = for {
-    client <- LLMConnect.fromEnv()
+    providerConfig <- Llm4sConfig.provider()
+    client <- LLMConnect.getClient(providerConfig)
 
     // Create specialized agents
     supportAgent = new Agent(client)
@@ -1429,14 +1431,16 @@ object SimpleTriageHandoffExample extends App {
 ```scala
 package org.llm4s.samples.handoff
 
-import org.llm4s.agent.{Agent, Handoff}
+import org.llm4s.agent.{ Agent, Handoff }
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.llmconnect.LLMConnect
 import org.llm4s.llmconnect.model.SystemMessage
 import org.llm4s.toolapi.ToolRegistry
 
 object MathSpecialistHandoffExample extends App {
   val result = for {
-    client <- LLMConnect.fromEnv()
+    providerConfig <- Llm4sConfig.provider()
+    client <- LLMConnect.getClient(providerConfig)
 
     // General agent
     generalAgent = new Agent(client)
@@ -1479,14 +1483,16 @@ object MathSpecialistHandoffExample extends App {
 ```scala
 package org.llm4s.samples.handoff
 
-import org.llm4s.agent.{Agent, Handoff}
+import org.llm4s.agent.{ Agent, Handoff }
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.llmconnect.LLMConnect
 import org.llm4s.llmconnect.model.SystemMessage
 import org.llm4s.toolapi.ToolRegistry
 
 object ContextPreservationExample extends App {
   val result = for {
-    client <- LLMConnect.fromEnv()
+    providerConfig <- Llm4sConfig.provider()
+    client <- LLMConnect.getClient(providerConfig)
 
     generalAgent = new Agent(client)
     specialistAgent = new Agent(client)
@@ -1527,14 +1533,16 @@ object ContextPreservationExample extends App {
 ```scala
 package org.llm4s.samples.handoff
 
-import org.llm4s.agent.{Agent, Handoff}
+import org.llm4s.agent.{ Agent, Handoff }
 import org.llm4s.agent.guardrails.builtin._
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.llmconnect.LLMConnect
 import org.llm4s.toolapi.ToolRegistry
 
 object HandoffWithGuardrailsExample extends App {
   val result = for {
-    client <- LLMConnect.fromEnv()
+    providerConfig <- Llm4sConfig.provider()
+    client <- LLMConnect.getClient(providerConfig)
 
     generalAgent = new Agent(client)
     technicalAgent = new Agent(client)

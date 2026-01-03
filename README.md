@@ -2,7 +2,7 @@
 
 <h4 align="center">
     <a href="https://github.com/llm4s/llm4s/blob/main/LICENSE">
-        <img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt ="License">
+        <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt ="License">
     </a>
     <a href="https://discord.gg/4uvTPn6qww">
         <img src="https://img.shields.io/static/v1?label=Chat%20on&message=Discord&color=blue&logo=Discord&style=flat-square" alt="Discord">
@@ -92,10 +92,12 @@ LLM4S provides a simple, robust, and scalable framework for building LLM applica
 
 ## Project Structure
 
-- **llm4s**: Main project - contains the core LLM4S framework
-- **shared**: Shared code between main project and workspace runner
-- **workspaceRunner**: Code that performs the requested actions on the workspace within the docker container
-- **samples**: Usage examples demonstrating various features
+- **modules/core**: Core LLM4S framework
+- **modules/workspace**: Workspace runner/client/shared
+- **modules/crossTest**: Cross-version tests
+- **modules/samples**: Usage examples
+- **docs**: Documentation site and references
+- **hooks**: Pre-commit hook installer
 
 ## Getting Started
 
@@ -185,23 +187,23 @@ This will allow you to run the non-containerized examples.
 sbt "samples/runMain org.llm4s.samples.basic.BasicLLMCallingExample"
 ```
 
-### Run containerised test
+### Run containerized demo
 
 ```bash
 sbt docker:publishLocal
-sbt "samples/runMain org.llm4s.samples.workspace.ContainerisedWorkspaceDemo"
+sbt "workspaceSamples/runMain org.llm4s.samples.workspace.ContainerisedWorkspaceDemo"
 
 # Using Scala 2.13
-sbt ++2.13.14 "samples/runMain org.llm4s.samples.basic.BasicLLMCallingExample"
+sbt ++2.13.16 "samples/runMain org.llm4s.samples.basic.BasicLLMCallingExample"
 ```
 
 ### Cross Compilation
 
-LLM4S supports both Scala 2.13 and Scala 3.3. The codebase is set up to handle version-specific code through source directories:
+LLM4S supports Scala 2.13 and Scala 3.7.1. The build supports version-specific code through source directories when needed:
 
-- `src/main/scala` - Common code for both Scala 2.13 and 3.3
-- `src/main/scala-2.13` - Scala 2.13 specific code
-- `src/main/scala-3` - Scala 3 specific code
+- `src/main/scala` - Common code for all versions
+- `src/main/scala-2.13` - Scala 2.13 specific code (add when needed)
+- `src/main/scala-3` - Scala 3 specific code (add when needed)
 
 When you need to use version-specific features, place the code in the appropriate directory.
 
@@ -233,7 +235,7 @@ sbt testCross
 sbt fullCrossTest
 ```
 
-> **Note:** For detailed information about our cross-testing strategy and setup, see [crossTest/README.md](crossTest/README.md)
+> **Note:** For detailed information about our cross-testing strategy and setup, see [modules/crossTest/README.md](modules/crossTest/README.md)
 
 ## Roadmap
 
@@ -442,7 +444,7 @@ Use these loaders to convert flat keys and HOCON paths into typed, validated set
   - Key: `EMBEDDING_PROVIDER` or `llm4s.embeddings.provider` (required)
   - Supported providers: `openai`, `voyage`, `ollama`
   - Type: `(String, EmbeddingProviderConfig)`
-  - Loader: `ConfigReader.Embeddings()`
+  - Loader: `Llm4sConfig.embeddings()`
   - Provider-specific keys:
     - **OpenAI**: `OPENAI_EMBEDDING_BASE_URL`, `OPENAI_EMBEDDING_MODEL`, `OPENAI_API_KEY`
     - **Voyage**: `VOYAGE_EMBEDDING_BASE_URL`, `VOYAGE_EMBEDDING_MODEL`, `VOYAGE_API_KEY`
@@ -819,7 +821,7 @@ Want to connect with maintainers? The LLM4S project is maintained by:
 
 ## License
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 

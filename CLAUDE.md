@@ -13,7 +13,7 @@
 ## Core Principles
 
 1. **Use `Result[A]` instead of exceptions** - `type Result[+A] = Either[LLMError, A]`
-2. **Use `ConfigReader` for all config** - Never use `sys.env` or `System.getenv` directly
+2. **Use `Llm4sConfig` at the app edge** - Never use `sys.env`, `System.getenv`, or `ConfigSource.default` directly in core code
 3. **Use type-safe newtypes** - `ModelName`, `ApiKey`, `ConversationId` etc.
 4. **Cross-version compatibility** - Test with `sbt +test`
 
@@ -33,7 +33,7 @@ llm4s/
 
 **Key paths in `modules/core/src/main/scala/org/llm4s/`:**
 - `types/` - Result type, newtypes
-- `config/` - ConfigReader
+- `config/` - Llm4sConfig + typed loaders
 - `llmconnect/` - LLM client and providers
 - `agent/` - Agent framework, guardrails, memory, handoffs
 - `toolapi/` - Tool calling, built-in tools
@@ -85,7 +85,7 @@ OLLAMA_EMBEDDING_MODEL=nomic-embed-text           # or mxbai-embed-large, all-mi
 
 ```scala
 // GOOD - Return Result
-def parseConfig(): Result[Config] = ConfigReader.LLMConfig()
+def loadProviderConfig(): Result[ProviderConfig] = Llm4sConfig.provider()
 
 // BAD - Don't throw
 def parseConfig(): Config = throw new RuntimeException()
@@ -99,7 +99,7 @@ Try("123".toInt).toResult
 
 ```scala
 // GOOD
-val provider: Result[ProviderConfig] = ConfigReader.Provider()
+val provider: Result[ProviderConfig] = Llm4sConfig.provider()
 
 // BAD
 val apiKey = sys.env.get("OPENAI_API_KEY")
@@ -109,12 +109,12 @@ val apiKey = sys.env.get("OPENAI_API_KEY")
 
 - Types: `PascalCase` (`LLMClient`, `CompletionResponse`)
 - Values/functions: `camelCase` (`apiKey`, `createClient`)
-- Constants: `camelCase` (`defaultTimeout`, not `DEFAULT_TIMEOUT`)
+- Constants: `SCREAMING_SNAKE_CASE` (`DEFAULT_TIMEOUT`)
 
 ### Scalafix Rules
 
 **Banned patterns** (enforced via `.scalafix.conf`):
-- `ConfigFactory.load()`, `sys.env()`, `System.getenv()` - use ConfigReader
+- `ConfigFactory.load()`, `sys.env()`, `System.getenv()` - use `Llm4sConfig` in app/test code
 - `try/catch/finally` outside safety packages - use `Result`
 - Infix operators - use `list.map(f)` not `list map f`
 
@@ -124,7 +124,8 @@ val apiKey = sys.env.get("OPENAI_API_KEY")
 
 ```scala
 for {
-  client <- LLMConnect.fromEnv()
+  providerConfig <- Llm4sConfig.provider()
+  client <- LLMConnect.getClient(providerConfig)
   agent = new Agent(client)
   tools = new ToolRegistry(Seq(myTool))
   state <- agent.run("Query here", tools)
@@ -260,7 +261,8 @@ class MySpec extends AnyFlatSpec with Matchers {
 ## Resources
 
 - [README.md](README.md) - Getting started
-- [docs/AGENTS.md](docs/AGENTS.md) - Agent framework
+- [docs/examples/index.md](docs/examples/index.md) - Agent examples
+- [docs/design/agent-framework-roadmap.md](docs/design/agent-framework-roadmap.md) - Agent framework roadmap
 - [docs/design/](docs/design/) - Design documents
 - Discord: https://discord.gg/4uvTPn6qww
 - Issues: https://github.com/llm4s/llm4s/issues

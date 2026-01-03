@@ -377,9 +377,12 @@ val state3 = agent.continueConversation(state2, "Next query")  // Pure
 ```scala
 // llm4s doesn't require cats-effect, but works seamlessly with it
 import cats.effect.IO
+import org.llm4s.config.Llm4sConfig
+import org.llm4s.llmconnect.LLMConnect
 
 val program: IO[AgentState] = for {
-  client <- IO.fromEither(LLMConnect.fromEnv())
+  providerConfig <- IO.fromEither(Llm4sConfig.provider())
+  client <- IO.fromEither(LLMConnect.getClient(providerConfig))
   state1 <- IO.fromEither(agent.run("Query", tools))
   state2 <- IO.fromEither(agent.continueConversation(state1, "Next"))
 } yield state2
@@ -562,7 +565,7 @@ state2.conversation.messageCount  // 2 ✓ As expected
 | Feature | llm4s | OpenAI Agents SDK | Notes |
 |---------|-------|-------------------|-------|
 | **Multi-Provider Support** | ✅ OpenAI, Anthropic, Azure, Ollama | ✅ 100+ providers | OpenAI broader support |
-| **Configuration System** | ✅ `ConfigReader` (type-safe) | ⚠️ Standard env vars | llm4s advantage |
+| **Configuration System** | ✅ `Llm4sConfig` (type-safe) | ⚠️ Standard env vars | llm4s advantage |
 | **Model Selection** | ✅ Per-request override | ✅ Per-agent config | Similar |
 | **Temperature Control** | ✅ `CompletionOptions` | ✅ `ModelSettings` | Similar |
 | **Reasoning Modes** | ✅ ReasoningEffort (Phase 4.1) | ✅ none/low/medium/high | **PARITY** (Phase 4.1) |
@@ -894,7 +897,7 @@ class FactualityGuardrail(context: String) extends LLMGuardrail {
    - Valuable for enterprise Scala users
 
 6. **Configuration System** ⭐⭐⭐
-   - Type-safe `ConfigReader`
+   - Type-safe `Llm4sConfig`
    - Better than raw environment variables
    - Centralized configuration management
 

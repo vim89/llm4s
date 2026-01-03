@@ -245,6 +245,7 @@ addSbtPlugin("au.com.onegeek" %% "sbt-dotenv" % "2.1.233")
 Create a simple test file `VerifyInstall.scala`:
 
 ```scala
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.llmconnect.LLMConnect
 import org.llm4s.llmconnect.model.UserMessage
 
@@ -252,7 +253,8 @@ object VerifyInstall extends App {
   println("Testing LLM4S installation...")
 
   val result = for {
-    client <- LLMConnect.create()
+    providerConfig <- Llm4sConfig.provider()
+    client <- LLMConnect.getClient(providerConfig)
     response <- client.complete(
       messages = List(UserMessage("Say 'LLM4S is working!'")),
       model = None

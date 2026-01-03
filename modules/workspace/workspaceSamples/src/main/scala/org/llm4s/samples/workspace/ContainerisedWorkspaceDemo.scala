@@ -25,8 +25,8 @@ object ContainerisedWorkspaceDemo {
     println(
       """
         |Usage:
-        |  sbt "samples/runMain org.llm4s.samples.workspace.ContainerisedWorkspaceDemo --image <repo/name:tag> [--port <port>] [--workspace <path>]"
-        |  sbt "samples/runMain org.llm4s.samples.workspace.ContainerisedWorkspaceDemo --tag <tag> [--repo <repo/name>] [--port <port>] [--workspace <path>]"
+        |  sbt "workspaceSamples/runMain org.llm4s.samples.workspace.ContainerisedWorkspaceDemo --image <repo/name:tag> [--port <port>] [--workspace <path>]"
+        |  sbt "workspaceSamples/runMain org.llm4s.samples.workspace.ContainerisedWorkspaceDemo --tag <tag> [--repo <repo/name>] [--port <port>] [--workspace <path>]"
         |
         |Options:
         |  --image       Full Docker image reference, e.g. "llm4s/workspace-runner:1.2.3" (takes precedence)
@@ -36,8 +36,8 @@ object ContainerisedWorkspaceDemo {
         |  --workspace   Host path to mount at /workspace (default: ~/workspace-demo)
         |
         |Examples:
-        |  sbt "samples/runMain org.llm4s.samples.workspace.ContainerisedWorkspaceDemo --image llm4s/workspace-runner:0.1.11-abc-SNAPSHOT --port 18080"
-        |  sbt "samples/runMain org.llm4s.samples.workspace.ContainerisedWorkspaceDemo --tag 0.1.11-abc-SNAPSHOT --repo llm4s/workspace-runner"
+        |  sbt "workspaceSamples/runMain org.llm4s.samples.workspace.ContainerisedWorkspaceDemo --image llm4s/workspace-runner:0.1.11-abc-SNAPSHOT --port 18080"
+        |  sbt "workspaceSamples/runMain org.llm4s.samples.workspace.ContainerisedWorkspaceDemo --tag 0.1.11-abc-SNAPSHOT --repo llm4s/workspace-runner"
         |
         |Notes:
         |  - Docker repository names must be lowercase.

@@ -94,11 +94,15 @@ The harmonic mean of all metrics, providing a single quality score. This is what
 ### Basic Evaluation
 
 ```scala
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.rag.evaluation._
 import org.llm4s.llmconnect.LLMConnect
 
 // Initialize
-val llm = LLMConnect.fromEnv().getOrElse(???)
+val llm = Llm4sConfig
+  .provider()
+  .flatMap(LLMConnect.getClient)
+  .fold(_ => ???, identity)
 val evaluator = new RAGASEvaluator(llm)
 
 // Create an evaluation sample
@@ -243,12 +247,19 @@ Compares embedding quality across providers.
 ### Custom Benchmark Suite
 
 ```scala
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.rag.benchmark._
-import org.llm4s.llmconnect.{LLMConnect, EmbeddingClient}
+import org.llm4s.llmconnect.{ EmbeddingClient, LLMConnect }
 
 // Initialize clients
-val llm = LLMConnect.fromEnv().getOrElse(???)
-val embed = EmbeddingClient.fromEnv().getOrElse(???)
+val llm = Llm4sConfig
+  .provider()
+  .flatMap(LLMConnect.getClient)
+  .fold(_ => ???, identity)
+val embed = Llm4sConfig
+  .embeddings()
+  .flatMap { case (provider, cfg) => EmbeddingClient.from(provider, cfg) }
+  .fold(_ => ???, identity)
 val runner = new BenchmarkRunner(llm, embed)
 
 // Define custom experiments

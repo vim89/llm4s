@@ -270,6 +270,7 @@ class StreamingAccumulator {
 ### Basic Reasoning
 
 ```scala
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.llmconnect.LLMConnect
 import org.llm4s.llmconnect.model._
 
@@ -279,7 +280,8 @@ val options = CompletionOptions()
   .copy(maxTokens = Some(4096))
 
 for {
-  client <- LLMConnect.fromEnv()
+  providerConfig <- Llm4sConfig.provider()
+  client <- LLMConnect.getClient(providerConfig)
   response <- client.complete(
     Conversation.user("Solve: What is the probability of drawing 3 aces from a deck of cards?"),
     options
@@ -300,7 +302,8 @@ val options = CompletionOptions()
   .copy(maxTokens = Some(4096))
 
 for {
-  client <- LLMConnect.fromEnv()  // LLM_MODEL=anthropic/claude-sonnet-4-5-latest
+  providerConfig <- Llm4sConfig.provider()  // LLM_MODEL=anthropic/claude-sonnet-4-5-latest
+  client <- LLMConnect.getClient(providerConfig)
   response <- client.complete(conversation, options)
 } yield response.thinking
 ```
@@ -309,13 +312,15 @@ for {
 
 ```scala
 import org.llm4s.agent.Agent
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.toolapi.ToolRegistry
 
 val options = CompletionOptions()
   .withReasoning(ReasoningEffort.Medium)
 
 for {
-  client <- LLMConnect.fromEnv()
+  providerConfig <- Llm4sConfig.provider()
+  client <- LLMConnect.getClient(providerConfig)
   agent = new Agent(client)
   state <- agent.run(
     "Analyze this complex problem step by step",

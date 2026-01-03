@@ -1,9 +1,9 @@
 Scalafix: Ban Environment Variable Access
 
 Overview
-- Purpose: Prevent direct access to environment variables to encourage centralized configuration via `ConfigReader`.
+- Purpose: Prevent direct access to environment variables to encourage centralized configuration via `Llm4sConfig`.
 - Enforced APIs: `sys.env` and `java.lang.System.getenv(...)`.
-- Message: Violations emit the error "use ConfigReader".
+- Message: Violations emit guidance to use `Llm4sConfig`.
 
 What's Included
 - Plugin: `sbt-scalafix` (see `project/plugins.sbt`).
@@ -13,17 +13,14 @@ What's Included
   This approach is syntactic and does not require SemanticDB.
 
 Running Scalafix
-- Lint on compile: Enabled per-project.
-  - Enabled: `root`, `samples`, `shared`
-  - Disabled: `workspaceRunner`
-  - Violations are warnings and do not fail the build.
+- Lint on compile: Disabled by default (`scalafixOnCompile := false`).
 - Manual run:
   - `sbt scalafixAll` to check all modules.
   - `sbt Test/scalafix` to check only test sources.
 
 Violation Examples
-- `val v = sys.env("API_KEY")` → warning: use ConfigReader
-- `val v = System.getenv("API_KEY")` → warning: use ConfigReader
+- `val v = sys.env("API_KEY")` → warning: use `Llm4sConfig`
+- `val v = System.getenv("API_KEY")` → warning: use `Llm4sConfig`
 
 Suppressing a Finding (discouraged)
 - Next line only: add `// scalafix:ok NoSysEnv` or `// scalafix:ok NoSystemGetenv`.
@@ -32,13 +29,13 @@ Use sparingly and document why the exception is necessary.
 
 Migration Guidance
 - Replace env access with a typed configuration layer, for example:
-  - Define a `ConfigReader` that validates and loads values (e.g., from Typesafe Config, system properties, or injected config), and use it where needed.
+  - Use `Llm4sConfig` to validate and load values (e.g., from Typesafe Config, system properties, or injected config), and use it at the app edge.
   - Avoid hard dependencies on the process environment in library code; prefer dependency injection.
 
 Files Changed
 - `.scalafix.conf`: Adds `DisableSyntax` regex rules with custom messages.
 - `project/plugins.sbt`: Adds the `sbt-scalafix` plugin.
-- `build.sbt`: Enables `scalafixOnCompile` only on `root` and `samples`.
+- `build.sbt`: Disables `scalafixOnCompile` by default; use manual runs in CI or locally.
 
 Notes
 - The rule is syntactic and works for both Scala 2.13 and Scala 3 without SemanticDB.

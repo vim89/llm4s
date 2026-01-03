@@ -535,9 +535,13 @@ val cohereReranker = RerankerFactory.cohere(
 // Passthrough reranker (no-op, preserves original order)
 val passthrough = RerankerFactory.passthrough
 
-// From environment variables
-// Set RERANK_PROVIDER=cohere, COHERE_API_KEY=xxx
-val fromEnv = RerankerFactory.fromEnv(configReader)
+// From typed config
+val config = RerankProviderConfig(
+  apiKey = "your-api-key",
+  model = "rerank-english-v3.0",
+  baseUrl = "https://api.cohere.ai"
+)
+val fromConfig = RerankerFactory.fromConfig(Some(config))
 ```
 
 ### Direct Reranking API
@@ -694,11 +698,15 @@ chunks.foreach { chunk =>
 ### Complete RAG Example
 
 ```scala
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.vectorstore._
-import org.llm4s.llmconnect.{LLMConnect, EmbeddingClient}
+import org.llm4s.llmconnect.{ EmbeddingClient, LLMConnect }
 
 // 1. Create embedding client and vector store
-val embeddingClient = EmbeddingClient.fromEnv().getOrElse(???)
+val embeddingClient = Llm4sConfig
+  .embeddings()
+  .flatMap { case (provider, cfg) => EmbeddingClient.from(provider, cfg) }
+  .fold(_ => ???, identity)
 val vectorStore = VectorStoreFactory.inMemory().getOrElse(???)
 
 // 2. Ingest documents
@@ -731,7 +739,10 @@ $context
 Answer this question: $query"""
 
 // 5. Generate response
-val llm = LLMConnect.fromEnv().getOrElse(???)
+val llm = Llm4sConfig
+  .provider()
+  .flatMap(LLMConnect.getClient)
+  .fold(_ => ???, identity)
 val response = llm.complete(prompt)
 ```
 

@@ -217,6 +217,8 @@ val context = withEntity.flatMap(_.getRelevantContext("Tell me about Scala"))
 ```scala
 import org.llm4s.agent.Agent
 import org.llm4s.agent.memory._
+import org.llm4s.config.Llm4sConfig
+import org.llm4s.llmconnect.LLMConnect
 
 // Setup
 val manager = SimpleMemoryManager.empty
@@ -228,7 +230,8 @@ val userContext = manager.getUserContext(Some("user1")).getOrElse("")
 
 // Run agent with context
 val result = for {
-  client <- LLMConnect.fromEnv()
+  providerConfig <- Llm4sConfig.provider()
+  client <- LLMConnect.getClient(providerConfig)
   agent = new Agent(client)
   state <- agent.run(
     query = "Help me optimize this code",
@@ -385,8 +388,16 @@ The Vector Store backend adds semantic search capabilities using embeddings:
 ### Embedding Services
 
 ```scala
+import org.llm4s.config.Llm4sConfig
+import org.llm4s.llmconnect.EmbeddingClient
+import org.llm4s.llmconnect.config.EmbeddingModelConfig
+
 // For production: Use LLM provider
-val embeddingService = LLMEmbeddingService.fromEnv()
+val embeddingService = for {
+  (provider, cfg) <- Llm4sConfig.embeddings()
+  client <- EmbeddingClient.from(provider, cfg)
+  model <- Llm4sConfig.textEmbeddingModel()
+} yield LLMEmbeddingService(client, EmbeddingModelConfig(model.modelName, model.dimensions))
 
 // For testing: Use mock service (deterministic, fast)
 val mockService = MockEmbeddingService(dimensions = 1536)
@@ -402,7 +413,7 @@ val testStore = VectorMemoryStore.inMemory()
 
 // Create with real embeddings (production)
 val prodStore = for {
-  service <- LLMEmbeddingService.fromEnv()
+  service <- embeddingService
   store <- VectorMemoryStore("/path/to/db", service, MemoryStoreConfig.default)
 } yield store
 

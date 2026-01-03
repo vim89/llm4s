@@ -255,9 +255,12 @@ def continueConversationWithEvents(
 ```scala
 import org.llm4s.agent._
 import org.llm4s.agent.streaming._
+import org.llm4s.config.Llm4sConfig
+import org.llm4s.llmconnect.LLMConnect
 
 val result = for {
-  client <- LLMConnect.fromEnv()
+  providerConfig <- Llm4sConfig.provider()
+  client <- LLMConnect.getClient(providerConfig)
   agent = new Agent(client)
 
   finalState <- agent.runWithEvents(

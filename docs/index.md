@@ -14,7 +14,7 @@ A comprehensive, type-safe framework for building LLM-powered applications in Sc
 
 [![Maven Central](https://img.shields.io/maven-central/v/org.llm4s/llm4s-core_3.svg?label=Maven%20Central)](https://search.maven.org/search?q=g:org.llm4s%20AND%20a:llm4s-core_3)
 [![CI](https://github.com/llm4s/llm4s/actions/workflows/ci.yml/badge.svg)](https://github.com/llm4s/llm4s/actions/workflows/ci.yml)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Discord](https://img.shields.io/discord/1234567890?color=7289da&label=Discord&logo=discord&logoColor=white)](https://discord.gg/4uvTPn6qww)
 
 [Get Started](/getting-started/installation){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
@@ -27,12 +27,14 @@ A comprehensive, type-safe framework for building LLM-powered applications in Sc
 LLM4S brings the power of large language models to the Scala ecosystem with a focus on **type safety**, **functional programming**, and **production readiness**.
 
 ```scala
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.llmconnect.LLMConnect
 import org.llm4s.llmconnect.model.UserMessage
 
 // Simple LLM call with automatic provider selection
 val result = for {
-  client <- LLMConnect.create()
+  providerConfig <- Llm4sConfig.provider()
+  client <- LLMConnect.getClient(providerConfig)
   response <- client.complete(
     messages = List(UserMessage("Explain quantum computing")),
     model = None  // Uses configured model
@@ -151,12 +153,14 @@ export OPENAI_API_KEY=sk-...
 ### Your First Program
 
 ```scala
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.llmconnect.LLMConnect
 import org.llm4s.llmconnect.model._
 
 object HelloLLM extends App {
   val result = for {
-    client <- LLMConnect.create()
+    providerConfig <- Llm4sConfig.provider()
+    client <- LLMConnect.getClient(providerConfig)
     response <- client.complete(
       messages = List(
         SystemMessage("You are a helpful assistant."),
@@ -297,7 +301,7 @@ Explore **69 working examples** covering all features:
 - **Discord**: [Join our community](https://discord.gg/4uvTPn6qww)
 - **GitHub**: [llm4s/llm4s](https://github.com/llm4s/llm4s)
 - **Starter Kit**: [llm4s.g8](https://github.com/llm4s/llm4s.g8)
-- **License**: Apache 2.0
+- **License**: MIT
 
 ---
 

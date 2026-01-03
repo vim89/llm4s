@@ -217,16 +217,16 @@ context {
 ### Access Configuration in Code
 
 ```scala
-import org.llm4s.config.ConfigReader
-
-// Load LLM configuration
-val llmConfig = ConfigReader.LLMConfig()
+import org.llm4s.config.Llm4sConfig
 
 // Load provider-specific config
-val providerConfig = ConfigReader.Provider()
+val providerConfig = Llm4sConfig.provider()
 
 // Load tracing config
-val tracingConfig = ConfigReader.TracingConf()
+val tracingConfig = Llm4sConfig.tracing()
+
+// Load embeddings config
+val embeddingsConfig = Llm4sConfig.embeddings()
 ```
 
 ---
@@ -374,14 +374,22 @@ ollama pull nomic-embed-text
 ### Using Embeddings in Code
 
 ```scala
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.llmconnect.EmbeddingClient
+import org.llm4s.llmconnect.config.EmbeddingModelConfig
 import org.llm4s.agent.memory.LLMEmbeddingService
 
-// Create embedding client from environment
-val client = EmbeddingClient.fromEnv()
+// Create embedding client from typed config
+val clientResult = for {
+  (provider, cfg) <- Llm4sConfig.embeddings()
+  client <- EmbeddingClient.from(provider, cfg)
+} yield client
 
 // Or use the higher-level service
-val embeddingService = LLMEmbeddingService.fromEnv()
+val embeddingServiceResult = for {
+  client <- clientResult
+  model <- Llm4sConfig.textEmbeddingModel()
+} yield LLMEmbeddingService(client, EmbeddingModelConfig(model.modelName, model.dimensions))
 ```
 
 ### System Properties (Alternative)
@@ -458,7 +466,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 Your code remains the same:
 
 ```scala
-val client = LLMConnect.create()  // Auto-selects based on LLM_MODEL
+val client = Llm4sConfig.provider().flatMap(LLMConnect.getClient)
 ```
 
 ---
@@ -540,7 +548,9 @@ sbt run
 5. **Validate configuration** at startup
 
 ```scala
-val config = ConfigReader.Provider()
+import org.llm4s.config.Llm4sConfig
+
+val config = Llm4sConfig.provider()
 config.fold(
   error => {
     println(s"Configuration error: $error")
@@ -554,7 +564,7 @@ config.fold(
 
 1. **Don't hardcode API keys** in source code
 2. **Don't commit .env files** to version control
-3. **Don't use System.getenv() directly** (use ConfigReader)
+3. **Don't use System.getenv() directly** (use Llm4sConfig)
 4. **Don't mix production keys** in development
 5. **Don't skip validation** - fail fast on bad config
 
@@ -563,16 +573,15 @@ config.fold(
 ## Validation Example
 
 ```scala
-import org.llm4s.config.ConfigReader
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.llmconnect.LLMConnect
 
 object ValidateConfig extends App {
   println("Validating LLM4S configuration...")
 
   val validation = for {
-    llmConfig <- ConfigReader.LLMConfig()
-    providerConfig <- ConfigReader.Provider()
-    client <- LLMConnect.create()
+    providerConfig <- Llm4sConfig.provider()
+    client <- LLMConnect.getClient(providerConfig)
   } yield {
     println(s"✅ Model: ${providerConfig.model}")
     println(s"✅ Provider: ${providerConfig.getClass.getSimpleName}")
@@ -616,10 +625,10 @@ LLM_MODEL=gpt-4o
 
 **Debug:**
 ```scala
-import com.typesafe.config.ConfigFactory
+import org.llm4s.config.Llm4sConfig
 
-val config = ConfigFactory.load()
-println(config.getString("llm.model"))
+val config = Llm4sConfig.provider()
+println(config)
 ```
 
 ### Problem: "Provider mismatch"
@@ -651,7 +660,7 @@ Configuration complete! Now you can:
 
 ## Additional Resources
 
-- **[ConfigReader API](/api/config)** - Detailed API documentation
+- **[Llm4sConfig API](/api/#explicit-configuration)** - Detailed API documentation
 - **[Environment Variables Reference](/reference/env-vars)** - Complete list
 - **[Production Guide](/advanced/production)** - Production best practices
 - **[Discord Community](https://discord.gg/4uvTPn6qww)** - Get help with configuration

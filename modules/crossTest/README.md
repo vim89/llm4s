@@ -6,8 +6,8 @@ This directory contains specialized test projects that verify the cross-version 
 
 ## Test Projects Structure
 
-- `crossTestScala2/` - Tests running against Scala 2.13
-- `crossTestScala3/` - Tests running against Scala 3.x
+- `scala2/` - Tests running against Scala 2.13 (sbt project: `crossTestScala2`)
+- `scala3/` - Tests running against Scala 3.x (sbt project: `crossTestScala3`)
 
 ## Why Test Against Published JARs?
 

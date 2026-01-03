@@ -1464,11 +1464,13 @@ package org.llm4s.samples.guardrails
 
 import org.llm4s.agent.Agent
 import org.llm4s.agent.guardrails.builtin._
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.llmconnect.LLMConnect
 
 object BasicInputValidationExample extends App {
   val result = for {
-    client <- LLMConnect.fromEnv()
+    providerConfig <- Llm4sConfig.provider()
+    client <- LLMConnect.getClient(providerConfig)
     agent = new Agent(client)
 
     state <- agent.run(
@@ -1497,11 +1499,13 @@ package org.llm4s.samples.guardrails
 
 import org.llm4s.agent.Agent
 import org.llm4s.agent.guardrails.builtin._
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.llmconnect.LLMConnect
 
 object JSONOutputValidationExample extends App {
   val result = for {
-    client <- LLMConnect.fromEnv()
+    providerConfig <- Llm4sConfig.provider()
+    client <- LLMConnect.getClient(providerConfig)
     agent = new Agent(client)
 
     state <- agent.run(
@@ -1536,6 +1540,7 @@ package org.llm4s.samples.guardrails
 
 import org.llm4s.agent.Agent
 import org.llm4s.agent.guardrails.InputGuardrail
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.error.ValidationError
 import org.llm4s.llmconnect.LLMConnect
 import org.llm4s.types.Result
@@ -1562,7 +1567,8 @@ class KeywordRequirementGuardrail(requiredKeywords: Set[String]) extends InputGu
 
 object CustomGuardrailExample extends App {
   val result = for {
-    client <- LLMConnect.fromEnv()
+    providerConfig <- Llm4sConfig.provider()
+    client <- LLMConnect.getClient(providerConfig)
     agent = new Agent(client)
 
     state <- agent.run(
@@ -1591,6 +1597,7 @@ package org.llm4s.samples.guardrails
 
 import org.llm4s.agent.Agent
 import org.llm4s.agent.guardrails.builtin._
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.llmconnect.LLMConnect
 
 object MultiTurnToneValidationExample extends App {
@@ -1604,7 +1611,8 @@ object MultiTurnToneValidationExample extends App {
   )
 
   val result = for {
-    client <- LLMConnect.fromEnv()
+    providerConfig <- Llm4sConfig.provider()
+    client <- LLMConnect.getClient(providerConfig)
     agent = new Agent(client)
 
     // Turn 1: Ask about Scala
@@ -1652,6 +1660,7 @@ package org.llm4s.samples.guardrails
 import org.llm4s.agent.Agent
 import org.llm4s.agent.guardrails._
 import org.llm4s.agent.guardrails.builtin._
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.llmconnect.LLMConnect
 
 object CompositeGuardrailExample extends App {
@@ -1669,7 +1678,8 @@ object CompositeGuardrailExample extends App {
   ))
 
   val result = for {
-    client <- LLMConnect.fromEnv()
+    providerConfig <- Llm4sConfig.provider()
+    client <- LLMConnect.getClient(providerConfig)
     agent = new Agent(client)
 
     state <- agent.run(

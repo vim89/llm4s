@@ -678,12 +678,14 @@ object AgentState {
 
 ```scala
 import org.llm4s.agent.Agent
+import org.llm4s.config.Llm4sConfig
 import org.llm4s.llmconnect.LLMConnect
 import org.llm4s.toolapi.ToolRegistry
 import org.llm4s.toolapi.tools.WeatherTool
 
 val result = for {
-  client <- LLMConnect.fromEnv()
+  providerConfig <- Llm4sConfig.provider()
+  client <- LLMConnect.getClient(providerConfig)
   tools = new ToolRegistry(Seq(WeatherTool.tool))
   agent = new Agent(client)
 
@@ -713,7 +715,8 @@ result.fold(
 
 ```scala
 val result = for {
-  client <- LLMConnect.fromEnv()
+  providerConfig <- Llm4sConfig.provider()
+  client <- LLMConnect.getClient(providerConfig)
   tools = new ToolRegistry(Seq(WeatherTool.tool))
   agent = new Agent(client)
 
@@ -754,7 +757,8 @@ val config = ContextWindowConfig(
 )
 
 val result = for {
-  client <- LLMConnect.fromEnv()
+  providerConfig <- Llm4sConfig.provider()
+  client <- LLMConnect.getClient(providerConfig)
   tools = new ToolRegistry(Seq(...))
   agent = new Agent(client)
 
@@ -774,7 +778,8 @@ val result = for {
 import org.llm4s.agent.AgentState
 
 val result = for {
-  client <- LLMConnect.fromEnv()
+  providerConfig <- Llm4sConfig.provider()
+  client <- LLMConnect.getClient(providerConfig)
   tools = new ToolRegistry(Seq(...))
   agent = new Agent(client)
 
@@ -833,7 +838,8 @@ def runStepsUntilComplete(
 
 // Usage
 val result = for {
-  client <- LLMConnect.fromEnv()
+  providerConfig <- Llm4sConfig.provider()
+  client <- LLMConnect.getClient(providerConfig)
   tools = new ToolRegistry(Seq(...))
   agent = new Agent(client)
   initialState = agent.initialize("Question?", tools)
@@ -1021,7 +1027,8 @@ class AgentMultiTurnIntegrationSpec extends AnyFlatSpec with Matchers {
   "Multi-turn conversation" should "work end-to-end with real LLM" in {
     // This test requires API key - mark as integration test
     val result = for {
-      client <- LLMConnect.fromEnv()
+      providerConfig <- Llm4sConfig.provider()
+      client <- LLMConnect.getClient(providerConfig)
       tools = new ToolRegistry(Seq(...))
       agent = new Agent(client)
 

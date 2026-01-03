@@ -64,11 +64,13 @@ val state2 = agent.continueConversation(state1, "Next question")
 
 ### 4. Explicit Configuration
 
-Use **ConfigReader** instead of raw environment access:
+Use **Llm4sConfig** instead of raw environment access:
 
 ```scala
+import org.llm4s.config.Llm4sConfig
+
 // ✅ Type-safe configuration
-val config = ConfigReader.Provider()
+val config = Llm4sConfig.provider()
 
 // ❌ Raw access
 val apiKey = sys.env("OPENAI_API_KEY")
@@ -88,8 +90,11 @@ val client: LLMClient = ??? // OpenAI, Anthropic, Azure, or Ollama
 ### Pattern 1: Result Chaining
 
 ```scala
+import org.llm4s.config.Llm4sConfig
+
 val result = for {
-  client <- LLMConnect.create()
+  providerConfig <- Llm4sConfig.provider()
+  client <- LLMConnect.getClient(providerConfig)
   response <- client.complete(messages, None)
   parsed <- parseResponse(response)
 } yield parsed
@@ -118,7 +123,7 @@ The main `llm4s-core` module contains:
 ```
 org.llm4s/
 ├── types/              # Result, ModelName, etc.
-├── config/             # ConfigReader
+├── config/             # Llm4sConfig + typed loaders
 ├── llmconnect/         # LLMClient, providers
 ├── agent/              # Agent framework
 ├── toolapi/            # Tool calling

@@ -63,7 +63,7 @@ Detailed design documents for agent framework phases:
 
 ## License
 
-LLM4S is released under the [Apache 2.0 License](https://github.com/llm4s/llm4s/blob/main/LICENSE).
+LLM4S is released under the [MIT License](https://github.com/llm4s/llm4s/blob/main/LICENSE).
 
 ---
 
