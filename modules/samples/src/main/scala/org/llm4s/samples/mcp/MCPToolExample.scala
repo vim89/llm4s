@@ -4,9 +4,6 @@ import org.llm4s.mcp._
 import org.llm4s.toolapi._
 import org.llm4s.toolapi.tools._
 import org.slf4j.LoggerFactory
-import scala.concurrent.duration._
-import pureconfig._
-import pureconfig.ConfigReader
 
 /**
  * Example demonstrating basic MCP tool usage with automatic fallback
@@ -20,42 +17,12 @@ import pureconfig.ConfigReader
 object MCPToolExample {
   private val logger = LoggerFactory.getLogger(getClass)
 
-  /** Configuration for the MCP client example. */
-  case class McpClientConfig(
-    name: String,
-    port: Int,
-    path: String,
-    timeout: FiniteDuration,
-    cacheTTL: FiniteDuration
-  )
-
-  /** Wrapper for the mcp-client section in application.conf. */
-  case class AppSamplesConfig(mcpClient: McpClientConfig)
-
-  /** Wrapper for the samples section in application.conf. */
-  case class AppSamplesWrapper(samples: AppSamplesConfig)
-
-  /** Root wrapper for the llm4s configuration hierarchy. */
-  case class AppConfig(llm4s: AppSamplesWrapper)
-
-  private val mcpClientReader: ConfigReader[McpClientConfig] =
-    ConfigReader.forProduct5("name", "port", "path", "timeout", "cache-ttl")(McpClientConfig.apply)
-
-  private val appSamplesConfigReader: ConfigReader[AppSamplesConfig] =
-    ConfigReader.forProduct1("mcp-client")(AppSamplesConfig.apply)(mcpClientReader)
-
-  private val appSamplesWrapperReader: ConfigReader[AppSamplesWrapper] =
-    ConfigReader.forProduct1("samples")(AppSamplesWrapper.apply)(appSamplesConfigReader)
-
-  implicit private val appConfigReader: ConfigReader[AppConfig] =
-    ConfigReader.forProduct1("llm4s")(AppConfig.apply)(appSamplesWrapperReader)
-
   def main(args: Array[String]): Unit = {
     logger.info("🚀 MCP Tool Example - Basic MCP Tool Usage")
 
-    // Load the configuration from application.conf using PureConfig
-    val config = ConfigSource.default.load[AppConfig] match {
-      case Right(conf) => conf.llm4s.samples.mcpClient
+    // Load the configuration from application.conf using shared MCPConfig
+    val config = MCPConfig.loadClientConfig() match {
+      case Right(conf) => conf
       case Left(failures) =>
         logger.error(s"Failed to load configuration: ${failures.prettyPrint()}")
         sys.exit(1)

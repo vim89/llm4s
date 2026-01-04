@@ -10,8 +10,6 @@ import scala.util.{ Try, Success, Failure }
 import org.llm4s.types.TryOps
 import java.util.UUID
 import scala.collection.mutable
-import pureconfig._
-import pureconfig.ConfigReader
 
 /**
  * MCP Server implementing the 2025-06-18 Streamable HTTP specification.
@@ -30,49 +28,12 @@ import pureconfig.ConfigReader
 object DemonstrationMCPServer {
   private val logger = LoggerFactory.getLogger(getClass)
 
-  /** Configuration for the server's identity returned in the initialize response. */
-  case class ServerInfoConfig(name: String, version: String)
-
-  /**
-   * Main configuration for the MCP server.
-   * @param port The port the HTTP server will bind to.
-   * @param path The base path for MCP endpoints (e.g., "/mcp").
-   * @param serverInfo Identity details for the server.
-   */
-  case class McpServerConfig(
-    port: Int,
-    path: String,
-    serverInfo: ServerInfoConfig
-  )
-
-  /** Wrapper for the mcp-server section in application.conf. */
-  case class AppSamplesConfig(mcpServer: McpServerConfig)
-
-  /** Wrapper for the samples section in application.conf. */
-  case class AppSamplesWrapper(samples: AppSamplesConfig)
-
-  /** Root wrapper for the llm4s configuration hierarchy. */
-  case class AppConfig(llm4s: AppSamplesWrapper)
-
-  implicit private val serverInfoReader: ConfigReader[ServerInfoConfig] =
-    ConfigReader.forProduct2("name", "version")(ServerInfoConfig.apply)
-
-  implicit private val mcpServerReader: ConfigReader[McpServerConfig] =
-    ConfigReader.forProduct3("port", "path", "server-info")(McpServerConfig.apply)
-
-  implicit private val appSamplesConfigReader: ConfigReader[AppSamplesConfig] =
-    ConfigReader.forProduct1("mcp-server")(AppSamplesConfig.apply)
-
-  implicit private val appSamplesWrapperReader: ConfigReader[AppSamplesWrapper] =
-    ConfigReader.forProduct1("samples")(AppSamplesWrapper.apply)
-
-  implicit private val appConfigReader: ConfigReader[AppConfig] =
-    ConfigReader.forProduct1("llm4s")(AppConfig.apply)
+  import MCPConfig.McpServerConfig
 
   def main(args: Array[String]): Unit = {
-    // Load the configuration from application.conf using PureConfig
-    val config = ConfigSource.default.load[AppConfig] match {
-      case Right(conf) => conf.llm4s.samples.mcpServer
+    // Load the configuration from application.conf using shared MCPConfig
+    val config = MCPConfig.loadServerConfig() match {
+      case Right(conf) => conf
       case Left(failures) =>
         logger.error(s"Failed to load configuration: ${failures.prettyPrint()}")
         sys.exit(1)
