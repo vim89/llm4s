@@ -131,9 +131,7 @@ Rank   Config                         RAGAS      Status
 # Set environment variables
 export LLM_MODEL=openai/gpt-4o
 export OPENAI_API_KEY=sk-...
-export EMBEDDING_PROVIDER=openai
-export OPENAI_EMBEDDING_BASE_URL=https://api.openai.com  # Note: no /v1 suffix
-export OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+export EMBEDDING_MODEL=openai/text-embedding-3-small  # Unified provider/model format
 ```
 
 ### Available Benchmark Suites

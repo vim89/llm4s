@@ -64,6 +64,112 @@ class Llm4sConfigEmbeddingsSpec extends AnyWordSpec with Matchers {
         cfg.apiKey shouldBe "vk-test"
       }
     }
+
+    // --- Unified EMBEDDING_MODEL format tests ---
+
+    "load OpenAI embeddings via unified EMBEDDING_MODEL format" in {
+      val props = Map(
+        "llm4s.embeddings.model" -> "openai/text-embedding-3-small",
+        // No explicit baseUrl - should use default
+        "llm4s.openai.apiKey" -> "sk-test"
+      )
+      withProps(props) {
+        val (provider, cfg): (String, EmbeddingProviderConfig) =
+          Llm4sConfig.embeddings().fold(err => fail(err.toString), identity)
+
+        provider shouldBe "openai"
+        cfg.model shouldBe "text-embedding-3-small"
+        cfg.baseUrl shouldBe "https://api.openai.com/v1" // Default base URL
+        cfg.apiKey shouldBe "sk-test"
+      }
+    }
+
+    "load Voyage embeddings via unified EMBEDDING_MODEL format" in {
+      val props = Map(
+        "llm4s.embeddings.model"         -> "voyage/voyage-3",
+        "llm4s.embeddings.voyage.apiKey" -> "vk-test"
+        // No explicit baseUrl - should use default
+      )
+      withProps(props) {
+        val (provider, cfg): (String, EmbeddingProviderConfig) =
+          Llm4sConfig.embeddings().fold(err => fail(err.toString), identity)
+
+        provider shouldBe "voyage"
+        cfg.model shouldBe "voyage-3"
+        cfg.baseUrl shouldBe "https://api.voyageai.com/v1" // Default base URL
+        cfg.apiKey shouldBe "vk-test"
+      }
+    }
+
+    "load Ollama embeddings via unified EMBEDDING_MODEL format" in {
+      val props = Map(
+        "llm4s.embeddings.model" -> "ollama/mxbai-embed-large"
+        // No explicit baseUrl - should use default
+        // No API key needed for Ollama
+      )
+      withProps(props) {
+        val (provider, cfg): (String, EmbeddingProviderConfig) =
+          Llm4sConfig.embeddings().fold(err => fail(err.toString), identity)
+
+        provider shouldBe "ollama"
+        cfg.model shouldBe "mxbai-embed-large"
+        cfg.baseUrl shouldBe "http://localhost:11434" // Default base URL
+        cfg.apiKey shouldBe "not-required"
+      }
+    }
+
+    "prefer unified model format over legacy provider" in {
+      val props = Map(
+        "llm4s.embeddings.model"    -> "openai/text-embedding-3-large", // Takes precedence
+        "llm4s.embeddings.provider" -> "voyage",                        // Should be ignored
+        "llm4s.openai.apiKey"       -> "sk-test"
+      )
+      withProps(props) {
+        val (provider, cfg): (String, EmbeddingProviderConfig) =
+          Llm4sConfig.embeddings().fold(err => fail(err.toString), identity)
+
+        provider shouldBe "openai" // Unified format wins
+        cfg.model shouldBe "text-embedding-3-large"
+      }
+    }
+
+    "allow custom base URL with unified format" in {
+      val props = Map(
+        "llm4s.embeddings.model"          -> "openai/text-embedding-3-small",
+        "llm4s.embeddings.openai.baseUrl" -> "https://custom.openai.com/v1",
+        "llm4s.openai.apiKey"             -> "sk-test"
+      )
+      withProps(props) {
+        val (provider, cfg): (String, EmbeddingProviderConfig) =
+          Llm4sConfig.embeddings().fold(err => fail(err.toString), identity)
+
+        provider shouldBe "openai"
+        cfg.model shouldBe "text-embedding-3-small"
+        cfg.baseUrl shouldBe "https://custom.openai.com/v1" // Custom base URL
+      }
+    }
+
+    "reject invalid embedding model format" in {
+      val props = Map(
+        "llm4s.embeddings.model" -> "invalid-format-no-slash"
+      )
+      withProps(props) {
+        val result = Llm4sConfig.embeddings()
+        result.isLeft shouldBe true
+        result.left.getOrElse(fail()).message should include("Invalid embedding model format")
+      }
+    }
+
+    "reject unknown embedding provider in unified format" in {
+      val props = Map(
+        "llm4s.embeddings.model" -> "unknown-provider/some-model"
+      )
+      withProps(props) {
+        val result = Llm4sConfig.embeddings()
+        result.isLeft shouldBe true
+        result.left.getOrElse(fail()).message should include("Unknown embedding provider")
+      }
+    }
   }
 
   "Llm4sConfig.localEmbeddingModels" should {

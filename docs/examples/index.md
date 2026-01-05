@@ -814,9 +814,8 @@ export LLM_MODEL=openai/gpt-4o
 export OPENAI_API_KEY=sk-...
 sbt "samples/runMain org.llm4s.samples.rag.DocumentQAExample"
 
-# With real OpenAI embeddings
-export OPENAI_EMBEDDING_BASE_URL=https://api.openai.com
-export OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+# With real OpenAI embeddings (unified format)
+export EMBEDDING_MODEL=openai/text-embedding-3-small
 export LLM_MODEL=openai/gpt-4o
 export OPENAI_API_KEY=sk-...
 sbt "samples/runMain org.llm4s.samples.rag.DocumentQAExample"

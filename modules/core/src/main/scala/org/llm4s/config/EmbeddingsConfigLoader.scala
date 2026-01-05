@@ -33,7 +33,8 @@ private[config] object EmbeddingsConfigLoader {
   )
 
   final private case class EmbeddingsSection(
-    provider: Option[String],
+    model: Option[String],    // Unified format: provider/model (e.g., openai/text-embedding-3-small)
+    provider: Option[String], // Legacy fallback
     openai: Option[EmbeddingsOpenAISection],
     voyage: Option[EmbeddingsVoyageSection],
     ollama: Option[EmbeddingsOllamaSection]
@@ -53,7 +54,7 @@ private[config] object EmbeddingsConfigLoader {
     PureConfigReader.forProduct3("apiKey", "baseUrl", "model")(EmbeddingsOllamaSection.apply)
 
   implicit private val embeddingsSectionReader: PureConfigReader[EmbeddingsSection] =
-    PureConfigReader.forProduct4("provider", "openai", "voyage", "ollama")(EmbeddingsSection.apply)
+    PureConfigReader.forProduct5("model", "provider", "openai", "voyage", "ollama")(EmbeddingsSection.apply)
 
   implicit private val embeddingsRootReader: PureConfigReader[EmbeddingsRoot] =
     PureConfigReader.forProduct1("embeddings")(EmbeddingsRoot.apply)
@@ -100,114 +101,139 @@ private[config] object EmbeddingsConfigLoader {
     root: EmbeddingsRoot,
     source: ConfigSource,
   ): Result[(String, EmbeddingProviderConfig)] = {
-    val emb = root.embeddings.getOrElse(EmbeddingsSection(None, None, None, None))
+    val emb = root.embeddings.getOrElse(EmbeddingsSection(None, None, None, None, None))
 
-    emb.provider.map(_.trim.toLowerCase) match {
+    // Check for unified model format first (e.g., "openai/text-embedding-3-small")
+    emb.model.map(_.trim).filter(_.nonEmpty) match {
+      case Some(modelSpec) =>
+        // Parse provider/model format
+        val parts = modelSpec.split("/", 2)
+        if (parts.length == 2) {
+          val (providerName, modelName) = (parts(0).toLowerCase, parts(1))
+          providerName match {
+            case "openai" =>
+              buildOpenAIEmbeddings(emb.openai, source, Some(modelName)).map("openai" -> _)
+            case "voyage" =>
+              buildVoyageEmbeddings(emb.voyage, Some(modelName)).map("voyage" -> _)
+            case "ollama" =>
+              buildOllamaEmbeddings(emb.ollama, Some(modelName)).map("ollama" -> _)
+            case other =>
+              Left(ConfigurationError(s"Unknown embedding provider: $other in '$modelSpec'"))
+          }
+        } else {
+          Left(
+            ConfigurationError(
+              s"Invalid embedding model format: '$modelSpec'. Expected 'provider/model' (e.g., openai/text-embedding-3-small)"
+            )
+          )
+        }
+
       case None =>
-        Left(ConfigurationError("Missing embeddings provider (llm4s.embeddings.provider / EMBEDDING_PROVIDER)"))
-      case Some(provider) =>
-        provider match {
-          case "openai" =>
-            buildOpenAIEmbeddings(emb.openai, source).map("openai" -> _)
-          case "voyage" =>
-            buildVoyageEmbeddings(emb.voyage).map("voyage" -> _)
-          case "ollama" =>
-            buildOllamaEmbeddings(emb.ollama).map("ollama" -> _)
-          case other =>
+        // Fall back to legacy EMBEDDING_PROVIDER approach
+        emb.provider.map(_.trim.toLowerCase) match {
+          case Some("openai") =>
+            buildOpenAIEmbeddings(emb.openai, source, None).map("openai" -> _)
+          case Some("voyage") =>
+            buildVoyageEmbeddings(emb.voyage, None).map("voyage" -> _)
+          case Some("ollama") =>
+            buildOllamaEmbeddings(emb.ollama, None).map("ollama" -> _)
+          case Some(other) =>
             Left(ConfigurationError(s"Unknown embedding provider: $other"))
+          case None =>
+            Left(
+              ConfigurationError(
+                "Missing embedding config: set EMBEDDING_MODEL (e.g., openai/text-embedding-3-small) or EMBEDDING_PROVIDER"
+              )
+            )
         }
     }
   }
 
+  private val DefaultOpenAIEmbeddingBaseUrl = "https://api.openai.com/v1"
+  private val DefaultVoyageEmbeddingBaseUrl = "https://api.voyageai.com/v1"
+  private val DefaultOllamaEmbeddingBaseUrl = "http://localhost:11434"
+
   private def buildOpenAIEmbeddings(
     section: Option[EmbeddingsOpenAISection],
     source: ConfigSource,
-  ): Result[EmbeddingProviderConfig] =
-    section match {
-      case Some(openai) =>
-        val baseUrlOpt = openai.baseUrl.map(_.trim).filter(_.nonEmpty)
-        val modelOpt   = openai.model.map(_.trim).filter(_.nonEmpty)
+    modelOverride: Option[String]
+  ): Result[EmbeddingProviderConfig] = {
+    // Use model from unified format, or fall back to section model
+    val modelOpt = modelOverride.orElse(section.flatMap(_.model)).map(_.trim).filter(_.nonEmpty)
 
-        val baseUrlResult: Result[String] =
-          baseUrlOpt.toRight(
-            ConfigurationError(
-              "Missing OpenAI embeddings baseUrl (llm4s.embeddings.openai.baseUrl / OPENAI_EMBEDDING_BASE_URL)"
-            )
-          )
-        val modelResult: Result[String] =
-          modelOpt.toRight(
-            ConfigurationError(
-              "Missing OpenAI embeddings model (llm4s.embeddings.openai.model / OPENAI_EMBEDDING_MODEL)"
-            )
-          )
+    // Use section baseUrl if provided, otherwise default
+    val baseUrl = section
+      .flatMap(_.baseUrl)
+      .map(_.trim)
+      .filter(_.nonEmpty)
+      .getOrElse(DefaultOpenAIEmbeddingBaseUrl)
 
-        for {
-          baseUrl <- baseUrlResult
-          model   <- modelResult
-          apiKey  <- ProviderConfigLoader.loadOpenAISharedApiKey(source)
-        } yield EmbeddingProviderConfig(baseUrl = baseUrl, model = model, apiKey = apiKey)
-
-      case None =>
-        Left(
-          ConfigurationError(
-            "OpenAI embeddings provider selected but llm4s.embeddings.openai section is missing"
-          )
+    val modelResult: Result[String] =
+      modelOpt.toRight(
+        ConfigurationError(
+          "Missing OpenAI embeddings model (set EMBEDDING_MODEL=openai/model-name or OPENAI_EMBEDDING_MODEL)"
         )
-    }
+      )
+
+    for {
+      model  <- modelResult
+      apiKey <- ProviderConfigLoader.loadOpenAISharedApiKey(source)
+    } yield EmbeddingProviderConfig(baseUrl = baseUrl, model = model, apiKey = apiKey)
+  }
 
   private def buildOllamaEmbeddings(
-    section: Option[EmbeddingsOllamaSection]
-  ): Result[EmbeddingProviderConfig] =
-    section match {
-      case Some(ollama) =>
-        val baseUrl = ollama.baseUrl.map(_.trim).filter(_.nonEmpty).getOrElse("http://localhost:11434")
-        val model   = ollama.model.map(_.trim).filter(_.nonEmpty).getOrElse("nomic-embed-text")
-        val apiKey  = ollama.apiKey.getOrElse("not-required")
-        Right(EmbeddingProviderConfig(baseUrl = baseUrl, model = model, apiKey = apiKey))
-      case None =>
-        Left(
-          ConfigurationError(
-            "Ollama embeddings provider selected but llm4s.embeddings.ollama section is missing"
-          )
+    section: Option[EmbeddingsOllamaSection],
+    modelOverride: Option[String]
+  ): Result[EmbeddingProviderConfig] = {
+    // Use model from unified format, or fall back to section model, or default
+    val model = modelOverride
+      .orElse(section.flatMap(_.model))
+      .map(_.trim)
+      .filter(_.nonEmpty)
+      .getOrElse("nomic-embed-text")
+
+    // Use section baseUrl if provided, otherwise default
+    val baseUrl = section
+      .flatMap(_.baseUrl)
+      .map(_.trim)
+      .filter(_.nonEmpty)
+      .getOrElse(DefaultOllamaEmbeddingBaseUrl)
+
+    val apiKey = section.flatMap(_.apiKey).getOrElse("not-required")
+    Right(EmbeddingProviderConfig(baseUrl = baseUrl, model = model, apiKey = apiKey))
+  }
+
+  private def buildVoyageEmbeddings(
+    section: Option[EmbeddingsVoyageSection],
+    modelOverride: Option[String]
+  ): Result[EmbeddingProviderConfig] = {
+    // Use model from unified format, or fall back to section model
+    val modelOpt = modelOverride.orElse(section.flatMap(_.model)).map(_.trim).filter(_.nonEmpty)
+
+    // Use section baseUrl if provided, otherwise default
+    val baseUrl = section
+      .flatMap(_.baseUrl)
+      .map(_.trim)
+      .filter(_.nonEmpty)
+      .getOrElse(DefaultVoyageEmbeddingBaseUrl)
+
+    val apiKeyOpt = section.flatMap(_.apiKey).map(_.trim).filter(_.nonEmpty)
+
+    val apiKeyResult: Result[String] =
+      apiKeyOpt.toRight(
+        ConfigurationError("Missing Voyage embeddings apiKey (llm4s.embeddings.voyage.apiKey / VOYAGE_API_KEY)")
+      )
+    val modelResult: Result[String] =
+      modelOpt.toRight(
+        ConfigurationError(
+          "Missing Voyage embeddings model (set EMBEDDING_MODEL=voyage/model-name or VOYAGE_EMBEDDING_MODEL)"
         )
-    }
+      )
 
-  private def buildVoyageEmbeddings(section: Option[EmbeddingsVoyageSection]): Result[EmbeddingProviderConfig] =
-    section match {
-      case Some(voyage) =>
-        val apiKeyOpt  = voyage.apiKey.map(_.trim).filter(_.nonEmpty)
-        val baseUrlOpt = voyage.baseUrl.map(_.trim).filter(_.nonEmpty)
-        val modelOpt   = voyage.model.map(_.trim).filter(_.nonEmpty)
-
-        val apiKeyResult: Result[String] =
-          apiKeyOpt.toRight(
-            ConfigurationError("Missing Voyage embeddings apiKey (llm4s.embeddings.voyage.apiKey / VOYAGE_API_KEY)")
-          )
-        val baseUrlResult: Result[String] =
-          baseUrlOpt.toRight(
-            ConfigurationError(
-              "Missing Voyage embeddings baseUrl (llm4s.embeddings.voyage.baseUrl / VOYAGE_EMBEDDING_BASE_URL)"
-            )
-          )
-        val modelResult: Result[String] =
-          modelOpt.toRight(
-            ConfigurationError(
-              "Missing Voyage embeddings model (llm4s.embeddings.voyage.model / VOYAGE_EMBEDDING_MODEL)"
-            )
-          )
-
-        for {
-          apiKey  <- apiKeyResult
-          baseUrl <- baseUrlResult
-          model   <- modelResult
-        } yield EmbeddingProviderConfig(baseUrl = baseUrl, model = model, apiKey = apiKey)
-
-      case None =>
-        Left(
-          ConfigurationError(
-            "Voyage embeddings provider selected but llm4s.embeddings.voyage section is missing"
-          )
-        )
-    }
+    for {
+      apiKey <- apiKeyResult
+      model  <- modelResult
+    } yield EmbeddingProviderConfig(baseUrl = baseUrl, model = model, apiKey = apiKey)
+  }
 }
 // scalafix:on DisableSyntax.NoPureConfigDefault

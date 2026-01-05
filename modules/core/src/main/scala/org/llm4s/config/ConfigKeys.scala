@@ -33,7 +33,8 @@ object ConfigKeys {
   val LANGFUSE_VERSION    = "LANGFUSE_VERSION"
 
   // Embeddings: providers and settings
-  val EMBEDDING_PROVIDER   = "EMBEDDING_PROVIDER"
+  val EMBEDDING_MODEL    = "EMBEDDING_MODEL"    // Unified format: provider/model (e.g., openai/text-embedding-3-small)
+  val EMBEDDING_PROVIDER = "EMBEDDING_PROVIDER" // Legacy fallback
   val EMBEDDING_INPUT_PATH = "EMBEDDING_INPUT_PATH"
   val EMBEDDING_QUERY      = "EMBEDDING_QUERY"
 

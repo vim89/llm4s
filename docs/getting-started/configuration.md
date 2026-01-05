@@ -97,14 +97,21 @@ LANGFUSE_URL=https://cloud.langfuse.com  # or self-hosted
 # ===================
 # Embeddings Configuration (RAG)
 # ===================
-# Provider: openai, voyage, or ollama
-EMBEDDING_PROVIDER=openai
-OPENAI_EMBEDDING_BASE_URL=https://api.openai.com/v1
-OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+# Unified format: provider/model (recommended)
+EMBEDDING_MODEL=openai/text-embedding-3-small  # Uses default base URL
+# OPENAI_API_KEY is shared with LLM config above
 
-# Or for local embeddings (no API key needed):
-# EMBEDDING_PROVIDER=ollama
-# OLLAMA_EMBEDDING_MODEL=nomic-embed-text
+# Or for Voyage embeddings:
+# EMBEDDING_MODEL=voyage/voyage-3
+# VOYAGE_API_KEY=pa-...
+
+# Or for local embeddings with Ollama (no API key needed):
+# EMBEDDING_MODEL=ollama/nomic-embed-text
+
+# Optional: Override default base URLs
+# OPENAI_EMBEDDING_BASE_URL=https://api.openai.com/v1
+# VOYAGE_EMBEDDING_BASE_URL=https://api.voyageai.com/v1
+# OLLAMA_EMBEDDING_BASE_URL=http://localhost:11434
 
 # ===================
 # Workspace Configuration (Optional)
@@ -323,52 +330,78 @@ ollama serve
 
 LLM4S supports multiple embedding providers for RAG (Retrieval-Augmented Generation) workflows.
 
-### OpenAI Embeddings
+### Unified Format (Recommended)
+
+Use `EMBEDDING_MODEL` with the format `provider/model-name`, similar to `LLM_MODEL`:
 
 ```bash
-EMBEDDING_PROVIDER=openai
-OPENAI_EMBEDDING_BASE_URL=https://api.openai.com/v1
-OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+# OpenAI embeddings
+EMBEDDING_MODEL=openai/text-embedding-3-small
 OPENAI_API_KEY=sk-...  # Same key as LLM
+
+# Voyage AI embeddings
+EMBEDDING_MODEL=voyage/voyage-3
+VOYAGE_API_KEY=pa-...
+
+# Ollama embeddings (local, no API key needed)
+EMBEDDING_MODEL=ollama/nomic-embed-text
 ```
 
-**Available Models:**
+Default base URLs are used automatically:
+- OpenAI: `https://api.openai.com/v1`
+- Voyage: `https://api.voyageai.com/v1`
+- Ollama: `http://localhost:11434`
+
+Override base URLs if needed:
+```bash
+EMBEDDING_MODEL=openai/text-embedding-3-small
+OPENAI_EMBEDDING_BASE_URL=https://custom.openai.com/v1
+```
+
+### Available Models
+
+**OpenAI:**
 - `text-embedding-3-small` - Fast, cost-effective (1536 dimensions)
 - `text-embedding-3-large` - Higher quality (3072 dimensions)
 - `text-embedding-ada-002` - Legacy model (1536 dimensions)
 
-### Voyage AI Embeddings
-
-```bash
-EMBEDDING_PROVIDER=voyage
-VOYAGE_EMBEDDING_BASE_URL=https://api.voyageai.com/v1
-VOYAGE_EMBEDDING_MODEL=voyage-3
-VOYAGE_API_KEY=pa-...
-```
-
-**Available Models:**
+**Voyage AI:**
 - `voyage-3` - General purpose
 - `voyage-3-large` - Higher quality
 - `voyage-code-2` - Code-optimized
 
-### Ollama Embeddings (Local)
-
-```bash
-EMBEDDING_PROVIDER=ollama
-OLLAMA_EMBEDDING_BASE_URL=http://localhost:11434  # Optional, this is default
-OLLAMA_EMBEDDING_MODEL=nomic-embed-text
-# No API key needed!
-```
-
-**Available Models:**
+**Ollama (local):**
 - `nomic-embed-text` - General purpose (768 dimensions)
 - `mxbai-embed-large` - Higher quality (1024 dimensions)
 - `all-minilm` - Lightweight (384 dimensions)
 
-**Install embedding model:**
+**Install Ollama embedding model:**
 
 ```bash
 ollama pull nomic-embed-text
+```
+
+### Legacy Format (Still Supported)
+
+The legacy format using `EMBEDDING_PROVIDER` is still supported for backward compatibility:
+
+```bash
+# OpenAI
+EMBEDDING_PROVIDER=openai
+OPENAI_EMBEDDING_BASE_URL=https://api.openai.com/v1
+OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+OPENAI_API_KEY=sk-...
+
+# Voyage AI
+EMBEDDING_PROVIDER=voyage
+VOYAGE_EMBEDDING_BASE_URL=https://api.voyageai.com/v1
+VOYAGE_EMBEDDING_MODEL=voyage-3
+VOYAGE_API_KEY=pa-...
+
+# Ollama
+EMBEDDING_PROVIDER=ollama
+OLLAMA_EMBEDDING_BASE_URL=http://localhost:11434
+OLLAMA_EMBEDDING_MODEL=nomic-embed-text
 ```
 
 ### Using Embeddings in Code
@@ -397,9 +430,13 @@ val embeddingServiceResult = for {
 When running via sbt, use system properties for reliable configuration:
 
 ```bash
+# Using unified format (recommended)
+sbt -Dllm4s.embeddings.model=ollama/nomic-embed-text \
+    "run"
+
+# Or with legacy format
 sbt -Dllm4s.embeddings.provider=ollama \
     -Dllm4s.embeddings.ollama.model=nomic-embed-text \
-    -Dllm4s.ollama.baseUrl=http://localhost:11434 \
     "run"
 ```
 
