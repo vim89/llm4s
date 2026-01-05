@@ -213,4 +213,181 @@ class PermissionTypesSpec extends AnyFlatSpec with Matchers {
     chunk1 shouldBe chunk2
     chunk1 should not be chunk3
   }
+
+  it should "implement hashCode correctly" in {
+    val chunk1 = ChunkWithEmbedding("content", Array(0.1f, 0.2f), 0)
+    val chunk2 = ChunkWithEmbedding("content", Array(0.1f, 0.2f), 0)
+
+    chunk1.hashCode() shouldBe chunk2.hashCode()
+  }
+
+  it should "not equal non-ChunkWithEmbedding objects" in {
+    val chunk = ChunkWithEmbedding("content", Array(0.1f, 0.2f), 0)
+    chunk.equals("not a chunk") shouldBe false
+    chunk.equals(null) shouldBe false
+  }
+
+  it should "support metadata" in {
+    val chunk = ChunkWithEmbedding("content", Array(0.1f), 0, Map("key" -> "value"))
+    chunk.metadata shouldBe Map("key" -> "value")
+  }
+
+  // Additional PrincipalId tests
+  "PrincipalId.toString" should "format user IDs correctly" in {
+    PrincipalId(123).toString shouldBe "User(123)"
+  }
+
+  it should "format group IDs correctly" in {
+    PrincipalId(-5).toString shouldBe "Group(5)"
+  }
+
+  it should "format zero ID correctly" in {
+    PrincipalId(0).toString shouldBe "PrincipalId(0)"
+  }
+
+  "PrincipalId.user" should "reject non-positive IDs" in {
+    an[IllegalArgumentException] should be thrownBy PrincipalId.user(0)
+    an[IllegalArgumentException] should be thrownBy PrincipalId.user(-1)
+  }
+
+  "PrincipalId.group" should "reject non-positive IDs" in {
+    an[IllegalArgumentException] should be thrownBy PrincipalId.group(0)
+    an[IllegalArgumentException] should be thrownBy PrincipalId.group(-1)
+  }
+
+  "PrincipalId.fromRaw" should "accept positive values as users" in {
+    val result = PrincipalId.fromRaw(42)
+    result shouldBe Right(PrincipalId(42))
+    result.map(_.isUser) shouldBe Right(true)
+  }
+
+  it should "accept negative values as groups" in {
+    val result = PrincipalId.fromRaw(-10)
+    result shouldBe Right(PrincipalId(-10))
+    result.map(_.isGroup) shouldBe Right(true)
+  }
+
+  // Additional ExternalPrincipal tests
+  "ExternalPrincipal.User" should "expose value correctly" in {
+    val user = ExternalPrincipal.User("john@example.com")
+    user.value shouldBe "john@example.com"
+  }
+
+  "ExternalPrincipal.Group" should "expose value correctly" in {
+    val group = ExternalPrincipal.Group("admins")
+    group.value shouldBe "admins"
+  }
+
+  // Additional CollectionPath tests
+  "CollectionPath.name" should "return the last segment" in {
+    CollectionPath.unsafe("confluence/EN/archive").name shouldBe "archive"
+    CollectionPath.unsafe("confluence").name shouldBe "confluence"
+  }
+
+  "CollectionPath.child" should "create a valid child path" in {
+    val parent = CollectionPath.unsafe("confluence")
+    val result = parent.child("EN")
+
+    result.isRight shouldBe true
+    result.map(_.value) shouldBe Right("confluence/EN")
+  }
+
+  it should "reject invalid child names" in {
+    val parent = CollectionPath.unsafe("confluence")
+    val result = parent.child("invalid name")
+
+    result.isLeft shouldBe true
+  }
+
+  "CollectionPath.root" should "create a root collection" in {
+    val result = CollectionPath.root("myroot")
+    result.isRight shouldBe true
+    result.map(_.isRoot) shouldBe Right(true)
+    result.map(_.value) shouldBe Right("myroot")
+  }
+
+  it should "reject invalid root names" in {
+    CollectionPath.root("invalid name").isLeft shouldBe true
+  }
+
+  "CollectionPath.value" should "return the full path string" in {
+    CollectionPath.unsafe("a/b/c").value shouldBe "a/b/c"
+  }
+
+  // Additional UserAuthorization tests
+  "UserAuthorization.asSeq" should "return principal IDs as sequence" in {
+    val auth = UserAuthorization(Set(PrincipalId(1), PrincipalId(-5), PrincipalId(3)))
+    auth.asSeq.sorted shouldBe Seq(-5, 1, 3)
+  }
+
+  "UserAuthorization.withPrincipal" should "add a principal" in {
+    val auth    = UserAuthorization(Set(PrincipalId(1)))
+    val updated = auth.withPrincipal(PrincipalId(-5))
+
+    updated.principalIds shouldBe Set(PrincipalId(1), PrincipalId(-5))
+  }
+
+  "UserAuthorization.withPrincipals" should "add multiple principals" in {
+    val auth    = UserAuthorization(Set(PrincipalId(1)))
+    val updated = auth.withPrincipals(Set(PrincipalId(-5), PrincipalId(-10)))
+
+    updated.principalIds shouldBe Set(PrincipalId(1), PrincipalId(-5), PrincipalId(-10))
+  }
+
+  "UserAuthorization.fromRawIds" should "create authorization from valid IDs" in {
+    val result = UserAuthorization.fromRawIds(Seq(1, -5, 3))
+    result.isRight shouldBe true
+    result.map(_.principalIds) shouldBe Right(Set(PrincipalId(1), PrincipalId(-5), PrincipalId(3)))
+  }
+
+  it should "fail if any ID is zero" in {
+    val result = UserAuthorization.fromRawIds(Seq(1, 0, 3))
+    result.isLeft shouldBe true
+  }
+
+  it should "handle empty sequence" in {
+    val result = UserAuthorization.fromRawIds(Seq.empty)
+    result.isRight shouldBe true
+    result.map(_.principalIds) shouldBe Right(Set.empty)
+  }
+
+  "UserAuthorization.forUser" should "reject group IDs as user ID" in {
+    an[IllegalArgumentException] should be thrownBy {
+      UserAuthorization.forUser(PrincipalId(-1))
+    }
+  }
+
+  it should "reject user IDs in groups set" in {
+    an[IllegalArgumentException] should be thrownBy {
+      UserAuthorization.forUser(PrincipalId(1), Set(PrincipalId(2)))
+    }
+  }
+
+  // CollectionStats tests
+  "CollectionStats" should "report isEmpty correctly" in {
+    // isEmpty checks documentCount and chunkCount only, not subCollectionCount
+    CollectionStats(0, 0, 0).isEmpty shouldBe true
+    CollectionStats(1, 0, 0).isEmpty shouldBe false
+    CollectionStats(0, 1, 0).isEmpty shouldBe false
+    // subCollectionCount doesn't affect isEmpty
+    CollectionStats(0, 0, 5).isEmpty shouldBe true
+    CollectionStats(1, 1, 5).isEmpty shouldBe false
+  }
+
+  // CollectionPattern additional tests
+  "CollectionPattern.All.patternString" should "return *" in {
+    CollectionPattern.All.patternString shouldBe "*"
+  }
+
+  "CollectionPattern.Exact.patternString" should "return the path" in {
+    CollectionPattern.Exact(CollectionPath.unsafe("a/b")).patternString shouldBe "a/b"
+  }
+
+  "CollectionPattern.ImmediateChildren.patternString" should "return path/*" in {
+    CollectionPattern.ImmediateChildren(CollectionPath.unsafe("parent")).patternString shouldBe "parent/*"
+  }
+
+  "CollectionPattern.AllDescendants.patternString" should "return path/**" in {
+    CollectionPattern.AllDescendants(CollectionPath.unsafe("prefix")).patternString shouldBe "prefix/**"
+  }
 }
