@@ -271,10 +271,31 @@ final case class RAGConfig(
    * When a SearchIndex is configured, you can use permission-aware
    * query and ingest methods on the RAG instance.
    *
+   * IMPORTANT: When a PgSearchIndex is provided, this method automatically
+   * configures the underlying pgVector storage settings so that both
+   * regular ingest methods and permission-aware methods use the same
+   * PostgreSQL database.
+   *
    * @param index The SearchIndex instance (e.g., PgSearchIndex)
    */
-  def withSearchIndex(index: SearchIndex): RAGConfig =
-    copy(searchIndex = Some(index))
+  def withSearchIndex(index: SearchIndex): RAGConfig = {
+    // If the SearchIndex is PostgreSQL-backed, automatically configure
+    // the pgVector settings to ensure regular ingest/query methods also
+    // use the same PostgreSQL database for vector storage.
+    val baseConfig = copy(searchIndex = Some(index))
+
+    index.pgConfig match {
+      case Some(pgCfg) =>
+        baseConfig.copy(
+          pgVectorConnectionString = Some(pgCfg.jdbcUrl),
+          pgVectorUser = Some(pgCfg.user),
+          pgVectorPassword = Some(pgCfg.password),
+          pgVectorTableName = Some(pgCfg.vectorTableName)
+        )
+      case None =>
+        baseConfig
+    }
+  }
 
   /**
    * Configure PostgreSQL connection for pgvector storage.

@@ -26,8 +26,12 @@ import scala.util.{ Try, Using }
  */
 final class PgSearchIndex private (
   private val dataSource: HikariDataSource,
-  private val vectorTableName: String
+  private val vectorTableName: String,
+  private val _pgConfig: SearchIndex.PgConfig
 ) extends SearchIndex {
+
+  /** Expose PostgreSQL configuration for automatic RAG integration */
+  override def pgConfig: Option[SearchIndex.PgConfig] = Some(_pgConfig)
 
   private val _principals  = new PgPrincipalStore(() => dataSource.getConnection)
   private val _collections = new PgCollectionStore(() => dataSource.getConnection, vectorTableName)
@@ -403,7 +407,7 @@ object PgSearchIndex {
     hikariConfig.setMaxLifetime(1800000)
 
     val dataSource = new HikariDataSource(hikariConfig)
-    new PgSearchIndex(dataSource, config.vectorTableName)
+    new PgSearchIndex(dataSource, config.vectorTableName, config)
   }.toEither.left.map(e => ProcessingError("pg-search-index-create", e.getMessage))
 
   /**

@@ -148,6 +148,16 @@ trait SearchIndex {
    * Close the search index and release resources.
    */
   def close(): Unit
+
+  /**
+   * Get the PostgreSQL configuration if this is a PostgreSQL-backed index.
+   *
+   * This is used by RAGConfig to automatically configure the underlying
+   * vector store when a SearchIndex is provided.
+   *
+   * @return Some(config) if PostgreSQL-backed, None otherwise
+   */
+  def pgConfig: Option[SearchIndex.PgConfig] = None
 }
 
 /**
