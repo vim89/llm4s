@@ -124,19 +124,6 @@ jobs:
           java-version: ${{ matrix.java }}
           cache: 'sbt'
       
-      - name: Cache Coursier
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/coursier
-            ~/.ivy2/cache
-            ~/.sbt
-          key: ${{ runner.os }}-sbt-${{ matrix.scala }}-${{ matrix.java }}-${{ hashFiles('**/build.sbt', '**/project/**.scala', '**/project/build.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-sbt-${{ matrix.scala }}-${{ matrix.java }}-
-            ${{ runner.os }}-sbt-${{ matrix.scala }}-
-            ${{ runner.os }}-sbt-
-      
       - uses: sbt/setup-sbt@v1
       
       - name: Run tests
