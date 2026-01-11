@@ -2,7 +2,7 @@ package org.llm4s.samples.actions
 
 import org.llm4s.config.Llm4sConfig
 import org.llm4s.llmconnect.LLMConnect
-import org.llm4s.llmconnect.model._
+import org.llm4s.llmconnect.model.{ Conversation, SystemMessage, UserMessage }
 import org.llm4s.llmconnect.LLMClient
 import org.llm4s.types.Result
 
@@ -19,7 +19,7 @@ import org.llm4s.types.Result
 object TranslationExample {
   val textToTranslate = "Hello, how are you?"
   val language        = "French"
-  val systemPrompt =
+  private val systemPrompt =
     """You are a helpful assistant specialized in translating text.
       |When given text, provide a translation that:
       |- Accurately conveys the meaning of the original text
