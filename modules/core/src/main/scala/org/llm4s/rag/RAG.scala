@@ -1157,17 +1157,31 @@ object RAG {
   private def createHybridSearcher(config: RAGConfig): Result[HybridSearcher] =
     config.pgVectorConnectionString match {
       case Some(connStr) =>
-        // Use pgvector for vector storage with SQLite for keyword index
-        val user      = config.pgVectorUser.getOrElse("postgres")
-        val password  = config.pgVectorPassword.getOrElse("")
-        val tableName = config.pgVectorTableName.getOrElse("vectors")
-        for {
-          vectorStore <- PgVectorStore(connStr, user, password, tableName)
-          keywordIndex <- config.keywordIndexPath match {
-            case Some(path) => SQLiteKeywordIndex(path)
-            case None       => KeywordIndex.inMemory()
-          }
-        } yield HybridSearcher(vectorStore, keywordIndex)
+        val user        = config.pgVectorUser.getOrElse("postgres")
+        val password    = config.pgVectorPassword.getOrElse("")
+        val vectorTable = config.pgVectorTableName.getOrElse("vectors")
+
+        config.pgKeywordTableName match {
+          case Some(keywordTable) =>
+            // Full PostgreSQL hybrid: pgvector + PostgreSQL FTS
+            HybridSearcher.pgvectorShared(
+              connStr,
+              user,
+              password,
+              vectorTable,
+              keywordTable,
+              config.fusionStrategy
+            )
+          case None =>
+            // pgvector + SQLite keyword index (existing behavior)
+            for {
+              vectorStore <- PgVectorStore(connStr, user, password, vectorTable)
+              keywordIndex <- config.keywordIndexPath match {
+                case Some(path) => SQLiteKeywordIndex(path)
+                case None       => KeywordIndex.inMemory()
+              }
+            } yield HybridSearcher(vectorStore, keywordIndex, config.fusionStrategy)
+        }
       case None =>
         (config.vectorStorePath, config.keywordIndexPath) match {
           case (Some(vectorPath), Some(keywordPath)) =>

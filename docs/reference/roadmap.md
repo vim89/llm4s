@@ -129,7 +129,7 @@ The RAG pipeline follows a 5-phase roadmap toward a production-grade retrieval s
 | SQLite Backend | ✅ Complete | File-based and in-memory |
 | pgvector Backend | ✅ Complete | PostgreSQL + pgvector extension |
 | Qdrant Backend | ✅ Complete | REST API, local + cloud |
-| BM25 Keyword Index | ✅ Complete | SQLite FTS5 with BM25 scoring |
+| BM25 Keyword Index | ✅ Complete | SQLite FTS5 + PostgreSQL native full-text search |
 | Hybrid Search Fusion | ✅ Complete | RRF + weighted score strategies |
 
 #### Phase 2: Intelligence ✅ COMPLETE
