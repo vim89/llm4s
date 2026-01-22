@@ -86,7 +86,11 @@ class OpenAIClient private (
         dropUnsupported = true
       )
       transformedConversation = conversation.copy(messages = transformed.messages)
-      chatOptions             = prepareChatOptions(transformedConversation, transformed.options)
+      chatOptions = prepareChatOptions(
+        transformedConversation,
+        transformed.options,
+        transformed.requiresMaxCompletionTokens
+      )
       completions <- Try(client.getChatCompletions(model, chatOptions)).toEither.left.map(e => e.toLLMError)
     } yield convertFromOpenAIFormat(completions)
 
@@ -99,7 +103,8 @@ class OpenAIClient private (
     TransformationResult.transform(model, options, conversation.messages, dropUnsupported = true).flatMap {
       transformed =>
         val transformedConversation = conversation.copy(messages = transformed.messages)
-        val chatOptions             = prepareChatOptions(transformedConversation, transformed.options)
+        val chatOptions =
+          prepareChatOptions(transformedConversation, transformed.options, transformed.requiresMaxCompletionTokens)
 
         // Create accumulator for building the final completion
         val accumulator = StreamingAccumulator.create()
@@ -208,9 +213,14 @@ class OpenAIClient private (
    *
    * @param conversation llm4s conversation to convert
    * @param options completion options to apply
+   * @param useMaxCompletionTokens if true, use max_completion_tokens instead of max_tokens
    * @return configured ChatCompletionsOptions ready for API call
    */
-  private def prepareChatOptions(conversation: Conversation, options: CompletionOptions): ChatCompletionsOptions = {
+  private def prepareChatOptions(
+    conversation: Conversation,
+    options: CompletionOptions,
+    useMaxCompletionTokens: Boolean
+  ): ChatCompletionsOptions = {
     // Convert conversation to Azure format
     val chatMessages = convertToOpenAIMessages(conversation)
 
@@ -219,7 +229,12 @@ class OpenAIClient private (
 
     // Set options
     chatOptions.setTemperature(options.temperature.doubleValue())
-    options.maxTokens.foreach(mt => chatOptions.setMaxTokens(mt))
+    options.maxTokens.foreach { mt =>
+      if (useMaxCompletionTokens)
+        chatOptions.setMaxCompletionTokens(mt)
+      else
+        chatOptions.setMaxTokens(mt)
+    }
     chatOptions.setPresencePenalty(options.presencePenalty.doubleValue())
     chatOptions.setFrequencyPenalty(options.frequencyPenalty.doubleValue())
     chatOptions.setTopP(options.topP.doubleValue())
