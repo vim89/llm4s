@@ -45,8 +45,8 @@ inThisBuild(
           "0.0.0-UNKNOWN"
       }
     },
-    ThisBuild / coverageMinimumStmtTotal := 80,
-    ThisBuild / coverageFailOnMinimum    := false,
+    ThisBuild / coverageMinimumStmtTotal := 54,
+    ThisBuild / coverageFailOnMinimum    := true,
     ThisBuild / coverageHighlighting     := true,
     ThisBuild / coverageExcludedPackages := Seq(
       "org\\.llm4s\\.runner\\..*",
