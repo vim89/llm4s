@@ -2,6 +2,7 @@ package org.llm4s.llmconnect.config
 
 import org.llm4s.model.ModelRegistry
 import org.slf4j.LoggerFactory
+import org.llm4s.util.Redaction
 
 sealed trait ProviderConfig {
   def model: String
@@ -16,7 +17,11 @@ case class OpenAIConfig(
   baseUrl: String,
   contextWindow: Int,
   reserveCompletion: Int
-) extends ProviderConfig
+) extends ProviderConfig {
+  override def toString: String =
+    s"OpenAIConfig(apiKey=${Redaction.secret(apiKey)}, model=$model, organization=$organization, baseUrl=$baseUrl, " +
+      s"contextWindow=$contextWindow, reserveCompletion=$reserveCompletion)"
+}
 
 object OpenAIConfig {
   private val logger = LoggerFactory.getLogger(getClass)
@@ -76,7 +81,11 @@ case class AzureConfig(
   apiVersion: String,
   contextWindow: Int,
   reserveCompletion: Int
-) extends ProviderConfig
+) extends ProviderConfig {
+  override def toString: String =
+    s"AzureConfig(endpoint=$endpoint, apiKey=${Redaction.secret(apiKey)}, model=$model, apiVersion=$apiVersion, " +
+      s"contextWindow=$contextWindow, reserveCompletion=$reserveCompletion)"
+}
 
 object AzureConfig {
   private val logger = LoggerFactory.getLogger(getClass)
@@ -135,7 +144,11 @@ case class AnthropicConfig(
   baseUrl: String,
   contextWindow: Int,
   reserveCompletion: Int
-) extends ProviderConfig
+) extends ProviderConfig {
+  override def toString: String =
+    s"AnthropicConfig(apiKey=${Redaction.secret(apiKey)}, model=$model, baseUrl=$baseUrl, contextWindow=$contextWindow, " +
+      s"reserveCompletion=$reserveCompletion)"
+}
 
 object AnthropicConfig {
   private val logger = LoggerFactory.getLogger(getClass)
@@ -242,7 +255,11 @@ case class ZaiConfig(
   baseUrl: String,
   contextWindow: Int,
   reserveCompletion: Int
-) extends ProviderConfig
+) extends ProviderConfig {
+  override def toString: String =
+    s"ZaiConfig(apiKey=${Redaction.secret(apiKey)}, model=$model, baseUrl=$baseUrl, contextWindow=$contextWindow, " +
+      s"reserveCompletion=$reserveCompletion)"
+}
 
 object ZaiConfig {
   private val logger = LoggerFactory.getLogger(getClass)
@@ -298,7 +315,11 @@ case class GeminiConfig(
   baseUrl: String,
   contextWindow: Int,
   reserveCompletion: Int
-) extends ProviderConfig
+) extends ProviderConfig {
+  override def toString: String =
+    s"GeminiConfig(apiKey=${Redaction.secret(apiKey)}, model=$model, baseUrl=$baseUrl, contextWindow=$contextWindow, " +
+      s"reserveCompletion=$reserveCompletion)"
+}
 
 object GeminiConfig {
   private val logger = LoggerFactory.getLogger(getClass)
