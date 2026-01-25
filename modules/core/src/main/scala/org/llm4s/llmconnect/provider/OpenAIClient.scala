@@ -531,6 +531,13 @@ class OpenAIClient private (
 object OpenAIClient {
   import org.llm4s.types.TryOps
 
+  private[provider] def forTest(
+    model: String,
+    client: AzureOpenAIClient,
+    config: ProviderConfig
+  ): OpenAIClient =
+    new OpenAIClient(model, client, config)
+
   /**
    * Creates an OpenAI client for direct OpenAI API access.
    *
