@@ -14,7 +14,7 @@ class ConfigRedactionSpec extends AnyFlatSpec with Matchers {
       organization = Some("org"),
       baseUrl = "https://example.invalid/v1"
     )
-    openai.toString should not include secret
+    (openai.toString should not).include(secret)
     openai.toString should include("***")
 
     val azure = AzureConfig.fromValues(
@@ -23,7 +23,7 @@ class ConfigRedactionSpec extends AnyFlatSpec with Matchers {
       apiKey = secret,
       apiVersion = "2024-02-01"
     )
-    azure.toString should not include secret
+    (azure.toString should not).include(secret)
     azure.toString should include("***")
 
     val anthropic = AnthropicConfig.fromValues(
@@ -31,7 +31,7 @@ class ConfigRedactionSpec extends AnyFlatSpec with Matchers {
       apiKey = secret,
       baseUrl = "https://example.invalid"
     )
-    anthropic.toString should not include secret
+    (anthropic.toString should not).include(secret)
     anthropic.toString should include("***")
 
     val gemini = GeminiConfig.fromValues(
@@ -39,7 +39,7 @@ class ConfigRedactionSpec extends AnyFlatSpec with Matchers {
       apiKey = secret,
       baseUrl = "https://example.invalid"
     )
-    gemini.toString should not include secret
+    (gemini.toString should not).include(secret)
     gemini.toString should include("***")
 
     val zai = ZaiConfig.fromValues(
@@ -47,7 +47,7 @@ class ConfigRedactionSpec extends AnyFlatSpec with Matchers {
       apiKey = secret,
       baseUrl = "https://example.invalid"
     )
-    zai.toString should not include secret
+    (zai.toString should not).include(secret)
     zai.toString should include("***")
   }
 
@@ -61,7 +61,7 @@ class ConfigRedactionSpec extends AnyFlatSpec with Matchers {
       version = "0"
     )
 
-    cfg.toString should not include secret
+    (cfg.toString should not).include(secret)
     cfg.toString should include("Some(***)")
   }
 
@@ -72,8 +72,7 @@ class ConfigRedactionSpec extends AnyFlatSpec with Matchers {
       apiKey = secret
     )
 
-    cfg.toString should not include secret
+    (cfg.toString should not).include(secret)
     cfg.toString should include("***")
   }
 }
-
