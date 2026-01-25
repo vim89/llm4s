@@ -65,6 +65,20 @@ class ConfigRedactionSpec extends AnyFlatSpec with Matchers {
     cfg.toString should include("Some(***)")
   }
 
+  it should "render missing keys as None" in {
+    val cfg = LangfuseConfig(
+      url = "https://example.invalid",
+      publicKey = None,
+      secretKey = None,
+      env = "dev",
+      release = "local",
+      version = "0"
+    )
+
+    cfg.toString should include("publicKey=None")
+    cfg.toString should include("secretKey=None")
+  }
+
   "EmbeddingProviderConfig toString" should "not leak apiKey values" in {
     val cfg = EmbeddingProviderConfig(
       baseUrl = "https://example.invalid",
