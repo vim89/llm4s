@@ -1,19 +1,17 @@
 package org.llm4s.llmconnect.provider
 
-import com.azure.ai.openai.{ OpenAIClient => AzureOpenAIClient }
 import com.azure.ai.openai.models.{ ChatCompletions, ChatCompletionsOptions }
 import com.azure.core.util.IterableStream
 import com.azure.json.JsonProviders
 import org.llm4s.llmconnect.config.OpenAIConfig
 import org.llm4s.llmconnect.model.{ CompletionOptions, Conversation, UserMessage }
-import org.scalamock.scalatest.MockFactory
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import scala.jdk.CollectionConverters._
 import scala.util.Using
 
-final class OpenAIClientStreamingSpec extends AnyFlatSpec with Matchers with MockFactory {
+final class OpenAIClientStreamingSpec extends AnyFlatSpec with Matchers {
 
   private def completionsFromJson(json: String): ChatCompletions =
     Using.resource(JsonProviders.createReader(json))(ChatCompletions.fromJson)
@@ -49,13 +47,18 @@ final class OpenAIClientStreamingSpec extends AnyFlatSpec with Matchers with Moc
     val stream =
       new IterableStream[ChatCompletions](List(noChoices, emptyChoices, contentChunk, stopChunkWithUsage).asJava)
 
-    val azureClient = mock[AzureOpenAIClient]
-    (azureClient
-      .getChatCompletionsStream(_: String, _: ChatCompletionsOptions))
-      .expects(model, *)
-      .returning(stream)
+    val transport = new OpenAIClientTransport {
+      override def getChatCompletions(model: String, options: ChatCompletionsOptions): ChatCompletions =
+        throw new UnsupportedOperationException("not used in this test")
 
-    val client = OpenAIClient.forTest(model, azureClient, config)
+      override def getChatCompletionsStream(
+        model: String,
+        options: ChatCompletionsOptions
+      ): IterableStream[ChatCompletions] =
+        stream
+    }
+
+    val client = OpenAIClient.forTest(model, transport, config)
 
     val conversation = Conversation(Seq(UserMessage("hello")))
     val chunks       = scala.collection.mutable.ListBuffer.empty[String]
