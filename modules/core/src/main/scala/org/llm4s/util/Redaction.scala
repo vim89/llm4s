@@ -7,7 +7,7 @@ import scala.annotation.unused
  *
  * Prefer these when constructing messages or toString values that may include secrets.
  */
-object Redaction {
+private[llm4s] object Redaction {
   def secret(@unused value: String): String = "***"
 
   def secretOpt(value: Option[String]): String =
