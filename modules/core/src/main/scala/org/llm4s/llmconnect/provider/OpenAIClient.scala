@@ -217,9 +217,9 @@ class OpenAIClient private (
     onChunk: StreamedChunk => Unit
   ): Unit =
     stream.forEach { chatCompletions =>
-      if (chatCompletions.getChoices != null && !chatCompletions.getChoices.isEmpty) {
-        processStreamingChoice(chatCompletions, accumulator, onChunk)
-      }
+      Option(chatCompletions.getChoices)
+        .filterNot(_.isEmpty)
+        .foreach(_ => processStreamingChoice(chatCompletions, accumulator, onChunk))
     }
 
   /**
@@ -244,7 +244,7 @@ class OpenAIClient private (
     emitStreamingChunks(chunkId, contentOpt, toolCalls, finishReason, accumulator, onChunk)
 
     // Update token usage when streaming completes
-    if (choice.getFinishReason != null) {
+    Option(choice.getFinishReason).foreach { _ =>
       Option(chatCompletions.getUsage).foreach { usage =>
         accumulator.updateTokens(usage.getPromptTokens, usage.getCompletionTokens)
       }
