@@ -19,7 +19,8 @@ class OpenAIClientClosedStateTest extends AnyFlatSpec with Matchers {
     modelName = "gpt-4",
     apiKey = "test-api-key-for-closed-state-testing",
     organization = None,
-    baseUrl = "https://api.openai.com/v1"
+    // Must never be used by unit tests (no network). We keep a clearly fake endpoint.
+    baseUrl = "https://example.invalid/v1"
   )
 
   private def createTestConversation: Conversation =
@@ -76,31 +77,14 @@ class OpenAIClientClosedStateTest extends AnyFlatSpec with Matchers {
     result.left.toOption.get shouldBe a[ConfigurationError]
   }
 
-  it should "succeed for operations before close() is called" in {
-    val client = new OpenAIClient(createTestConfig)
-
-    // Before closing, complete() should attempt the operation (and fail due to invalid API key,
-    // but NOT due to closed state). We verify the error is NOT a ConfigurationError about being closed.
-    val result = client.complete(createTestConversation, CompletionOptions())
-
-    // The request will fail (invalid API key), but not because the client is closed
-    result.isLeft shouldBe true
-    result.left.toOption.get match {
-      case ce: ConfigurationError =>
-        (ce.message should not).include("already closed")
-      case _ =>
-        // Other errors (like ServiceError from invalid API key) are expected
-        succeed
-    }
-  }
-
   it should "include model name in the closed error message" in {
     val modelName = "gpt-4-turbo-preview"
     val config = OpenAIConfig.fromValues(
       modelName = modelName,
       apiKey = "test-api-key",
       organization = None,
-      baseUrl = "https://api.openai.com/v1"
+      // Must never be used by unit tests (no network). We keep a clearly fake endpoint.
+      baseUrl = "https://example.invalid/v1"
     )
     val client = new OpenAIClient(config)
 
