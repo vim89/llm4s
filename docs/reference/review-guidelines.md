@@ -11,7 +11,115 @@ This document captures coding best practices derived from PR review feedback, pa
 
 ---
 
-## 1. Error Handling - Use `Result[A]`, Not Exceptions
+## General Contribution Philosophy
+
+### Keep It Simple
+
+LLM4S follows a **soft functional** style: immutable data and pure functions by default, without being religious about pure FP. Pragmatism over purity.
+
+- Prefer immutable data structures
+- Write pure functions where practical
+- Use `Result[A]` for error handling instead of exceptions
+- Don't over-abstract or over-engineer
+- If the simple solution works, use it
+
+### Quality Over Speed
+
+In a library/SDK, security bugs and tech debt accumulate quickly. We prefer slower, careful merges over rapid churn.
+
+**Signs of rushed PRs that will need revision:**
+- Lots of changes with weak explanation of the "why"
+- Missing edge cases and failure tests
+- Auto-generated or tool-produced code without human review
+- Changes to areas the contributor hasn't fully understood
+
+**Reviews are teaching moments** - especially for changes touching core, config, security, concurrency, or public APIs.
+
+---
+
+## PR Best Practices
+
+### Keep PRs Small and Focused
+
+**One change, one reason.** Large PRs are hard to review and often hide bugs.
+
+- Each PR should do one thing well
+- If you're fixing a bug, just fix the bug - don't refactor nearby code
+- If you're adding a feature, don't also reorganize the package structure
+- Big refactors should start as an issue or design note for discussion first
+
+### Explain the "Why"
+
+Your PR description should answer:
+
+- **Why** is this change needed?
+- **What** tradeoffs did you consider?
+- **What** did you test? How?
+- **What** could break?
+
+A PR with "Add feature X" and no context will get more questions and take longer to merge.
+
+### Test New Behavior and Failure Cases
+
+Every PR with new code needs tests. This includes:
+
+- Happy path tests
+- Edge cases (empty inputs, nulls, boundary values)
+- **Failure cases** - what happens when things go wrong?
+- Concurrency tests if applicable
+
+See the [Testing Guide](testing-guide.md) for details.
+
+### Be Careful with Public APIs
+
+Avoid changing public APIs unless clearly needed. When you do:
+
+- **Call it out explicitly** in the PR description
+- Explain why the change is necessary
+- Consider backward compatibility
+- Document migration path if breaking
+
+Adding a method to a trait is a breaking change for implementers. Adding a required parameter breaks all callers.
+
+---
+
+## Dependency Management
+
+### Don't Add Heavy Dependencies to Core
+
+The core module should stay lean. Before adding a dependency:
+
+- **Discuss with maintainers first** - open an issue
+- Consider if it can be optional via `build.sbt`
+- If optional, keep it in a separate module
+
+```scala
+// BAD - Adding heavyweight dependency to core
+libraryDependencies += "org.heavy" %% "framework" % "1.0"
+
+// GOOD - Optional module for optional functionality
+lazy val traceOpenTelemetry = project
+  .in(file("modules/trace-opentelemetry"))
+  .dependsOn(core)
+  .settings(
+    libraryDependencies += "io.opentelemetry" % "opentelemetry-sdk" % "1.0"
+  )
+```
+
+### Use Existing Dependencies
+
+Before adding a new library, check if an existing dependency already provides what you need:
+
+- **JSON**: Use `ujson` (already included)
+- **HTTP client**: Use `sttp` (already included)
+- **Config**: Use `PureConfig` (already included)
+- **Testing**: Use `ScalaTest` (already included)
+
+---
+
+## Code Quality Guidelines
+
+### 1. Error Handling - Use `Result[A]`, Not Exceptions
 
 LLM4S uses `Result[A]` (an alias for `Either[LLMError, A]`) for error handling. Avoid throwing exceptions for control flow.
 
@@ -45,7 +153,7 @@ Try { ... }.toEither.left.map(e => ProcessingError(e.getMessage, cause = Some(e)
 
 ---
 
-## 2. Configuration - Dependency Injection, Not Direct Access
+### 2. Configuration - Dependency Injection, Not Direct Access
 
 Core code should not read configuration directly. Configuration loading belongs at the application edge (samples, CLIs, tests), and typed settings should be injected into core code.
 
@@ -77,7 +185,7 @@ Scalafix enforces this: imports of `Llm4sConfig`, `ConfigSource.default`, `sys.e
 
 ---
 
-## 3. Type Safety - Avoid `Any`
+### 3. Type Safety - Avoid `Any`
 
 Using `Any` hides type errors until runtime. Prefer typed alternatives.
 
@@ -105,7 +213,7 @@ val params: ujson.Obj = ujson.Obj("key" -> "value")
 
 ---
 
-## 4. Resource Management - Close What You Open
+### 4. Resource Management - Close What You Open
 
 Resources like HTTP backends, database connections, and file handles must be properly closed to avoid leaks.
 
@@ -131,7 +239,7 @@ def withConnection[A](f: Connection => A): A =
 
 ---
 
-## 5. Constructor Side Effects - Keep Construction Pure
+### 5. Constructor Side Effects - Keep Construction Pure
 
 Side effects in constructors make code harder to test and reason about. Prefer explicit initialization via factory methods.
 
@@ -157,7 +265,7 @@ object PostgresStore {
 
 ---
 
-## 6. Thread Safety - Synchronize Iterations
+### 6. Thread Safety - Synchronize Iterations
 
 When using synchronized collections, individual operations are thread-safe but iterations are not.
 
@@ -179,7 +287,7 @@ val cache = new ConcurrentHashMap[K, V]()
 
 ---
 
-## 7. JSON Handling - Use Libraries, Don't Roll Your Own
+### 7. JSON Handling - Use Libraries, Don't Roll Your Own
 
 Manual JSON encoding is error-prone and misses edge cases. Use ujson, which is already a project dependency.
 
@@ -201,7 +309,7 @@ def fromJson(json: String): Map[String, String] =
 
 ---
 
-## 8. Validation - Validate Config and Inputs
+### 8. Validation - Validate Config and Inputs
 
 Validate inputs early with clear error messages. This prevents security issues and improves debuggability.
 
@@ -231,7 +339,7 @@ case class Config(tableName: String) {
 
 ---
 
-## 9. Silent Failures - Fail Loudly or Log Clearly
+### 9. Silent Failures - Fail Loudly or Log Clearly
 
 Silent failures hide bugs and confuse users. Make failures explicit through errors or logging.
 
@@ -254,7 +362,7 @@ case unsupported =>
 
 ---
 
-## 10. Testing Best Practices
+### 10. Testing Best Practices
 
 Every new feature needs unit tests. See the [Testing Guide](testing-guide.md) for comprehensive guidance.
 
@@ -277,7 +385,7 @@ def complete(conv: Conversation): Result[Response] =
 
 ---
 
-## 11. Naming and Config Consistency
+### 11. Naming and Config Consistency
 
 Maintain consistent naming between configuration files and Scala code.
 
@@ -290,7 +398,7 @@ Maintain consistent naming between configuration files and Scala code.
 
 ---
 
-## 12. Don't Commit Generated/Large Files
+### 12. Don't Commit Generated/Large Files
 
 Generated files and logs should never be committed to the repository.
 
@@ -302,7 +410,7 @@ Generated files and logs should never be committed to the repository.
 
 ---
 
-## 13. Sensitive Data in Telemetry/Logging
+### 13. Sensitive Data in Telemetry/Logging
 
 Be careful not to leak sensitive data through logs or telemetry.
 
@@ -315,7 +423,7 @@ Be careful not to leak sensitive data through logs or telemetry.
 
 ---
 
-## 14. API Stability - Consider Breaking Changes
+### 14. API Stability - Consider Breaking Changes
 
 Changes to public traits and classes can break downstream code.
 
@@ -328,7 +436,7 @@ Changes to public traits and classes can break downstream code.
 
 ---
 
-## 15. Idiomatic Scala Patterns
+### 15. Idiomatic Scala Patterns
 
 Prefer idiomatic Scala over imperative Java-style code.
 
@@ -352,6 +460,13 @@ Iterator.continually(rs).takeWhile(_.next()).map(extractRow).toSeq
 
 Before submitting a PR, verify:
 
+**PR Quality:**
+- [ ] PR is small and focused - one change, one reason
+- [ ] PR description explains the "why", tradeoffs, and what was tested
+- [ ] No unnecessary refactoring bundled with the change
+- [ ] Breaking API changes are called out explicitly
+
+**Code Quality:**
 - [ ] No exceptions for control flow - use `Result[A]`
 - [ ] Config loaded at app edge, injected into core code
 - [ ] No `Any` types - use ADTs or typed collections
@@ -361,12 +476,17 @@ Before submitting a PR, verify:
 - [ ] JSON handled with ujson, not manual string building
 - [ ] Input validation with clear error messages
 - [ ] No silent failures - log or error explicitly
-- [ ] Unit tests for new code
+
+**Testing:**
+- [ ] Unit tests for new behavior
+- [ ] Tests for failure/edge cases
+- [ ] Tests pass with `sbt +test`
+
+**Hygiene:**
+- [ ] No new heavy dependencies in core without discussion
 - [ ] No generated files committed
 - [ ] Sensitive data not leaked to logs/traces
-- [ ] Breaking changes documented
 - [ ] Code formatted with `sbt scalafmtAll`
-- [ ] Tests pass with `sbt +test`
 
 ---
 
