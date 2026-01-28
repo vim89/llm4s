@@ -456,6 +456,37 @@ Iterator.continually(rs).takeWhile(_.next()).map(extractRow).toSeq
 
 ---
 
+### 16. Avoid Casting - Use Pattern Matching
+
+Direct casting with `asInstanceOf` hides type errors and can cause runtime `ClassCastException`. Use pattern matching with proper error handling instead.
+
+**Best Practices:**
+
+```scala
+// BAD - Direct casting can fail at runtime
+val connection: HttpURLConnection =
+  url.openConnection().asInstanceOf[HttpURLConnection]
+
+// GOOD - Pattern match and return Result
+val connection: Result[HttpURLConnection] = url.openConnection() match {
+  case httpConn: HttpURLConnection => Right(httpConn)
+  case other => Left(ProcessingError(
+    s"Expected HttpURLConnection but got ${other.getClass.getName}"))
+}
+
+// GOOD - When you're certain of the type, use collect with match
+val httpConnections: Seq[HttpURLConnection] = connections.collect {
+  case http: HttpURLConnection => http
+}
+```
+
+**Why this matters:**
+- `asInstanceOf` throws `ClassCastException` at runtime if types don't match
+- Pattern matching makes the type check explicit and handles failures gracefully
+- Easier to debug when you get a proper error message instead of a stack trace
+
+---
+
 ## PR Submission Checklist
 
 Before submitting a PR, verify:
@@ -470,6 +501,7 @@ Before submitting a PR, verify:
 - [ ] No exceptions for control flow - use `Result[A]`
 - [ ] Config loaded at app edge, injected into core code
 - [ ] No `Any` types - use ADTs or typed collections
+- [ ] No `asInstanceOf` casting - use pattern matching
 - [ ] Resources closed with `Using.resource()`
 - [ ] No side effects in constructors
 - [ ] Thread-safe iteration on synchronized collections
