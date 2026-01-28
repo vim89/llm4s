@@ -19,6 +19,11 @@ import java.util.concurrent.atomic.AtomicBoolean
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
+private[provider] trait OpenAIClientTransport {
+  def getChatCompletions(model: String, options: ChatCompletionsOptions): ChatCompletions
+  def getChatCompletionsStream(model: String, options: ChatCompletionsOptions): IterableStream[ChatCompletions]
+}
+
 /**
  * LLMClient implementation supporting both OpenAI and Azure OpenAI services.
  *
@@ -44,7 +49,7 @@ import scala.util.Try
  */
 class OpenAIClient private (
   private val model: String,
-  private val client: AzureOpenAIClient,
+  private val transport: OpenAIClientTransport,
   private val config: ProviderConfig
 ) extends LLMClient {
 
@@ -58,10 +63,12 @@ class OpenAIClient private (
    */
   def this(config: OpenAIConfig) = this(
     config.model,
-    new OpenAIClientBuilder()
-      .credential(new KeyCredential(config.apiKey))
-      .endpoint(config.baseUrl)
-      .buildClient(),
+    OpenAIClientTransport.azure(
+      new OpenAIClientBuilder()
+        .credential(new KeyCredential(config.apiKey))
+        .endpoint(config.baseUrl)
+        .buildClient()
+    ),
     config
   )
 
@@ -72,11 +79,13 @@ class OpenAIClient private (
    */
   def this(config: AzureConfig) = this(
     config.model,
-    new OpenAIClientBuilder()
-      .credential(new AzureKeyCredential(config.apiKey))
-      .endpoint(config.endpoint)
-      .serviceVersion(OpenAIServiceVersion.valueOf(config.apiVersion))
-      .buildClient(),
+    OpenAIClientTransport.azure(
+      new OpenAIClientBuilder()
+        .credential(new AzureKeyCredential(config.apiKey))
+        .endpoint(config.endpoint)
+        .serviceVersion(OpenAIServiceVersion.valueOf(config.apiVersion))
+        .buildClient()
+    ),
     config
   )
 
@@ -99,7 +108,7 @@ class OpenAIClient private (
           transformed.options,
           transformed.requiresMaxCompletionTokens
         )
-        completions <- Try(client.getChatCompletions(model, chatOptions)).toEither.left
+        completions <- Try(transport.getChatCompletions(model, chatOptions)).toEither.left
           .map { e =>
             logger.error(s"OpenAI completion failed for model $model", e)
             e.toLLMError
@@ -166,7 +175,7 @@ class OpenAIClient private (
     chatOptions: ChatCompletionsOptions,
     onChunk: StreamedChunk => Unit
   ): Result[Completion] = {
-    val attempt = Try(client.getChatCompletions(model, chatOptions)).toEither.left
+    val attempt = Try(transport.getChatCompletions(model, chatOptions)).toEither.left
       .map { e =>
         logger.error(s"OpenAI fake streaming failed for model $model", e)
         e.toLLMError
@@ -194,7 +203,7 @@ class OpenAIClient private (
     val accumulator = StreamingAccumulator.create()
 
     val attempt = Try {
-      val stream = client.getChatCompletionsStream(model, chatOptions)
+      val stream = transport.getChatCompletionsStream(model, chatOptions)
       processStreamingResponse(stream, accumulator, onChunk)
     }.toEither.left.map { e =>
       logger.error(s"OpenAI native streaming failed for model $model", e)
@@ -217,9 +226,9 @@ class OpenAIClient private (
     onChunk: StreamedChunk => Unit
   ): Unit =
     stream.forEach { chatCompletions =>
-      if (chatCompletions.getChoices != null && !chatCompletions.getChoices.isEmpty) {
-        processStreamingChoice(chatCompletions, accumulator, onChunk)
-      }
+      Option(chatCompletions.getChoices)
+        .filterNot(_.isEmpty)
+        .foreach(_ => processStreamingChoice(chatCompletions, accumulator, onChunk))
     }
 
   /**
@@ -244,7 +253,7 @@ class OpenAIClient private (
     emitStreamingChunks(chunkId, contentOpt, toolCalls, finishReason, accumulator, onChunk)
 
     // Update token usage when streaming completes
-    if (choice.getFinishReason != null) {
+    Option(choice.getFinishReason).foreach { _ =>
       Option(chatCompletions.getUsage).foreach { usage =>
         accumulator.updateTokens(usage.getPromptTokens, usage.getCompletionTokens)
       }
@@ -531,6 +540,13 @@ class OpenAIClient private (
 object OpenAIClient {
   import org.llm4s.types.TryOps
 
+  private[provider] def forTest(
+    model: String,
+    transport: OpenAIClientTransport,
+    config: ProviderConfig
+  ): OpenAIClient =
+    new OpenAIClient(model, transport, config)
+
   /**
    * Creates an OpenAI client for direct OpenAI API access.
    *
@@ -548,4 +564,18 @@ object OpenAIClient {
    */
   def apply(config: AzureConfig): Result[OpenAIClient] =
     Try(new OpenAIClient(config)).toResult
+}
+
+private[provider] object OpenAIClientTransport {
+  def azure(client: AzureOpenAIClient): OpenAIClientTransport =
+    new OpenAIClientTransport {
+      override def getChatCompletions(model: String, options: ChatCompletionsOptions): ChatCompletions =
+        client.getChatCompletions(model, options)
+
+      override def getChatCompletionsStream(
+        model: String,
+        options: ChatCompletionsOptions
+      ): IterableStream[ChatCompletions] =
+        client.getChatCompletionsStream(model, options)
+    }
 }
