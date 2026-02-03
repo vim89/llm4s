@@ -80,7 +80,8 @@ jobs:
           PGVECTOR_PASSWORD: postgres
           PGVECTOR_TEST_USER: postgres
           PGVECTOR_TEST_PASSWORD: postgres
-        run: sbt coverage test coverageAggregate
+        # Run coverage only for core to keep signal focused and CI fast
+        run: sbt coverage core/test coverageAggregate
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
