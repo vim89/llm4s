@@ -38,6 +38,7 @@ object Versions {
 
   // AWS SDK
   val awsSdk     = "2.29.51"
+  val opentelemetry = "1.34.1"
 
   // Prometheus (1.x stable)
   val prometheus = "1.4.3"
@@ -81,6 +82,9 @@ object Deps {
   val awsS3      = "software.amazon.awssdk" % "s3"  % Versions.awsSdk
   val awsSts     = "software.amazon.awssdk" % "sts" % Versions.awsSdk
 
+  val opentelemetryApi = "io.opentelemetry" % "opentelemetry-api" % Versions.opentelemetry
+  val opentelemetrySdk = "io.opentelemetry" % "opentelemetry-sdk" % Versions.opentelemetry
+  val opentelemetryExporterOtlp = "io.opentelemetry" % "opentelemetry-exporter-otlp" % Versions.opentelemetry
   // Prometheus metrics
   val prometheusCore = "io.prometheus" % "prometheus-metrics-core" % Versions.prometheus
   val prometheusHttp = "io.prometheus" % "prometheus-metrics-exporter-httpserver" % Versions.prometheus
