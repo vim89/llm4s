@@ -1,5 +1,6 @@
 package org.llm4s.rag.loader
 
+import org.llm4s.core.safety.NetworkSecurity
 import org.llm4s.error.NetworkError
 
 import java.net.{ HttpURLConnection, URI }
@@ -28,7 +29,14 @@ final case class UrlLoader(
 
   def load(): Iterator[LoadResult] = urls.iterator.map(loadUrl)
 
-  private def loadUrl(urlString: String): LoadResult = {
+  private def loadUrl(urlString: String): LoadResult =
+    // SSRF Protection: Validate URL before making request
+    NetworkSecurity.validateUrl(urlString) match {
+      case Left(error) => LoadResult.failure(urlString, error)
+      case Right(_)    => loadUrlUnsafe(urlString)
+    }
+
+  private def loadUrlUnsafe(urlString: String): LoadResult = {
     import org.llm4s.types.TryOps
 
     val result = scala.util.Try {

@@ -34,7 +34,16 @@ class HttpToolsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "validate methods" in {
-    val fullConfig = HttpConfig()
+    // Default config now only allows GET and HEAD for security (read-only by default)
+    val defaultConfig = HttpConfig()
+
+    defaultConfig.isMethodAllowed("GET") shouldBe true
+    defaultConfig.isMethodAllowed("HEAD") shouldBe true
+    defaultConfig.isMethodAllowed("POST") shouldBe false   // Changed: secure default
+    defaultConfig.isMethodAllowed("DELETE") shouldBe false // Changed: secure default
+
+    // Use withWriteMethods for full HTTP method access
+    val fullConfig = HttpConfig().withAllMethods
 
     fullConfig.isMethodAllowed("GET") shouldBe true
     fullConfig.isMethodAllowed("POST") shouldBe true

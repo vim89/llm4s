@@ -1,5 +1,6 @@
 package org.llm4s.rag.loader
 
+import org.llm4s.core.safety.NetworkSecurity
 import org.llm4s.error.NetworkError
 import org.llm4s.rag.loader.internal._
 
@@ -197,7 +198,14 @@ final case class WebCrawlerLoader(
     /**
      * Fetch a page via HTTP.
      */
-    private def fetchPage(url: String): Either[NetworkError, (String, String, Map[String, String])] = {
+    private def fetchPage(url: String): Either[NetworkError, (String, String, Map[String, String])] =
+      // SSRF Protection: Validate URL before making request
+      NetworkSecurity.validateUrl(url) match {
+        case Left(error) => Left(NetworkError(error.message, None, "ssrf-protection"))
+        case Right(_)    => fetchPageUnsafe(url)
+      }
+
+    private def fetchPageUnsafe(url: String): Either[NetworkError, (String, String, Map[String, String])] = {
       import org.llm4s.types.TryOps
 
       Try {
