@@ -9,15 +9,13 @@ Welcome to the **LLM4S Google Summer of Code 2026** program! We're excited to of
 - [Summary Statistics](#summary-statistics)
 - [All Projects Table](#all-projects-table)
 - [Mentors & Contact Information](#mentors--contact-information)
-- [Community Support Team](#community-support-team)
 - [Project Statistics](#project-statistics)
-- [How to Apply](#how-to-apply)
 - [Project Repositories](#project-repositories)
 - [Contact & Community](#contact--community)
 
 ---
 
-## 📊 Summary Statistics
+## Summary Statistics
 
 - **Total Projects**: 63
 - **Project Sizes**: 
@@ -32,7 +30,7 @@ Welcome to the **LLM4S Google Summer of Code 2026** program! We're excited to of
 
 ---
 
-## 📋 All Projects Table
+## All Projects Table
 
 | # | Project Title | Mentors | Co-mentors | Difficulty | Hours |
 |---|--------------|---------|------------|------------|-------|
@@ -102,7 +100,7 @@ Welcome to the **LLM4S Google Summer of Code 2026** program! We're excited to of
 
 ---
 
-## 👥 Mentors & Contact Information
+## Mentors & Contact Information
 
 Our mentors are experienced developers and researchers passionate about LLMs, Scala, and AI systems. Below is the complete list of mentors with their contact details:
 
@@ -171,20 +169,7 @@ Our mentors are experienced developers and researchers passionate about LLMs, Sc
 
 ---
 
-## Community Support Team
-
-Our community support team is here to help you throughout your GSoC journey:
-
-- **Elvan** - Discord: `elvan_31441`
-- **Gopi Trinadh** - Discord: `g3nadh_58439`
-- **Subham** - Discord: `vi_shub`
-- **Anshuman** - Discord: `anshuman23026`
-
-Feel free to reach out to them on [Discord](https://discord.gg/YRdyYfEw) for general questions and community support!
-
----
-
-## 📈 Project Statistics
+## Project Statistics
 
 ### By Difficulty Level
 
@@ -221,60 +206,7 @@ Feel free to reach out to them on [Discord](https://discord.gg/YRdyYfEw) for gen
 
 ---
 
-## 📝 How to Apply
-
-### Step-by-Step Application Guide
-
-1. **Join the Community**
-   - Join our [Discord server](https://discord.gg/YRdyYfEw)
-   - Introduce yourself in the #introductions channel
-   - Attend weekly LLM4S Dev Hours (Sundays 9am London time) - [Add to your calendar](https://api2.luma.com/ics/get?entity=calendar&id=cal-Zd9BLb5jbZewxLA) (adds all 2026 events)
-
-2. **Register Your Interest**
-   - Add your details in the [GSoC 2026 Aspirants Sheet](https://docs.google.com/spreadsheets/d/1GzQDQaFCp4IJz8WlMwiooVDk0JWPh6hvODWRzEZRHxY/edit?gid=0#gid=0)
-   - This helps mentors track interested contributors and provide better support
-
-3. **Explore Projects**
-   - Review the [complete project list](./Project%20Ideas/2026.md)
-   - Read through project descriptions, expected outcomes, and prerequisites
-   - Identify 2-3 projects that match your skills and interests
-
-4. **Make Small Contributions**
-   - Star the [LLM4S repository](https://github.com/llm4s/llm4s)
-   - Look for "good first issue" labels
-   - Submit small PRs (documentation, bug fixes, tests)
-   - Showcase your Scala knowledge and commitment
-
-5. **Connect with Mentors**
-   - Use Discord channels and weekly dev hours (do NOT DM mentors directly)
-   - Ask crisp, well-researched questions
-   - Show up regularly and participate actively
-   - Demonstrate your understanding of the project
-
-6. **Write Your Proposal**
-   - Follow Google's [Writing a Proposal guide](https://google.github.io/gsocguides/student/writing-a-proposal)
-   - Include:
-     - Your background and relevant experience
-     - Why you're interested in this specific project
-     - Detailed implementation plan with timeline
-     - Milestones and deliverables
-   - Get feedback from mentors through Discord channels
-
-7. **Submit Your Application**
-   - Submit through the official GSoC portal when the application period opens
-   - Ensure all required information is included
-   - Continue engaging with the community while applications are reviewed
-
-### Important Notes
-
-- **Priority for Beginners**: GSoC is geared towards beginners and those at the start of their careers
-- **Learning Experience**: This is not a freelance job - it's a learning opportunity
-- **Disadvantaged Backgrounds**: We prioritize contributors who would otherwise not have such opportunities
-- **No Direct DMs**: Always use public channels until the program is officially announced
-
----
-
-## 🔗 Project Repositories
+## Project Repositories
 
 ### Main Repositories
 
@@ -283,12 +215,12 @@ Feel free to reach out to them on [Discord](https://discord.gg/YRdyYfEw) for gen
    - Projects: 1-25, 31-48
    - Agents, RAG, data pipelines, GCP integrations
 
-2. **[llm4s-tripper](https://github.com/llm4s/llm4s-tripper)**
+2. **llm4s-tripper**
    - AI-powered travel planning application
    - Projects: 49-63
    - Real-world demonstration of LLM4S capabilities
 
-3. **[Trumbo Screenwriting IDE](https://github.com/dmamonov/trumbo)**
+3. **Trumbo Screenwriting IDE**
    - AI-assisted screenwriting tool
    - Projects: 26-30
    - Script analysis, formatting, and production workflows
@@ -302,7 +234,7 @@ Feel free to reach out to them on [Discord](https://discord.gg/YRdyYfEw) for gen
 
 ---
 
-## 💬 Contact & Community
+## Contact & Community
 
 ### Official Communication Channels
 
@@ -324,80 +256,3 @@ Feel free to reach out to them on [Discord](https://discord.gg/YRdyYfEw) for gen
 - LinkedIn: [linkedin.com/in/roryjgraves](https://www.linkedin.com/in/roryjgraves/)
 - Email: rory.graves@fieldmark.co.uk
 - Discord: `rorybot1`
-
-### What to Expect
-
-- **Response Time**: Discord questions typically answered within 24 hours
-- **Dev Hours**: Live Q&A, project discussions, community building
-- **Code Review**: Mentor feedback on PRs within 2-3 days
-- **Supportive Community**: Friendly, inclusive environment for learning
-
----
-
-## Why Join LLM4S for GSoC 2026?
-
-### Learn Cutting-Edge Technologies
-- Work with state-of-the-art LLM frameworks
-- Master functional programming in Scala
-- Gain experience with production AI systems
-
-### Real-World Impact
-- Contribute to active open-source projects
-- Build tools used by developers worldwide
-- See your work deployed in production environments
-
-### Mentorship & Growth
-- Learn from experienced Scala developers
-- Guidance from AI/ML practitioners
-- Career development and networking opportunities
-
-### Diverse Project Portfolio
-- 63 projects across multiple domains
-- Choose based on your interests and skill level
-- Flexibility to explore different areas
-
----
-
-## 📚 Additional Resources
-
-### Program Information
-- [GSoC 2026 Rules](https://summerofcode.withgoogle.com/rules)
-- [Terms and Conditions](https://summerofcode.withgoogle.com/terms/contributor)
-- [GSoC Help Center](https://summerofcode.withgoogle.com/help)
-
-### LLM4S Documentation
-- [Installation Guide](https://llm4s.org/getting-started/installation)
-- [First Example](https://llm4s.org/getting-started/first-example)
-- [Testing Guide](https://llm4s.org/getting-started/testing-guide)
-- [Configuration](https://llm4s.org/getting-started/configuration)
-
-### Learning Resources
-- [Scala Documentation](https://docs.scala-lang.org)
-- [Functional Programming in Scala](https://www.scala-lang.org/documentation/)
-- [LLM Fundamentals](https://llm4s.org/guide/)
-
----
-
-## Next Steps
-
-1. Star the [LLM4S repository](https://github.com/llm4s/llm4s)
-2. Join our [Discord community](https://discord.gg/YRdyYfEw)
-3. Read the [complete project ideas](./Project%20Ideas/2026.md)
-4. Identify projects that match your interests
-5. Make your first contribution
-6. Attend weekly dev hours
-7. Start drafting your proposal
-
----
-
-**Last Updated**: February 2026  
-**Status**: Active - Applications Open  
-**Total Projects**: 63  
-**Primary Language**: Scala  
-**License**: Apache 2.0
-
-For questions or support, join us on [Discord](https://discord.gg/YRdyYfEw) or reach out to our GSoC Org Admins:
-- **Kannupriya Kalra** (Discord: `kannupriyakalra_46520`) - kannupriyakalra@gmail.com
-- **Rory Graves** (Discord: `rorybot1`) - rory.graves@fieldmark.co.uk
-
-**Good luck with your application! We look forward to working with you! 🚀**
