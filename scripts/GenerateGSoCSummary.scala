@@ -190,37 +190,46 @@ Our mentors are experienced developers and researchers passionate about LLMs, Sc
    - Email: vitthalmirji@gmail.com
    - Focus: Data pipelines, GCP integrations, type systems
 
-4. **Atul S Khot**
+4. **Giovanni Ruggiero**
+   - LinkedIn: [linkedin.com/in/giovanniruggiero](https://www.linkedin.com/in/giovanniruggiero/)
+   - Email: giovanni.ruggiero@gmail.com
+   - Focus: Multi-agent systems, planning, llm4s-tripper
+
+5. **Iyad**
+   - LinkedIn: [linkedin.com/in](https://www.linkedin.com/in)
+   - Focus: Agent evaluation, multi-agent systems, security
+
+6. **Atul S Khot**
    - LinkedIn: [linkedin.com/in/atul-s-khot-035b4b1](https://www.linkedin.com/in/atul-s-khot-035b4b1/)
    - Email: atulkhot@gmail.com
    - Focus: Memory systems, data engineering, functional programming
 
-5. **Dmitry Mamonov**
+7. **Dmitry Mamonov**
    - LinkedIn: [linkedin.com/in/dmamonov](https://www.linkedin.com/in/dmamonov/)
    - Email: dmitry.s.mamonov@gmail.com
    - Focus: Browser agents, Trumbo screenwriting IDE, gaming platforms
 
-6. **Vamshi Salagala**
+8. **Vamshi Salagala**
    - LinkedIn: [linkedin.com/in/pavanvamsi3](https://www.linkedin.com/in/pavanvamsi3/)
    - Email: pavanvamsi3@gmail.com
    - Focus: Hallucination detection, CI/CD, agent evaluation
 
-7. **Prasad Pramod Shimpatwar**
+9. **Prasad Pramod Shimpatwar**
    - LinkedIn: [linkedin.com/in/prasad-pramod-shimpatwar](https://www.linkedin.com/in/prasad-pramod-shimpatwar/)
    - Email: prasadshimpatwar26@gmail.com
    - Focus: Prompt engineering, migration tools, GraphRAG
 
-8. **Pritish Yuvraj**
-   - LinkedIn: [linkedin.com/in/pritishyuvraj](https://www.linkedin.com/in/pritishyuvraj/)
-   - Email: pritish.yuvi@gmail.com
-   - Focus: Debugging tools, embedded systems
+10. **Pritish Yuvraj**
+    - LinkedIn: [linkedin.com/in/pritishyuvraj](https://www.linkedin.com/in/pritishyuvraj/)
+    - Email: pritish.yuvi@gmail.com
+    - Focus: Debugging tools, embedded systems
 
-9. **Satvik Kumar**
-   - LinkedIn: [linkedin.com/in/satvik-kumar](https://www.linkedin.com/in/satvik-kumar/)
-   - Email: satvik.kumar.us@gmail.com
-   - Focus: Self-documenting agents, semantic chunking
+11. **Satvik Kumar**
+    - LinkedIn: [linkedin.com/in/satvik-kumar](https://www.linkedin.com/in/satvik-kumar/)
+    - Email: satvik.kumar.us@gmail.com
+    - Focus: Self-documenting agents, semantic chunking
 
-10. **Debarshi Kundu**
+12. **Debarshi Kundu**
     - LinkedIn: [linkedin.com/in/debarshikundu](https://www.linkedin.com/in/debarshikundu/)
     - Email: debarshi.iiest@gmail.com
     - Focus: RAG evaluation, GraphRAG, multimodal systems
