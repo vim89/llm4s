@@ -24,7 +24,7 @@ The workflow `.github/workflows/gsoc-summary-sync.yml` runs automatically:
 
 **On Pull Requests:**
 - Checks if summary matches project ideas
-- Posts a comment if regeneration is needed
+- Posts a comment if regeneration is needed or not
 - Prevents merge of stale summaries
 
 **On Main Branch Push:**
