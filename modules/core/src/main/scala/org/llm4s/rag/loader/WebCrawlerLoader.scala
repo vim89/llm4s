@@ -216,7 +216,8 @@ final case class WebCrawlerLoader(
         conn.setReadTimeout(config.timeoutMs)
         conn.setRequestProperty("User-Agent", config.userAgent)
         conn.setRequestProperty("Accept", "text/html,application/xhtml+xml,*/*;q=0.8")
-        conn.setInstanceFollowRedirects(true)
+        // Prevent redirect-based SSRF bypasses
+        conn.setInstanceFollowRedirects(false)
 
         Using.resource(new AutoCloseable {
           override def close(): Unit = conn.disconnect()

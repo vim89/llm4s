@@ -86,6 +86,11 @@ object LogRedaction {
   private def jsonKeyPattern(key: String): Regex =
     s"""(?i)("${Regex.quote(key)}"\\s*:\\s*")([^"]+)(")""".r
 
+  // Helper for function composition
+  implicit private class PipeOps[A](val value: A) extends AnyVal {
+    def pipe[B](f: A => B): B = f(value)
+  }
+
   /**
    * Redact sensitive information from a string.
    *
@@ -103,48 +108,34 @@ object LogRedaction {
     if (input == null || input.isEmpty) {
       input
     } else {
-      var result = input
-
-      // Redact Authorization headers first (most specific)
-      result = redactAuthHeaders(result, placeholder)
-
-      // Redact sensitive query parameters
-      result = redactQueryParams(result, placeholder)
-
-      // Redact sensitive JSON fields
-      result = redactJsonFields(result, placeholder)
-
-      // Redact known API key patterns
-      result = redactApiKeys(result, placeholder)
-
-      result
+      // Chain immutable transformations
+      input
+        .pipe(redactAuthHeaders(_, placeholder))
+        .pipe(redactQueryParams(_, placeholder))
+        .pipe(redactJsonFields(_, placeholder))
+        .pipe(redactApiKeys(_, placeholder))
     }
 
   /**
    * Redact Authorization headers.
    */
-  private def redactAuthHeaders(input: String, placeholder: String): String = {
-    var result = input
-
-    // Handle "Authorization": "..." in JSON
-    result = """(?i)("Authorization"\s*:\s*")([^"]+)(")""".r
-      .replaceAllIn(result, m => s"${m.group(1)}$placeholder${m.group(3)}")
-
-    // Handle Authorization: ... in headers (capture everything until newline or end)
-    // This handles "Authorization: Bearer xxx", "Authorization: Basic xxx", etc.
-    result = """(?i)(Authorization:\s*)([^\n\r]+)""".r
-      .replaceAllIn(result, m => s"${m.group(1)}$placeholder")
-
-    // Handle standalone Bearer tokens (when not part of Authorization header)
-    result = """(?i)\bBearer\s+([a-zA-Z0-9\-_\.]+)""".r
-      .replaceAllIn(result, placeholder)
-
-    // Handle standalone Basic auth tokens (when not part of Authorization header)
-    result = """(?i)\bBasic\s+([a-zA-Z0-9+/=]+)""".r
-      .replaceAllIn(result, placeholder)
-
-    result
-  }
+  private def redactAuthHeaders(input: String, placeholder: String): String =
+    input
+      // Handle "Authorization": "..." in JSON
+      .pipe(
+        """(?i)("Authorization"\s*:\s*")([^"]+)(")""".r
+          .replaceAllIn(_, m => s"${m.group(1)}$placeholder${m.group(3)}")
+      )
+      // Handle Authorization: ... in headers (capture everything until newline or end)
+      // This handles "Authorization: Bearer xxx", "Authorization: Basic xxx", etc.
+      .pipe(
+        """(?i)(Authorization:\s*)([^\n\r]+)""".r
+          .replaceAllIn(_, m => s"${m.group(1)}$placeholder")
+      )
+      // Handle standalone Bearer tokens (when not part of Authorization header)
+      .pipe("""(?i)\bBearer\s+([a-zA-Z0-9\-_\.]+)""".r.replaceAllIn(_, placeholder))
+      // Handle standalone Basic auth tokens (when not part of Authorization header)
+      .pipe("""(?i)\bBasic\s+([a-zA-Z0-9+/=]+)""".r.replaceAllIn(_, placeholder))
 
   /**
    * Redact sensitive URL query parameters.
@@ -168,40 +159,27 @@ object LogRedaction {
   /**
    * Redact sensitive JSON fields.
    */
-  private def redactJsonFields(input: String, placeholder: String): String = {
-    var result = input
-
-    SensitiveJsonKeys.foreach { key =>
+  private def redactJsonFields(input: String, placeholder: String): String =
+    SensitiveJsonKeys.foldLeft(input) { (acc, key) =>
       val pattern = jsonKeyPattern(key)
-      result = pattern.replaceAllIn(result, m => s"${m.group(1)}$placeholder${m.group(3)}")
+      pattern.replaceAllIn(acc, m => s"${m.group(1)}$placeholder${m.group(3)}")
     }
-
-    result
-  }
 
   /**
    * Redact known API key patterns.
    */
-  private def redactApiKeys(input: String, placeholder: String): String = {
-    var result = input
-
-    // OpenAI keys
-    result = """sk-(?:proj-)?[a-zA-Z0-9]{20,}""".r.replaceAllIn(result, placeholder)
-
-    // Anthropic keys
-    result = """sk-ant-[a-zA-Z0-9\-]{20,}""".r.replaceAllIn(result, placeholder)
-
-    // Google keys
-    result = """AIza[a-zA-Z0-9_\-]{35,}""".r.replaceAllIn(result, placeholder)
-
-    // Voyage keys
-    result = """pa-[a-zA-Z0-9]{20,}""".r.replaceAllIn(result, placeholder)
-
-    // Langfuse keys (minimum 10 chars to catch shorter keys too)
-    result = """[ps]k-lf-[a-zA-Z0-9\-]{10,}""".r.replaceAllIn(result, placeholder)
-
-    result
-  }
+  private def redactApiKeys(input: String, placeholder: String): String =
+    input
+      // OpenAI keys
+      .pipe("""sk-(?:proj-)?[a-zA-Z0-9]{20,}""".r.replaceAllIn(_, placeholder))
+      // Anthropic keys
+      .pipe("""sk-ant-[a-zA-Z0-9\-]{20,}""".r.replaceAllIn(_, placeholder))
+      // Google keys
+      .pipe("""AIza[a-zA-Z0-9_\-]{35,}""".r.replaceAllIn(_, placeholder))
+      // Voyage keys
+      .pipe("""pa-[a-zA-Z0-9]{20,}""".r.replaceAllIn(_, placeholder))
+      // Langfuse keys (minimum 10 chars to catch shorter keys too)
+      .pipe("""[ps]k-lf-[a-zA-Z0-9\-]{10,}""".r.replaceAllIn(_, placeholder))
 
   /**
    * Redact sensitive data suitable for logging request/response bodies.

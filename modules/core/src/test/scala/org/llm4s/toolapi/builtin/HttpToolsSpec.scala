@@ -108,11 +108,33 @@ class HttpToolsSpec extends AnyFlatSpec with Matchers {
   "HttpConfig.readOnly" should "only allow read methods" in {
     val config = HttpConfig.readOnly()
 
-    config.allowedMethods shouldBe Seq("GET", "HEAD", "OPTIONS")
+    config.allowedMethods shouldBe Seq("GET", "HEAD")
     config.isMethodAllowed("GET") shouldBe true
     config.isMethodAllowed("POST") shouldBe false
     config.isMethodAllowed("PUT") shouldBe false
     config.isMethodAllowed("DELETE") shouldBe false
+  }
+
+  "HttpConfig.validateDomainWithSSRF" should "block internal IPs by default" in {
+    val config = HttpConfig()
+
+    config.validateDomainWithSSRF("10.0.0.1") shouldBe false
+    config.validateDomainWithSSRF("192.168.1.10") shouldBe false
+  }
+
+  it should "allow internal IPs when explicitly enabled" in {
+    val config = HttpConfig().withInternalIPsAllowed
+
+    config.validateDomainWithSSRF("10.0.0.1") shouldBe true
+  }
+
+  "HttpConfig.unsafe" should "disable SSRF protection and allow write methods" in {
+    val config = HttpConfig.unsafe
+
+    config.blockInternalIPs shouldBe false
+    config.blockedDomains shouldBe Seq.empty
+    config.isMethodAllowed("POST") shouldBe true
+    config.isMethodAllowed("DELETE") shouldBe true
   }
 
   "HttpConfig.restricted" should "limit to specified domains" in {

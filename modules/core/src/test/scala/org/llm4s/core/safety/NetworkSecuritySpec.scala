@@ -39,6 +39,15 @@ class NetworkSecuritySpec extends AnyFlatSpec with Matchers {
     NetworkSecurity.isBlockedIP(InetAddress.getByName("169.254.255.255")) shouldBe true
   }
 
+  it should "block multicast and any-local addresses" in {
+    NetworkSecurity.isBlockedIP(InetAddress.getByName("224.0.0.1")) shouldBe true
+    NetworkSecurity.isBlockedIP(InetAddress.getByName("0.0.0.0")) shouldBe true
+  }
+
+  it should "block IPv6 link-local addresses" in {
+    NetworkSecurity.isBlockedIP(InetAddress.getByName("fe80::1")) shouldBe true
+  }
+
   it should "allow public IP addresses" in {
     NetworkSecurity.isBlockedIP(InetAddress.getByName("8.8.8.8")) shouldBe false
     NetworkSecurity.isBlockedIP(InetAddress.getByName("1.1.1.1")) shouldBe false

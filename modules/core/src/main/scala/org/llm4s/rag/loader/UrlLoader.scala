@@ -44,6 +44,8 @@ final case class UrlLoader(
       val conn = uri.toURL.openConnection().asInstanceOf[HttpURLConnection]
       conn.setConnectTimeout(timeoutMs)
       conn.setReadTimeout(timeoutMs)
+      // Prevent redirect-based SSRF bypasses
+      conn.setInstanceFollowRedirects(false)
       conn.setRequestProperty("User-Agent", "LLM4S-RAG/1.0")
       headers.foreach { case (k, v) => conn.setRequestProperty(k, v) }
       conn

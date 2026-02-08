@@ -52,9 +52,8 @@ case class HttpConfig(
       normalizedDomain == blocked.toLowerCase || normalizedDomain.endsWith("." + blocked.toLowerCase)
     }
 
-    if (isBlocked) {
-      false
-    } else {
+    if (isBlocked) false
+    else
       // If allowlist is defined, domain must be in it
       allowedDomains match {
         case Some(allowed) =>
@@ -64,7 +63,6 @@ case class HttpConfig(
           }
         case None => true
       }
-    }
   }
 
   /**
@@ -78,14 +76,9 @@ case class HttpConfig(
    */
   def validateDomainWithSSRF(domain: String): Boolean =
     // First check hostname-based rules
-    if (!isDomainAllowed(domain)) {
-      false
-    } else if (blockInternalIPs) {
-      // Check IP-based SSRF protection if enabled
-      NetworkSecurity.validateHostname(domain).isRight
-    } else {
-      true
-    }
+    if (!isDomainAllowed(domain)) false
+    else if (blockInternalIPs) NetworkSecurity.validateHostname(domain).isRight
+    else true
 
   /**
    * Check if a method is allowed.
@@ -140,7 +133,7 @@ object HttpConfig {
     HttpConfig(
       allowedDomains = allowedDomains,
       blockedDomains = blockedDomains,
-      allowedMethods = Seq("GET", "HEAD", "OPTIONS")
+      allowedMethods = Seq("GET", "HEAD")
     )
 
   /**
