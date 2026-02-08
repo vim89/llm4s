@@ -305,13 +305,6 @@ Our mentors are experienced developers and researchers passionate about LLMs, Sc
 
 ## Contact & Community
 
-### Official Communication Channels
-
-- **Discord**: [discord.gg/YRdyYfEw](https://discord.gg/YRdyYfEw) - Primary community hub
-- **Weekly Dev Hours**: Sundays 9am London time - [Add to your calendar](https://api2.luma.com/ics/get?entity=calendar&id=cal-Zd9BLb5jbZewxLA) (adds all 2026 events)
-- **GitHub Issues**: For technical discussions and bug reports
-- **Email**: For official GSoC inquiries → kannupriyakalra@gmail.com or rory.graves@fieldmark.co.uk
-
 ### GSoC Organization Admins
 
 **Kannupriya Kalra**
@@ -331,7 +324,7 @@ Our mentors are experienced developers and researchers passionate about LLMs, Sc
 **For more information:**
 - Review the [complete project details](./Project%20Ideas/2026.md)
 - Join our [Discord community](https://discord.gg/YRdyYfEw)
-- Attend weekly LLM4S Dev Hours (Sundays 9am London time) - [Add to your calendar](https://api2.luma.com/ics/get?entity=calendar&id=cal-Zd9BLb5jbZewxLA)
+- Attend weekly LLM4S Dev Hours (Sundays 9am London time)
 - Register in the [GSoC 2026 Aspirants Sheet](https://docs.google.com/spreadsheets/d/1GzQDQaFCp4IJz8WlMwiooVDk0JWPh6hvODWRzEZRHxY/edit?gid=0#gid=0)
 """
   }

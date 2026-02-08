@@ -59,29 +59,29 @@ Welcome to the **LLM4S Google Summer of Code 2026** program! We're excited to of
 | 23 | [PII-first prompt firewall](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#23-pii-first-prompt-firewall) | TBD | TBD | Medium | 350 |
 | 24 | [Data pipelines & lineage core (v2 ETL)](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#24-data-pipelines--lineage-core-v2-etl) | Vitthal Mirji | Atul S Khot; Kannupriya Kalra; Rory Graves | Medium | 175 |
 | 25 | [Policy & catalog system (governance)](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#25-policy--catalog-system-governance) | Vitthal Mirji | Atul S Khot; Kannupriya Kalra; Rory Graves | Hard | 350 |
-| 26 | [Trumbo/Screenwriting IDE - Script Structure Analysis Tool](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#26-trumboscreenwriting-ide---script-structure-analysis-tool) | Dmitry Mamonov | Rory Graves; Kannupriya Kalra | Medium | 175 |
-| 27 | [Trumbo/Screenwriting IDE - Automatic Script File Conversion to Fountain Format using LLM](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#27-trumboscreenwriting-ide---automatic-script-file-conversion-to-fountain-format-using-llm) | Dmitry Mamonov | Rory Graves; Kannupriya Kalra | Medium | 175 |
-| 28 | [Trumbo/Screenwriting IDE - Script Tensions Analysis using LLM](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#28-trumboscreenwriting-ide---script-tensions-analysis-using-llm) | Dmitry Mamonov | Rory Graves; Kannupriya Kalra | Medium | 175 |
-| 29 | [Trumbo/Screenwriting IDE - Script Scenes Dependencies Analysis and Visualisation](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#29-trumboscreenwriting-ide---script-scenes-dependencies-analysis-and-visualisation) | Dmitry Mamonov | Rory Graves; Kannupriya Kalra | Medium | 175 |
-| 30 | [Trumbo/Screenwriting IDE - Typical Screenwriting Mistakes Detection](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#30-trumboscreenwriting-ide---typical-screenwriting-mistakes-detection) | Dmitry Mamonov | Rory Graves; Kannupriya Kalra | Medium | 175 |
-| 31 | [LLM4S - First-class Vertex AI provider for Scala](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#31-llm4s---first-class-vertex-ai-provider-for-scala) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Hard | 350 |
-| 32 | [LLM4S - Dataform + LLM4S "SQL engineer" assistant](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#32-llm4s---dataform--llm4s-sql-engineer-assistant) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Medium | 350 |
-| 33 | [LLM4S - TOON boundary format for data+LLM pipelines on GCP](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#33-llm4s---toon-boundary-format-for-datallm-pipelines-on-gcp) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Medium | 175 |
-| 34 | [LLM4S - TOON data contracts + CI enforcement (artifacted)](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#34-llm4s---toon-data-contracts--ci-enforcement-artifacted) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Medium | 175 |
-| 35 | [LLM4S - Data contracts + schema drift guardrails for BigQuery](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#35-llm4s---data-contracts--schema-drift-guardrails-for-bigquery) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Medium | 175 |
-| 36 | [LLM4S - Lineage-first ingestion for Spark pipelines (Scala)](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#36-llm4s---lineage-first-ingestion-for-spark-pipelines-scala) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Hard | 350 |
-| 37 | [LLM4S - CDC-driven reindexing (fresh RAG from changing data)](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#37-llm4s---cdc-driven-reindexing-fresh-rag-from-changing-data) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Hard | 350 |
-| 38 | [LLM4S - High-throughput BigQuery Storage Write sink for telemetry](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#38-llm4s---high-throughput-bigquery-storage-write-sink-for-telemetry) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Medium | 175 |
-| 39 | [LLM4S - Data-aware "LLM transform" operators (Scala)](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#39-llm4s---data-aware-llm-transform-operators-scala) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Hard | 350 |
-| 40 | [LLM4S - BigQuery-native Vector RAG (no separate vector DB)](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#40-llm4s---bigquery-native-vector-rag-no-separate-vector-db) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Medium | 350 |
-| 41 | [LLM4S - Prompt + agent observability to BigQuery](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#41-llm4s---prompt--agent-observability-to-bigquery) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Medium | 175 |
-| 42 | [LLM4S - Dataplex lineage for LLM pipelines (RAG + prompts)](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#42-llm4s---dataplex-lineage-for-llm-pipelines-rag--prompts) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Medium | 175 |
-| 43 | [LLM4S - PII-first ingestion (DLP + Dataplex policies)](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#43-llm4s---pii-first-ingestion-dlp--dataplex-policies) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Hard | 350 |
-| 44 | [LLM4S - RAG ingestion pipeline kit (Vertex AI Vector Search)](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#44-llm4s---rag-ingestion-pipeline-kit-vertex-ai-vector-search) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Hard | 350 |
-| 45 | [LLM4S - Streaming GenAI enrichment with Dataflow](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#45-llm4s---streaming-genai-enrichment-with-dataflow) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Hard | 350 |
-| 46 | [LLM4S - BigQuery → Maps Datasets builder (Scala)](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#46-llm4s---bigquery--maps-datasets-builder-scala) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Medium | 175 |
-| 47 | [LLM4S - Place ID Steward + refresh pipeline](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#47-llm4s---place-id-steward--refresh-pipeline) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Medium | 175 |
-| 48 | [LLM4S - "Polite" Maps API client for Scala (quota/retry/backoff)](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#48-llm4s---polite-maps-api-client-for-scala-quotaretrybackoff) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Medium | 175 |
+| 26 | [LLM4S - First-class Vertex AI provider for Scala](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#31-llm4s---first-class-vertex-ai-provider-for-scala) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Hard | 350 |
+| 27 | [LLM4S - Dataform + LLM4S "SQL engineer" assistant](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#32-llm4s---dataform--llm4s-sql-engineer-assistant) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Medium | 350 |
+| 28 | [LLM4S - TOON boundary format for data+LLM pipelines on GCP](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#33-llm4s---toon-boundary-format-for-datallm-pipelines-on-gcp) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Medium | 175 |
+| 29 | [LLM4S - TOON data contracts + CI enforcement (artifacted)](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#34-llm4s---toon-data-contracts--ci-enforcement-artifacted) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Medium | 175 |
+| 30 | [LLM4S - Data contracts + schema drift guardrails for BigQuery](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#35-llm4s---data-contracts--schema-drift-guardrails-for-bigquery) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Medium | 175 |
+| 31 | [LLM4S - Lineage-first ingestion for Spark pipelines (Scala)](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#36-llm4s---lineage-first-ingestion-for-spark-pipelines-scala) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Hard | 350 |
+| 32 | [LLM4S - CDC-driven reindexing (fresh RAG from changing data)](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#37-llm4s---cdc-driven-reindexing-fresh-rag-from-changing-data) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Hard | 350 |
+| 33 | [LLM4S - High-throughput BigQuery Storage Write sink for telemetry](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#38-llm4s---high-throughput-bigquery-storage-write-sink-for-telemetry) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Medium | 175 |
+| 34 | [LLM4S - Data-aware "LLM transform" operators (Scala)](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#39-llm4s---data-aware-llm-transform-operators-scala) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Hard | 350 |
+| 35 | [LLM4S - BigQuery-native Vector RAG (no separate vector DB)](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#40-llm4s---bigquery-native-vector-rag-no-separate-vector-db) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Medium | 350 |
+| 36 | [LLM4S - Prompt + agent observability to BigQuery](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#41-llm4s---prompt--agent-observability-to-bigquery) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Medium | 175 |
+| 37 | [LLM4S - Dataplex lineage for LLM pipelines (RAG + prompts)](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#42-llm4s---dataplex-lineage-for-llm-pipelines-rag--prompts) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Medium | 175 |
+| 38 | [LLM4S - PII-first ingestion (DLP + Dataplex policies)](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#43-llm4s---pii-first-ingestion-dlp--dataplex-policies) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Hard | 350 |
+| 39 | [LLM4S - RAG ingestion pipeline kit (Vertex AI Vector Search)](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#44-llm4s---rag-ingestion-pipeline-kit-vertex-ai-vector-search) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Hard | 350 |
+| 40 | [LLM4S - Streaming GenAI enrichment with Dataflow](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#45-llm4s---streaming-genai-enrichment-with-dataflow) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Hard | 350 |
+| 41 | [LLM4S - BigQuery → Maps Datasets builder (Scala)](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#46-llm4s---bigquery--maps-datasets-builder-scala) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Medium | 175 |
+| 42 | [LLM4S - Place ID Steward + refresh pipeline](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#47-llm4s---place-id-steward--refresh-pipeline) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Medium | 175 |
+| 43 | [LLM4S - "Polite" Maps API client for Scala (quota/retry/backoff)](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#48-llm4s---polite-maps-api-client-for-scala-quotaretrybackoff) | Vitthal Mirji; Rory Graves | Atul S Khot; Kannupriya Kalra | Medium | 175 |
+| 44 | [Trumbo/Screenwriting IDE - Script Structure Analysis Tool](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#26-trumboscreenwriting-ide---script-structure-analysis-tool) | Dmitry Mamonov | Rory Graves; Kannupriya Kalra | Medium | 175 |
+| 45 | [Trumbo/Screenwriting IDE - Automatic Script File Conversion to Fountain Format using LLM](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#27-trumboscreenwriting-ide---automatic-script-file-conversion-to-fountain-format-using-llm) | Dmitry Mamonov | Rory Graves; Kannupriya Kalra | Medium | 175 |
+| 46 | [Trumbo/Screenwriting IDE - Script Tensions Analysis using LLM](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#28-trumboscreenwriting-ide---script-tensions-analysis-using-llm) | Dmitry Mamonov | Rory Graves; Kannupriya Kalra | Medium | 175 |
+| 47 | [Trumbo/Screenwriting IDE - Script Scenes Dependencies Analysis and Visualisation](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#29-trumboscreenwriting-ide---script-scenes-dependencies-analysis-and-visualisation) | Dmitry Mamonov | Rory Graves; Kannupriya Kalra | Medium | 175 |
+| 48 | [Trumbo/Screenwriting IDE - Typical Screenwriting Mistakes Detection](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#30-trumboscreenwriting-ide---typical-screenwriting-mistakes-detection) | Dmitry Mamonov | Rory Graves; Kannupriya Kalra | Medium | 175 |
 | 49 | [llm4s-tripper - Web UI with Real-time Progress Feedback](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#llm4s-tripper---web-ui-with-real-time-progress-feedback) | Kannupriya Kalra | Giovanni Ruggiero; Rory Graves | Medium | 350 |
 | 50 | [llm4s-tripper - Multi-LLM Strategy with Persona Configuration](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#llm4s-tripper---multi-llm-strategy-with-persona-configuration) | Kannupriya Kalra | Giovanni Ruggiero; Rory Graves | Medium | 175 |
 | 51 | [llm4s-tripper - Parallel POI Research with Cats Effect](https://github.com/llm4s/llm4s/blob/main/Google%20Summer%20of%20Code/Project%20Ideas/2026.md#llm4s-tripper---parallel-poi-research-with-cats-effect) | Kannupriya Kalra | Giovanni Ruggiero; Rory Graves | Medium | 175 |
@@ -212,18 +212,18 @@ Our mentors are experienced developers and researchers passionate about LLMs, Sc
 
 1. **[LLM4S Core](https://github.com/llm4s/llm4s)**
    - Main framework repository
-   - Projects: 1-25, 31-48
+   - Projects: 1-43 (all LLM4S projects grouped together)
    - Agents, RAG, data pipelines, GCP integrations
 
-2. **llm4s-tripper**
+2. **Trumbo Screenwriting IDE**
+   - AI-assisted screenwriting tool
+   - Projects: 44-48
+   - Script analysis, formatting, and production workflows
+
+3. **llm4s-tripper**
    - AI-powered travel planning application
    - Projects: 49-63
    - Real-world demonstration of LLM4S capabilities
-
-3. **Trumbo Screenwriting IDE**
-   - AI-assisted screenwriting tool
-   - Projects: 26-30
-   - Script analysis, formatting, and production workflows
 
 ### Related Resources
 
@@ -235,13 +235,6 @@ Our mentors are experienced developers and researchers passionate about LLMs, Sc
 ---
 
 ## Contact & Community
-
-### Official Communication Channels
-
-- **Discord**: [discord.gg/YRdyYfEw](https://discord.gg/YRdyYfEw) - Primary community hub
-- **Weekly Dev Hours**: Sundays 9am London time - [Add to your calendar](https://api2.luma.com/ics/get?entity=calendar&id=cal-Zd9BLb5jbZewxLA) (adds all 2026 events)
-- **GitHub Issues**: For technical discussions and bug reports
-- **Email**: For official GSoC inquiries → kannupriyakalra@gmail.com or rory.graves@fieldmark.co.uk
 
 ### GSoC Organization Admins
 
