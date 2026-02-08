@@ -18,8 +18,8 @@ We created the **LLM4S Foundation** to strengthen the long-term sustainability o
 
 If your organization relies on LLM4S libraries for production AI workloads, please consider sponsoring the Foundation to help ensure ongoing maintenance, development, and community support. We would love to talk to you; please reach out!
 
-[Become a Sponsor](https://github.com/sponsors/llm4s){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
-[Contact Us](mailto:contact@llm4s.org){: .btn .fs-5 .mb-4 .mb-md-0 }
+[Become a Sponsor](https://opencollective.com/llm4s){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
+[Contact Us](mailto:kannupriya@llm4s.org){: .btn .fs-5 .mb-4 .mb-md-0 }
 
 ---
 
