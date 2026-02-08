@@ -51,7 +51,9 @@ class ZaiClient(
           val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
 
           logger.debug(s"Response status: ${response.statusCode()}")
-          logger.debug(s"Response body: ${LogRedaction.redactForLogging(response.body())}")
+          logger.debug(
+            s"Response body: ${org.llm4s.util.Redaction.truncateForLog(LogRedaction.redactForLogging(response.body()))}"
+          )
 
           response
         }.toEither.left
@@ -62,9 +64,16 @@ class ZaiClient(
           case 200 =>
             val responseJson = ujson.read(response.body())
             Right(parseCompletion(responseJson))
-          case 401    => Left(AuthenticationError("zai", "Invalid API key"))
-          case 429    => Left(RateLimitError("zai"))
-          case status => Left(ServiceError(status, "zai", s"Z.ai API error: ${response.body()}"))
+          case 401 => Left(AuthenticationError("zai", "Invalid API key"))
+          case 429 => Left(RateLimitError("zai"))
+          case status =>
+            Left(
+              ServiceError(
+                status,
+                "zai",
+                s"Z.ai API error: ${org.llm4s.util.Redaction.truncateForLog(response.body())}"
+              )
+            )
         }
       }
     }
@@ -105,9 +114,12 @@ class ZaiClient(
         if (response.statusCode() != 200) {
           val errorBody = new String(response.body().readAllBytes(), StandardCharsets.UTF_8)
           response.statusCode() match {
-            case 401    => Left(AuthenticationError("zai", "Invalid API key"))
-            case 429    => Left(RateLimitError("zai"))
-            case status => Left(ServiceError(status, "zai", s"Z.ai API error: $errorBody"))
+            case 401 => Left(AuthenticationError("zai", "Invalid API key"))
+            case 429 => Left(RateLimitError("zai"))
+            case status =>
+              Left(
+                ServiceError(status, "zai", s"Z.ai API error: ${org.llm4s.util.Redaction.truncateForLog(errorBody)}")
+              )
           }
         } else {
           val streamResult = Try {
