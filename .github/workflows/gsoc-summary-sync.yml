@@ -67,7 +67,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: `## GSoC Summary Out of Sync
-              
+
 The GSoC 2026 summary file needs to be regenerated after your changes to \`Project Ideas/2026.md\`.
 
 **To fix:**
