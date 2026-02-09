@@ -85,12 +85,7 @@ private[agent] object HandoffResult {
  */
 class Agent(client: LLMClient) {
 
-  /**
-   * Default maximum number of steps for agent execution.
-   * This prevents infinite loops when the LLM repeatedly requests tool calls.
-   */
-  val DefaultMaxSteps: Int = 50
-  private val logger       = LoggerFactory.getLogger(getClass)
+  private val logger = LoggerFactory.getLogger(getClass)
 
   /**
    * Initializes a new agent state with the given query
@@ -917,7 +912,7 @@ class Agent(client: LLMClient) {
    * @param inputGuardrails Validate query before processing (default: none)
    * @param outputGuardrails Validate response before returning (default: none)
    * @param handoffs Available handoffs (default: none)
-   * @param maxSteps Limit on the number of steps to execute (default: 50 for safety).
+   * @param maxSteps Limit on the number of steps to execute (default: Agent.DefaultMaxSteps for safety).
    *                 Set to None for unlimited steps (use with caution).
    * @param traceLogPath Optional path to write a markdown trace file
    * @param systemPromptAddition Optional additional text to append to the default system prompt
@@ -931,7 +926,7 @@ class Agent(client: LLMClient) {
     inputGuardrails: Seq[InputGuardrail] = Seq.empty,
     outputGuardrails: Seq[OutputGuardrail] = Seq.empty,
     handoffs: Seq[Handoff] = Seq.empty,
-    maxSteps: Option[Int] = Some(50),
+    maxSteps: Option[Int] = Some(Agent.DefaultMaxSteps),
     traceLogPath: Option[String] = None,
     systemPromptAddition: Option[String] = None,
     completionOptions: CompletionOptions = CompletionOptions(),
@@ -1050,7 +1045,7 @@ class Agent(client: LLMClient) {
    * @param initialQuery The first user message
    * @param followUpQueries Additional user messages to process in sequence
    * @param tools Tool registry for the conversation
-   * @param maxStepsPerTurn Step limit per turn (default: 50 for safety).
+   * @param maxStepsPerTurn Step limit per turn (default: Agent.DefaultMaxSteps for safety).
    *                        Set to None for unlimited steps (use with caution).
    * @param systemPromptAddition Optional system prompt addition
    * @param completionOptions Completion options
@@ -1074,7 +1069,7 @@ class Agent(client: LLMClient) {
     initialQuery: String,
     followUpQueries: Seq[String],
     tools: ToolRegistry,
-    maxStepsPerTurn: Option[Int] = Some(50),
+    maxStepsPerTurn: Option[Int] = Some(Agent.DefaultMaxSteps),
     systemPromptAddition: Option[String] = None,
     completionOptions: CompletionOptions = CompletionOptions(),
     contextWindowConfig: Option[ContextWindowConfig] = None,
@@ -1130,7 +1125,7 @@ class Agent(client: LLMClient) {
    * @param inputGuardrails Validate query before processing (default: none)
    * @param outputGuardrails Validate response before returning (default: none)
    * @param handoffs Available handoffs (default: none)
-   * @param maxSteps Limit on the number of steps to execute (default: 50 for safety).
+   * @param maxSteps Limit on the number of steps to execute (default: Agent.DefaultMaxSteps for safety).
    *                 Set to None for unlimited steps (use with caution).
    * @param traceLogPath Optional path to write a markdown trace file
    * @param systemPromptAddition Optional additional text to append to the default system prompt
@@ -1161,7 +1156,7 @@ class Agent(client: LLMClient) {
     inputGuardrails: Seq[InputGuardrail] = Seq.empty,
     outputGuardrails: Seq[OutputGuardrail] = Seq.empty,
     handoffs: Seq[Handoff] = Seq.empty,
-    maxSteps: Option[Int] = Some(50),
+    maxSteps: Option[Int] = Some(Agent.DefaultMaxSteps),
     traceLogPath: Option[String] = None,
     systemPromptAddition: Option[String] = None,
     completionOptions: CompletionOptions = CompletionOptions(),
@@ -1536,7 +1531,7 @@ class Agent(client: LLMClient) {
   def runCollectingEvents(
     query: String,
     tools: ToolRegistry,
-    maxSteps: Option[Int] = Some(50),
+    maxSteps: Option[Int] = Some(Agent.DefaultMaxSteps),
     systemPromptAddition: Option[String] = None,
     completionOptions: CompletionOptions = CompletionOptions(),
     debug: Boolean = false
@@ -1574,7 +1569,7 @@ class Agent(client: LLMClient) {
    * @param inputGuardrails Validate query before processing (default: none)
    * @param outputGuardrails Validate response before returning (default: none)
    * @param handoffs Available handoffs (default: none)
-   * @param maxSteps Limit on the number of steps to execute (default: 50 for safety).
+   * @param maxSteps Limit on the number of steps to execute (default: Agent.DefaultMaxSteps for safety).
    *                 Set to None for unlimited steps (use with caution).
    * @param traceLogPath Optional path to write a markdown trace file
    * @param systemPromptAddition Optional additional text to append to the default system prompt
@@ -1609,7 +1604,7 @@ class Agent(client: LLMClient) {
     inputGuardrails: Seq[InputGuardrail] = Seq.empty,
     outputGuardrails: Seq[OutputGuardrail] = Seq.empty,
     handoffs: Seq[Handoff] = Seq.empty,
-    maxSteps: Option[Int] = Some(50),
+    maxSteps: Option[Int] = Some(Agent.DefaultMaxSteps),
     traceLogPath: Option[String] = None,
     systemPromptAddition: Option[String] = None,
     completionOptions: CompletionOptions = CompletionOptions(),
@@ -1824,4 +1819,13 @@ class Agent(client: LLMClient) {
       validatedState <- validateOutput(finalState, outputGuardrails)
     } yield validatedState
   }
+}
+
+object Agent {
+
+  /**
+   * Default maximum number of steps for agent execution.
+   * This prevents infinite loops when the LLM repeatedly requests tool calls.
+   */
+  val DefaultMaxSteps: Int = 50
 }

@@ -1,6 +1,6 @@
 package org.llm4s.llmconnect.provider
 
-import org.llm4s.core.safety.LogRedaction
+import org.llm4s.util.Redaction
 import org.llm4s.error.{ AuthenticationError, ConfigurationError, RateLimitError, ServiceError, ValidationError }
 import org.llm4s.error.ThrowableOps._
 import org.llm4s.llmconnect.LLMClient
@@ -73,7 +73,7 @@ class GeminiClient(
 
           // Note: URL contains API key as query param - do not log full URL
           logger.debug(s"[Gemini] Sending request to ${config.baseUrl}/models/${config.model}:generateContent")
-          logger.debug(s"[Gemini] Request body: ${LogRedaction.redactForLogging(requestBody.render())}")
+          logger.debug(s"[Gemini] Request body: ${Redaction.redactForLogging(requestBody.render())}")
 
           val request = HttpRequest
             .newBuilder()
