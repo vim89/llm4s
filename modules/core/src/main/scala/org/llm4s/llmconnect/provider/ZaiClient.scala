@@ -1,6 +1,6 @@
 package org.llm4s.llmconnect.provider
 
-import org.llm4s.core.safety.LogRedaction
+import org.llm4s.util.Redaction
 import org.llm4s.llmconnect.LLMClient
 import org.llm4s.llmconnect.config.ZaiConfig
 import org.llm4s.llmconnect.model._
@@ -35,7 +35,7 @@ class ZaiClient(
       val requestBody = createRequestBody(conversation, options)
 
       logger.debug(s"Sending request to Z.ai API at ${config.baseUrl}/chat/completions")
-      logger.debug(s"Request body: ${LogRedaction.redactForLogging(requestBody.render())}")
+      logger.debug(s"Request body: ${Redaction.redactForLogging(requestBody.render())}")
 
       val attempt =
         Try {
@@ -51,9 +51,7 @@ class ZaiClient(
           val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
 
           logger.debug(s"Response status: ${response.statusCode()}")
-          logger.debug(
-            s"Response body: ${org.llm4s.util.Redaction.truncateForLog(LogRedaction.redactForLogging(response.body()))}"
-          )
+          logger.debug(s"Response body: ${Redaction.redactForLogging(response.body())}")
 
           response
         }.toEither.left
