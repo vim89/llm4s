@@ -259,10 +259,14 @@ class StableDiffusionClient(config: StableDiffusionConfig, httpClient: HttpClien
     options: ImageGenerationOptions
   ): Either[ImageGenerationError, Seq[GeneratedImage]] = {
 
-    if (response.statusCode != 200) {
-      val errorMsg = s"API request failed with status ${response.statusCode}: ${response.text()}"
-      logger.error(errorMsg)
-      return Left(ServiceError(errorMsg, response.statusCode))
+    response.statusCode match {
+      case 200 => // succeed
+      case 401 => return Left(AuthenticationError("API request failed with status 401: Unauthorized"))
+      case 429 => return Left(RateLimitError("API request failed with status 429: Rate limit"))
+      case _ =>
+        val errorMsg = s"API request failed with status ${response.statusCode}: ${response.text()}"
+        logger.error(errorMsg)
+        return Left(ServiceError(errorMsg, response.statusCode))
     }
 
     Try {

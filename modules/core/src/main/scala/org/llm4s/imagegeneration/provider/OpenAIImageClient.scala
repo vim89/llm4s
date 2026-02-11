@@ -337,36 +337,40 @@ class OpenAIImageClient(config: OpenAIConfig, httpClient: HttpClient) extends Im
   /**
    * Parse the API response into GeneratedImage objects.
    */
+  /**
+   * Parse the API response into GeneratedImage objects.
+   */
   private def parseResponse(
     response: requests.Response,
     prompt: String,
     options: ImageGenerationOptions
-  ): Either[ImageGenerationError, Seq[GeneratedImage]] = {
-    val json       = read(response.text())
-    val imagesData = json("data").arr
+  ): Either[ImageGenerationError, Seq[GeneratedImage]] =
+    Try {
+      val json       = read(response.text())
+      val imagesData = json("data").arr
 
-    val images = imagesData.map { imageData =>
-      val (data, url) = if (imageData.obj.contains("b64_json")) {
-        (imageData("b64_json").str, None)
-      } else if (imageData.obj.contains("url")) {
-        ("", Some(imageData("url").str))
-      } else {
-        ("", None)
-      }
+      val images = imagesData.map { imageData =>
+        val (data, url) = if (imageData.obj.contains("b64_json")) {
+          (imageData("b64_json").str, None)
+        } else if (imageData.obj.contains("url")) {
+          ("", Some(imageData("url").str))
+        } else {
+          ("", None)
+        }
 
-      GeneratedImage(
-        data = data,
-        format = options.format,
-        size = options.size,
-        createdAt = Instant.now(),
-        prompt = prompt,
-        seed = options.seed,
-        filePath = None,
-        url = url
-      )
-    }.toSeq
+        GeneratedImage(
+          data = data,
+          format = options.format,
+          size = options.size,
+          createdAt = Instant.now(),
+          prompt = prompt,
+          seed = options.seed,
+          filePath = None,
+          url = url
+        )
+      }.toSeq
 
-    logger.info(s"Successfully generated ${images.length} image(s)")
-    Right(images)
-  }
+      logger.info(s"Successfully generated ${images.length} image(s)")
+      images
+    }.toEither.left.map(e => UnknownError(e))
 }

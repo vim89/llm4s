@@ -257,10 +257,11 @@ class HuggingFaceClient(config: HuggingFaceConfig, httpClient: HttpClient) exten
       .left
       .map(exception => ServiceError(exception.getMessage, 500))
       .flatMap { response =>
-        if (response.statusCode == 200) {
-          Right(response)
-        } else {
-          Left(ServiceError(response.text(), 500))
+        response.statusCode match {
+          case 200 => Right(response)
+          case 401 => Left(AuthenticationError("Unauthorized"))
+          case 429 => Left(RateLimitError("Rate limit"))
+          case _   => Left(ServiceError(response.text(), 500))
         }
       }
   }

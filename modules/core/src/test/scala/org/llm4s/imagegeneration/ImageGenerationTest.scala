@@ -179,6 +179,23 @@ class ImageGenerationTest extends AnyFunSuite with Matchers {
     client shouldBe a[org.llm4s.imagegeneration.provider.HuggingFaceClient]
   }
 
+  test("openAIClient creates client with correct config") {
+    val client = ImageGeneration.openAIClient(apiKey = "test-key")
+
+    client shouldBe a[org.llm4s.imagegeneration.provider.OpenAIImageClient]
+  }
+
+  test("ImageGeneration throws exception for unsupported provider") {
+    val config = new ImageGenerationConfig {
+      val provider = ImageGenerationProvider.Midjourney
+      val model    = "test"
+    }
+
+    assertThrows[UnsupportedOperationException] {
+      ImageGeneration.client(config)
+    }
+  }
+
   test("Config objects have correct default values") {
     val sdConfig = StableDiffusionConfig()
     sdConfig.baseUrl shouldBe "http://localhost:7860"
