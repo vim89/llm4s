@@ -2,12 +2,7 @@ package org.llm4s.imagegeneration
 
 import java.time.Instant
 import java.nio.file.Path
-import org.llm4s.imagegeneration.provider.{
-  HttpClient,
-  HuggingFaceClient,
-  OpenAIImageClient,
-  StableDiffusionClient
-}
+import org.llm4s.imagegeneration.provider.{ HttpClient, HuggingFaceClient, OpenAIImageClient, StableDiffusionClient }
 
 import scala.annotation.unused
 import scala.util.Try
@@ -393,7 +388,7 @@ object ImageGeneration {
   /** Factory method for getting a client with the right configuration */
   def client(
     config: ImageGenerationConfig
-  ): ImageGenerationClient = {
+  ): ImageGenerationClient =
     // metrics and tracing are ignored in this PR 1 version as instrumentation is added in a later PR
     config match {
       case sdConfig: StableDiffusionConfig =>
@@ -409,7 +404,6 @@ object ImageGeneration {
         // For PR flow, other providers (Vertex, Bedrock, etc.) are not yet available in this branch
         throw new UnsupportedOperationException(s"Provider ${config.provider} is not yet integrated in this version.")
     }
-  }
 
   /** Convenience method for quick image generation */
   def generateImage(

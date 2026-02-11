@@ -94,7 +94,7 @@ class OpenAIImageClient(config: OpenAIConfig, httpClient: HttpClient) extends Im
     prompt: String,
     maskPath: Option[Path] = None,
     options: ImageEditOptions = ImageEditOptions()
-  ): Either[ImageGenerationError, Seq[GeneratedImage]] = {
+  ): Either[ImageGenerationError, Seq[GeneratedImage]] =
     // Validate image format manually as simple check, real validation happens at API
     if (!imagePath.toString.toLowerCase.endsWith(".png")) {
       Left(ValidationError("Image must be a PNG file"))
@@ -144,7 +144,6 @@ class OpenAIImageClient(config: OpenAIConfig, httpClient: HttpClient) extends Im
         }
       }
     }
-  }
 
   /**
    * Generate an image asynchronously
