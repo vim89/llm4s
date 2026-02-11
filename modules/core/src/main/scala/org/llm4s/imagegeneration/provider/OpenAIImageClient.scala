@@ -279,7 +279,7 @@ class OpenAIImageClient(config: OpenAIConfig, httpClient: HttpClient) extends Im
       "prompt"          -> prompt,
       "n"               -> count,
       "size"            -> sizeToApiFormat(options.size),
-      "response_format" -> options.responseFormat.getOrElse("b64_json")
+      "response_format" -> ujson.Str(options.responseFormat.getOrElse("b64_json"))
     )
 
     // Optional parameters
