@@ -111,6 +111,29 @@ class ImageGenerationClientsTest extends AnyFunSuite with Matchers with MockFact
     result.value.data should not be empty
   }
 
+  test("HuggingFaceClient should map API error") {
+    val mockHttpClient = stub[HttpClient]
+    val config         = HuggingFaceConfig(apiKey = "test-key")
+    val client         = new HuggingFaceClient(config, mockHttpClient)
+
+    (mockHttpClient.post _).when(*, *, *, *).returns(Success(mockErrorResponse))
+
+    val result = client.generateImage(prompt)
+
+    result.isLeft shouldBe true
+  }
+
+  // ==========================================
+  // HttpClient Tests
+  // ==========================================
+  test("HttpClient should return failure on exception") {
+    val client = new SimpleHttpClient()
+    // Using a non-routable IP to force a connection error quickly without DNS delay
+    val result = client.post("http://0.0.0.0:0/invalid", Map.empty, "", 100)
+
+    result.isFailure shouldBe true
+  }
+
   // ==========================================
   // Stable Diffusion Client Tests
   // ==========================================
@@ -142,5 +165,17 @@ class ImageGenerationClientsTest extends AnyFunSuite with Matchers with MockFact
     result.isRight shouldBe true
     result.value.prompt shouldBe prompt
     result.value.data shouldBe "base64encodedimage..."
+  }
+
+  test("StableDiffusionClient should map API error") {
+    val mockHttpClient = stub[HttpClient]
+    val config         = StableDiffusionConfig(baseUrl = "http://localhost:7860")
+    val client         = new StableDiffusionClient(config, mockHttpClient)
+
+    (mockHttpClient.post _).when(*, *, *, *).returns(Success(mockErrorResponse))
+
+    val result = client.generateImage(prompt)
+
+    result.isLeft shouldBe true
   }
 }

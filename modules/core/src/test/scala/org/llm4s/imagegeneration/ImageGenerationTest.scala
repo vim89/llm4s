@@ -157,6 +157,13 @@ class ImageGenerationTest extends AnyFunSuite with Matchers {
     client shouldBe a[org.llm4s.imagegeneration.provider.HuggingFaceClient]
   }
 
+  test("ImageGeneration creates correct client for OpenAI config") {
+    val config = OpenAIConfig(apiKey = "test-key")
+    val client = ImageGeneration.client(config)
+
+    client shouldBe a[org.llm4s.imagegeneration.provider.OpenAIImageClient]
+  }
+
   test("stableDiffusionClient creates client with correct config") {
     val client = ImageGeneration.stableDiffusionClient(
       baseUrl = "http://test:8080",
