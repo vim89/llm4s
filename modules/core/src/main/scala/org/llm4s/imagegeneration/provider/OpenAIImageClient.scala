@@ -105,15 +105,15 @@ class OpenAIImageClient(config: OpenAIConfig, httpClient: HttpClient) extends Im
         requests.MultiItem("image", imagePath, filename = imagePath.getFileName.toString),
         requests.MultiItem("prompt", prompt),
         requests.MultiItem("n", options.n.toString),
-        requests.MultiItem("response_format", options.responseFormat.getOrElse("b64_json"))
+        requests.MultiItem("response_format", options.responseFormat.getOrElse("b64_json"): String)
       )
 
       // Always use dall-e-2 for edits as it's the only supported model for this endpoint
       parts += requests.MultiItem("model", "dall-e-2")
 
       maskPath.foreach(path => parts += requests.MultiItem("mask", path, filename = path.getFileName.toString))
-      options.size.foreach(s => parts += requests.MultiItem("size", sizeToApiFormat(s)))
-      options.user.foreach(u => parts += requests.MultiItem("user", u))
+      options.size.foreach(s => parts += requests.MultiItem("size", sizeToApiFormat(s): String))
+      options.user.foreach(u => parts += requests.MultiItem("user", u: String))
 
       val result = httpClient
         .postMultipart(
@@ -283,9 +283,9 @@ class OpenAIImageClient(config: OpenAIConfig, httpClient: HttpClient) extends Im
     )
 
     // Optional parameters
-    options.quality.foreach(q => requestBody("quality") = q)
-    options.style.foreach(s => requestBody("style") = s)
-    options.user.foreach(u => requestBody("user") = u)
+    options.quality.foreach(_ => requestBody("quality") = options.quality.get)
+    options.style.foreach(_ => requestBody("style") = options.style.get)
+    options.user.foreach(_ => requestBody("user") = options.user.get)
 
     // Backward compatibility defaults for DALL-E 3 if not specified
     if (config.model == "dall-e-3" && options.quality.isEmpty) {
