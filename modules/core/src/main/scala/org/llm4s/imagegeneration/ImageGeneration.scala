@@ -166,12 +166,7 @@ sealed trait ImageGenerationProvider
 object ImageGenerationProvider {
   case object StableDiffusion extends ImageGenerationProvider
   case object DALLE           extends ImageGenerationProvider
-  case object Midjourney      extends ImageGenerationProvider
   case object HuggingFace     extends ImageGenerationProvider
-  case object VertexAI        extends ImageGenerationProvider
-  case object Bedrock         extends ImageGenerationProvider
-  case object StabilityAI     extends ImageGenerationProvider
-  case object FalAI           extends ImageGenerationProvider
 }
 
 trait ImageGenerationConfig {
@@ -225,8 +220,8 @@ case class HuggingFaceConfig(
 case class OpenAIConfig(
   /** OpenAI API key */
   apiKey: String,
-  /** Model to use (dall-e-2 or dall-e-3) */
-  model: String = "dall-e-2",
+  /** Model to use (dall-e-2, dall-e-3, or gpt-image-1) */
+  model: String = "gpt-image-1",
   /** Base URL for OpenAI API */
   baseUrl: String = "https://api.openai.com/v1",
   /** Request timeout in milliseconds */
@@ -234,96 +229,6 @@ case class OpenAIConfig(
 ) extends ImageGenerationConfig {
   def provider: ImageGenerationProvider = ImageGenerationProvider.DALLE
   override def toString: String         = s"OpenAIConfig(apiKey=***, model=$model, baseUrl=$baseUrl, timeout=$timeout)"
-}
-
-/**
- * Configuration for Google Vertex AI Imagen API.
- *
- * @param projectId Your Google Cloud project ID
- * @param location The Google Cloud region (default: us-central1)
- * @param model The Imagen model to use
- * @param accessToken OAuth2 access token (if None, uses Application Default Credentials)
- * @param timeout Request timeout in milliseconds
- */
-case class VertexAIConfig(
-  /** Google Cloud project ID */
-  projectId: String,
-  /** Google Cloud region */
-  location: String = "us-central1",
-  /** Model to use */
-  model: String = "imagen-4.0-generate-001",
-  /** OAuth2 access token (optional, uses ADC if not provided) */
-  accessToken: Option[String] = None,
-  /** Request timeout in milliseconds */
-  override val timeout: Int = 120000 // 2 minutes for image generation
-) extends ImageGenerationConfig {
-  def provider: ImageGenerationProvider = ImageGenerationProvider.VertexAI
-  override def toString: String =
-    s"VertexAIConfig(projectId=$projectId, location=$location, model=$model, accessToken=${accessToken.map(_ => "***")}, timeout=$timeout)"
-}
-
-/**
- * Configuration for AWS Bedrock Image Generation API.
- *
- * @param region AWS region (default: us-east-1)
- * @param model The Bedrock model ID to use
- * @param accessKeyId AWS access key ID (optional, uses environment/IAM if not provided)
- * @param secretAccessKey AWS secret access key (optional, uses environment/IAM if not provided)
- * @param timeout Request timeout in milliseconds
- */
-case class BedrockConfig(
-  /** AWS region */
-  region: String = "us-east-1",
-  /** Model ID to use */
-  model: String = "amazon.titan-image-generator-v1",
-  /** AWS Access Key ID (optional, uses default credentials if not provided) */
-  accessKeyId: Option[String] = None,
-  /** AWS Secret Access Key (optional, uses default credentials if not provided) */
-  secretAccessKey: Option[String] = None,
-  /** Request timeout in milliseconds */
-  override val timeout: Int = 120000 // 2 minutes for image generation
-) extends ImageGenerationConfig {
-  def provider: ImageGenerationProvider = ImageGenerationProvider.Bedrock
-  override def toString: String = s"BedrockConfig(region=$region, model=$model, accessKeyId=${accessKeyId
-      .map(_ => "***")}, secretAccessKey=${secretAccessKey.map(_ => "***")}, timeout=$timeout)"
-}
-
-/**
- * Configuration for Stability AI Direct API.
- *
- * @param apiKey Your Stability AI API key
- * @param model The model endpoint to use (ultra or core)
- * @param timeout Request timeout in milliseconds
- */
-case class StabilityAIConfig(
-  /** Stability AI API key */
-  apiKey: String,
-  /** Model endpoint (ultra or core) */
-  model: String = "ultra",
-  /** Request timeout in milliseconds */
-  override val timeout: Int = 120000 // 2 minutes for image generation
-) extends ImageGenerationConfig {
-  def provider: ImageGenerationProvider = ImageGenerationProvider.StabilityAI
-  override def toString: String         = s"StabilityAIConfig(apiKey=***, model=$model, timeout=$timeout)"
-}
-
-/**
- * Configuration for Fal AI API.
- *
- * @param apiKey Your Fal AI API key
- * @param model The model to use (e.g., fal-ai/flux/dev, fal-ai/fast-sdxl)
- * @param timeout Request timeout in milliseconds
- */
-case class FalAIConfig(
-  /** Fal AI API key */
-  apiKey: String,
-  /** Model to use */
-  model: String = "fal-ai/flux/dev",
-  /** Request timeout in milliseconds */
-  override val timeout: Int = 120000 // 2 minutes for image generation
-) extends ImageGenerationConfig {
-  def provider: ImageGenerationProvider = ImageGenerationProvider.FalAI
-  override def toString: String         = s"FalAIConfig(apiKey=***, model=$model, timeout=$timeout)"
 }
 
 // ===== CLIENT INTERFACE =====
@@ -388,21 +293,20 @@ object ImageGeneration {
   /** Factory method for getting a client with the right configuration */
   def client(
     config: ImageGenerationConfig
-  ): ImageGenerationClient =
+  ): Either[ImageGenerationError, ImageGenerationClient] =
     // metrics and tracing are ignored in this PR 1 version as instrumentation is added in a later PR
     config match {
       case sdConfig: StableDiffusionConfig =>
         val httpClient = HttpClient.create()
-        new StableDiffusionClient(sdConfig, httpClient)
+        Right(new StableDiffusionClient(sdConfig, httpClient))
       case hfConfig: HuggingFaceConfig =>
         val httpClient = HttpClient.create()
-        new HuggingFaceClient(hfConfig, httpClient)
+        Right(new HuggingFaceClient(hfConfig, httpClient))
       case openAIConfig: OpenAIConfig =>
         val httpClient = HttpClient.create()
-        new OpenAIImageClient(openAIConfig, httpClient)
+        Right(new OpenAIImageClient(openAIConfig, httpClient))
       case _ =>
-        // For PR flow, other providers (Vertex, Bedrock, etc.) are not yet available in this branch
-        throw new UnsupportedOperationException(s"Provider ${config.provider} is not yet integrated in this version.")
+        Left(UnsupportedOperation(s"Provider ${config.provider} is not supported."))
     }
 
   /** Convenience method for quick image generation */
@@ -411,7 +315,7 @@ object ImageGeneration {
     config: ImageGenerationConfig,
     options: ImageGenerationOptions = ImageGenerationOptions()
   ): Either[ImageGenerationError, GeneratedImage] =
-    client(config).generateImage(prompt, options)
+    client(config).flatMap(_.generateImage(prompt, options))
 
   /** Convenience method for generating multiple images */
   def generateImages(
@@ -420,9 +324,9 @@ object ImageGeneration {
     config: ImageGenerationConfig,
     options: ImageGenerationOptions = ImageGenerationOptions()
   ): Either[ImageGenerationError, Seq[GeneratedImage]] =
-    client(config).generateImages(prompt, count, options)
+    client(config).flatMap(_.generateImages(prompt, count, options))
 
-  /** Convenience method for editing an image */
+  /** Convenience method for edit image */
   def editImage(
     imagePath: Path,
     prompt: String,
@@ -430,7 +334,7 @@ object ImageGeneration {
     config: ImageGenerationConfig,
     options: ImageEditOptions = ImageEditOptions()
   ): Either[ImageGenerationError, Seq[GeneratedImage]] =
-    client(config).editImage(imagePath, prompt, maskPath, options)
+    client(config).flatMap(_.editImage(imagePath, prompt, maskPath, options))
 
   /** Convenience method for generating an image asynchronously */
   def generateImageAsync(
@@ -438,7 +342,10 @@ object ImageGeneration {
     config: ImageGenerationConfig,
     options: ImageGenerationOptions = ImageGenerationOptions()
   )(implicit ec: ExecutionContext): Future[Either[ImageGenerationError, GeneratedImage]] =
-    client(config).generateImageAsync(prompt, options)
+    client(config) match {
+      case Right(c) => c.generateImageAsync(prompt, options)
+      case Left(e)  => Future.successful(Left(e))
+    }
 
   /** Convenience method for generating multiple images asynchronously */
   def generateImagesAsync(
@@ -447,7 +354,10 @@ object ImageGeneration {
     config: ImageGenerationConfig,
     options: ImageGenerationOptions = ImageGenerationOptions()
   )(implicit ec: ExecutionContext): Future[Either[ImageGenerationError, Seq[GeneratedImage]]] =
-    client(config).generateImagesAsync(prompt, count, options)
+    client(config) match {
+      case Right(c) => c.generateImagesAsync(prompt, count, options)
+      case Left(e)  => Future.successful(Left(e))
+    }
 
   /** Convenience method for editing an image asynchronously */
   def editImageAsync(
@@ -457,13 +367,16 @@ object ImageGeneration {
     config: ImageGenerationConfig,
     options: ImageEditOptions = ImageEditOptions()
   )(implicit ec: ExecutionContext): Future[Either[ImageGenerationError, Seq[GeneratedImage]]] =
-    client(config).editImageAsync(imagePath, prompt, maskPath, options)
+    client(config) match {
+      case Right(c) => c.editImageAsync(imagePath, prompt, maskPath, options)
+      case Left(e)  => Future.successful(Left(e))
+    }
 
   /** Get a Stable Diffusion client with default local configuration */
   def stableDiffusionClient(
     baseUrl: String = "http://localhost:7860",
     apiKey: Option[String] = None
-  ): ImageGenerationClient = {
+  ): Either[ImageGenerationError, ImageGenerationClient] = {
     val config = StableDiffusionConfig(baseUrl = baseUrl, apiKey = apiKey)
     client(config)
   }
@@ -476,12 +389,12 @@ object ImageGeneration {
    *
    * @param apiKey Your HuggingFace API token (required).
    * @param model The specific model to use for generation. Defaults to a standard Stable Diffusion model.
-   * @return An `ImageGenerationClient` instance configured for HuggingFace.
+   * @return Either an error or an `ImageGenerationClient` instance configured for HuggingFace.
    */
   def huggingFaceClient(
     apiKey: String,
     model: String = "stabilityai/stable-diffusion-xl-base-1.0"
-  ): ImageGenerationClient = {
+  ): Either[ImageGenerationError, ImageGenerationClient] = {
     val config = HuggingFaceConfig(apiKey = apiKey, model = model)
     client(config)
   }
@@ -494,12 +407,12 @@ object ImageGeneration {
    *
    * @param apiKey Your OpenAI API key (required).
    * @param model The model version to use. Defaults to gpt-image-1.
-   * @return An `ImageGenerationClient` instance configured for OpenAI.
+   * @return Either an error or an `ImageGenerationClient` instance configured for OpenAI.
    */
   def openAIClient(
     apiKey: String,
-    model: String = "dall-e-2"
-  ): ImageGenerationClient = {
+    model: String = "gpt-image-1"
+  ): Either[ImageGenerationError, ImageGenerationClient] = {
     val config = OpenAIConfig(apiKey = apiKey, model = model)
     client(config)
   }
@@ -527,5 +440,5 @@ object ImageGeneration {
 
   /** Check service health */
   def healthCheck(config: ImageGenerationConfig): Either[ImageGenerationError, ServiceStatus] =
-    client(config).health()
+    client(config).flatMap(_.health())
 }

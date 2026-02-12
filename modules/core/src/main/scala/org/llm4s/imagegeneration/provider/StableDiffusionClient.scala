@@ -6,7 +6,7 @@ import upickle.default._
 import java.nio.file.{ Files, Path }
 import java.util.Base64
 import scala.util.Try
-import scala.concurrent.{ Future, ExecutionContext }
+import scala.concurrent.{ Future, ExecutionContext, blocking }
 
 /**
  * Represents the JSON payload for the Stable Diffusion WebUI API's text-to-image endpoint.
@@ -105,7 +105,9 @@ class StableDiffusionClient(config: StableDiffusionConfig, httpClient: HttpClien
     options: ImageGenerationOptions = ImageGenerationOptions()
   )(implicit ec: ExecutionContext): Future[Either[ImageGenerationError, GeneratedImage]] =
     Future {
-      generateImage(prompt, options)
+      blocking {
+        generateImage(prompt, options)
+      }
     }
 
   override def generateImagesAsync(
@@ -114,7 +116,9 @@ class StableDiffusionClient(config: StableDiffusionConfig, httpClient: HttpClien
     options: ImageGenerationOptions = ImageGenerationOptions()
   )(implicit ec: ExecutionContext): Future[Either[ImageGenerationError, Seq[GeneratedImage]]] =
     Future {
-      generateImages(prompt, count, options)
+      blocking {
+        generateImages(prompt, count, options)
+      }
     }
 
   override def editImageAsync(
@@ -124,7 +128,9 @@ class StableDiffusionClient(config: StableDiffusionConfig, httpClient: HttpClien
     options: ImageEditOptions = ImageEditOptions()
   )(implicit ec: ExecutionContext): Future[Either[ImageGenerationError, Seq[GeneratedImage]]] =
     Future {
-      editImage(imagePath, prompt, maskPath, options)
+      blocking {
+        editImage(imagePath, prompt, maskPath, options)
+      }
     }
 
   override def editImage(

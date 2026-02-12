@@ -6,7 +6,7 @@ import ujson._
 import java.time.Instant
 import java.nio.file.Path
 import scala.util.Try
-import scala.concurrent.{ Future, ExecutionContext }
+import scala.concurrent.{ Future, ExecutionContext, blocking }
 
 /**
  * OpenAI DALL-E API client for image generation.
@@ -153,7 +153,9 @@ class OpenAIImageClient(config: OpenAIConfig, httpClient: HttpClient) extends Im
     options: ImageGenerationOptions = ImageGenerationOptions()
   )(implicit ec: ExecutionContext): Future[Either[ImageGenerationError, GeneratedImage]] =
     Future {
-      generateImage(prompt, options)
+      blocking {
+        generateImage(prompt, options)
+      }
     }
 
   /**
@@ -165,7 +167,9 @@ class OpenAIImageClient(config: OpenAIConfig, httpClient: HttpClient) extends Im
     options: ImageGenerationOptions = ImageGenerationOptions()
   )(implicit ec: ExecutionContext): Future[Either[ImageGenerationError, Seq[GeneratedImage]]] =
     Future {
-      generateImages(prompt, count, options)
+      blocking {
+        generateImages(prompt, count, options)
+      }
     }
 
   /**
@@ -178,7 +182,9 @@ class OpenAIImageClient(config: OpenAIConfig, httpClient: HttpClient) extends Im
     options: ImageEditOptions = ImageEditOptions()
   )(implicit ec: ExecutionContext): Future[Either[ImageGenerationError, Seq[GeneratedImage]]] =
     Future {
-      editImage(imagePath, prompt, maskPath, options)
+      blocking {
+        editImage(imagePath, prompt, maskPath, options)
+      }
     }
 
   /**
