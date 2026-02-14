@@ -34,7 +34,7 @@ jobs:
         id: prepare_prompt
         shell: bash
         env:
-          DEFAULT_REVIEW_DOC: docs/internals/code-review-guidelines/MASTER_REVIEW_GUIDELINES.md
+          DEFAULT_REVIEW_DOC: docs/reference/review-guidelines.md
         run: |
           set -euo pipefail
 
