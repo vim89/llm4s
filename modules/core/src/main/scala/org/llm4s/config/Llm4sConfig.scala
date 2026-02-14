@@ -1,6 +1,7 @@
 package org.llm4s.config
 
 import org.llm4s.llmconnect.config._
+import org.llm4s.metrics.{ MetricsCollector, PrometheusEndpoint }
 import org.llm4s.types.Result
 import pureconfig.ConfigSource
 
@@ -12,17 +13,19 @@ object Llm4sConfig {
   def pgSearchIndex(): Result[org.llm4s.rag.permissions.SearchIndex.PgConfig] =
     org.llm4s.config.PgSearchIndexConfigLoader.load(ConfigSource.default)
 
-  final private case class LangfuseSection(
-    url: Option[String],
-    publicKey: Option[String],
-    secretKey: Option[String],
-    env: Option[String],
-    release: Option[String],
-    version: Option[String]
-  )
-
   def tracing(): Result[TracingSettings] =
     org.llm4s.config.TracingConfigLoader.load(ConfigSource.default)
+
+  /**
+   * Load the metrics configuration.
+   *
+   * Returns a MetricsCollector and optional PrometheusEndpoint if metrics are enabled.
+   * Use MetricsCollector.noop if you want to disable metrics programmatically.
+   *
+   * @return Result containing (MetricsCollector, Option[PrometheusEndpoint])
+   */
+  def metrics(): Result[(MetricsCollector, Option[PrometheusEndpoint])] =
+    org.llm4s.config.MetricsConfigLoader.load(ConfigSource.default)
 
   final case class EmbeddingsChunkingSettings(
     enabled: Boolean,
@@ -143,4 +146,34 @@ object Llm4sConfig {
     val fromConf = source.at("file").load[String].toOption.map(_.trim).filter(_.nonEmpty)
     fromConf
   }
+
+  /**
+   * Load Brave Search API configuration.
+   *
+   * Requires BRAVE_SEARCH_API_KEY environment variable.
+   *
+   * @return Result containing BraveSearchToolConfig with API key and settings
+   */
+  def loadBraveSearchTool(): Result[BraveSearchToolConfig] =
+    org.llm4s.config.ToolsConfigLoader.loadBraveSearchTool(ConfigSource.default)
+
+  /**
+   * Load DuckDuckGo Search configuration.
+   *
+   * No API key required.
+   *
+   * @return Result containing DuckDuckGoSearchToolConfig with settings
+   */
+  def loadDuckDuckGoSearchTool(): Result[DuckDuckGoSearchToolConfig] =
+    org.llm4s.config.ToolsConfigLoader.loadDuckDuckGoSearchTool(ConfigSource.default)
+
+  /**
+   * Load Exa Search API configuration.
+   *
+   * Requires EXA_API_KEY environment variable.
+   *
+   * @return Result containing ExaSearchToolConfig with API key and settings
+   */
+  def loadExaSearchTool(): Result[ExaSearchToolConfig] =
+    org.llm4s.config.ToolsConfigLoader.loadExaSearchTool(ConfigSource.default)
 }

@@ -83,7 +83,7 @@ class LangfuseTracing(
   private def nowIso: String = DateTimeFormatter.ISO_INSTANT.format(Instant.now())
   private def uuid: String   = UUID.randomUUID().toString
 
-  private def sendBatch(events: Seq[ujson.Obj]): Result[Unit] = {
+  protected def sendBatch(events: Seq[ujson.Obj]): Result[Unit] = {
     if (publicKey.isEmpty || secretKey.isEmpty) {
       logger.warn("[Langfuse] Public or secret key not set in environment. Skipping export.")
       logger.warn(s"[Langfuse] Expected environment variables: LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY")
@@ -128,12 +128,14 @@ class LangfuseTracing(
         if (response.statusCode == 207 || (response.statusCode >= 200 && response.statusCode < 300)) {
           logger.info(s"[Langfuse] Batch export successful: ${response.statusCode}")
           if (response.statusCode == 207) {
-            logger.info(s"[Langfuse] Partial success response: ${response.text()}")
+            logger.info(
+              s"[Langfuse] Partial success response: ${org.llm4s.util.Redaction.truncateForLog(response.text())}"
+            )
           }
           Right(())
         } else {
           logger.error(s"[Langfuse] Batch export failed: ${response.statusCode}")
-          logger.error(s"[Langfuse] Response body: ${response.text()}")
+          logger.error(s"[Langfuse] Response body: ${org.llm4s.util.Redaction.truncateForLog(response.text())}")
           val runtimeException = new RuntimeException(s"Langfuse export failed: ${response.statusCode}")
           Left(UnknownError(runtimeException.getMessage, runtimeException))
         }
@@ -364,6 +366,52 @@ class LangfuseTracing(
               "token_count" -> e.tokenCount,
               "cost_type"   -> e.costType,
               "cost_usd"    -> e.costUsd
+            )
+          )
+        )
+
+      case e: TraceEvent.CacheHit =>
+        ujson.Obj(
+          "id"        -> uuid,
+          "timestamp" -> now,
+          "type"      -> "span-create",
+          "body" -> ujson.Obj(
+            "id"        -> uuid,
+            "timestamp" -> now,
+            "name"      -> "Cache Hit",
+            "level"     -> "DEFAULT",
+            "input" -> ujson.Obj(
+              "similarity" -> e.similarity,
+              "threshold"  -> e.threshold
+            ),
+            "output" -> ujson.Obj(
+              "result" -> "hit"
+            ),
+            "metadata" -> ujson.Obj(
+              "similarity" -> e.similarity,
+              "threshold"  -> e.threshold
+            )
+          )
+        )
+
+      case e: TraceEvent.CacheMiss =>
+        ujson.Obj(
+          "id"        -> uuid,
+          "timestamp" -> now,
+          "type"      -> "span-create",
+          "body" -> ujson.Obj(
+            "id"        -> uuid,
+            "timestamp" -> now,
+            "name"      -> "Cache Miss",
+            "level"     -> "DEFAULT",
+            "input" -> ujson.Obj(
+              "reason" -> e.reason.value
+            ),
+            "output" -> ujson.Obj(
+              "result" -> "miss"
+            ),
+            "metadata" -> ujson.Obj(
+              "reason" -> e.reason.value
             )
           )
         )
