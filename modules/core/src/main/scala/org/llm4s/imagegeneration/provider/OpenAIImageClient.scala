@@ -289,9 +289,9 @@ class OpenAIImageClient(config: OpenAIConfig, httpClient: HttpClient) extends Im
     )
 
     // Optional parameters
-    options.quality.foreach(_ => requestBody("quality") = options.quality.get)
-    options.style.foreach(_ => requestBody("style") = options.style.get)
-    options.user.foreach(_ => requestBody("user") = options.user.get)
+    options.quality.foreach(q => requestBody("quality") = q)
+    options.style.foreach(s => requestBody("style") = s)
+    options.user.foreach(u => requestBody("user") = u)
 
     // Backward compatibility defaults for DALL-E 3 if not specified
     if (config.model == "dall-e-3" && options.quality.isEmpty) {
@@ -340,9 +340,6 @@ class OpenAIImageClient(config: OpenAIConfig, httpClient: HttpClient) extends Im
     }
   }
 
-  /**
-   * Parse the API response into GeneratedImage objects.
-   */
   /**
    * Parse the API response into GeneratedImage objects.
    */

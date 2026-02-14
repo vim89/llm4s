@@ -6,7 +6,7 @@ import java.time.Instant
 import java.nio.file.Path
 import java.util.Base64
 import scala.util.Try
-import scala.concurrent.{ Future, ExecutionContext }
+import scala.concurrent.{ Future, ExecutionContext, blocking }
 
 /**
  * HuggingFace Inference API client for image generation.
@@ -159,14 +159,16 @@ class HuggingFaceClient(config: HuggingFaceConfig, httpClient: HttpClient) exten
     maskPath: Option[Path] = None,
     options: ImageEditOptions = ImageEditOptions()
   ): Either[ImageGenerationError, Seq[GeneratedImage]] =
-    Left(ValidationError("Image editing is not yet supported for HuggingFace provider"))
+    Left(UnsupportedOperation("Image editing is not yet supported for HuggingFace provider"))
 
   override def generateImageAsync(
     prompt: String,
     options: ImageGenerationOptions = ImageGenerationOptions()
   )(implicit ec: ExecutionContext): Future[Either[ImageGenerationError, GeneratedImage]] =
     Future {
-      generateImage(prompt, options)
+      blocking {
+        generateImage(prompt, options)
+      }
     }
 
   override def generateImagesAsync(
@@ -175,7 +177,9 @@ class HuggingFaceClient(config: HuggingFaceConfig, httpClient: HttpClient) exten
     options: ImageGenerationOptions = ImageGenerationOptions()
   )(implicit ec: ExecutionContext): Future[Either[ImageGenerationError, Seq[GeneratedImage]]] =
     Future {
-      generateImages(prompt, count, options)
+      blocking {
+        generateImages(prompt, count, options)
+      }
     }
 
   override def editImageAsync(
@@ -185,7 +189,9 @@ class HuggingFaceClient(config: HuggingFaceConfig, httpClient: HttpClient) exten
     options: ImageEditOptions = ImageEditOptions()
   )(implicit ec: ExecutionContext): Future[Either[ImageGenerationError, Seq[GeneratedImage]]] =
     Future {
-      editImage(imagePath, prompt, maskPath, options)
+      blocking {
+        editImage(imagePath, prompt, maskPath, options)
+      }
     }
 
   /**
