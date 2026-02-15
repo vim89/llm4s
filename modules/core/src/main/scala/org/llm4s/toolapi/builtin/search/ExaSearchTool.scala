@@ -5,10 +5,8 @@ import upickle.default._
 import org.llm4s.config.ExaSearchToolConfig
 import org.llm4s.error.{ ConfigurationError, ValidationError }
 import org.llm4s.types.Result
-import scala.util.control.Exception.catchingPromiscuously
-import java.net.http.{ HttpClient => JHttpClient, HttpRequest, HttpResponse => JHttpResponse }
-import java.net.URI
-import java.time.Duration
+import org.llm4s.http.{ HttpResponse, Llm4sHttpClient }
+import scala.util.control.NonFatal
 
 sealed trait SearchType {
   def value: String
@@ -114,57 +112,6 @@ case class ExaSearchResult(
 
 object ExaSearchResult {
   implicit val exaSearchResultRW: ReadWriter[ExaSearchResult] = macroRW[ExaSearchResult]
-}
-
-/**
- * Simple HTTP response wrapper.
- */
-private[search] case class HttpResponse(
-  statusCode: Int,
-  body: String
-)
-
-/**
- * Abstraction for HTTP client to enable dependency injection and testing.
- */
-private[search] trait BaseHttpClient {
-  def post(
-    url: String,
-    headers: Map[String, String],
-    body: String,
-    timeout: Int
-  ): HttpResponse
-}
-
-/**
- * Java HttpClient implementation using JDK 11+ built-in HTTP client.
- */
-private[search] class JavaHttpClient extends BaseHttpClient {
-  private val client = JHttpClient.newHttpClient()
-
-  override def post(
-    url: String,
-    headers: Map[String, String],
-    body: String,
-    timeout: Int
-  ): HttpResponse = {
-    val requestBuilder = HttpRequest
-      .newBuilder()
-      .uri(URI.create(url))
-      .timeout(Duration.ofMillis(timeout.toLong))
-      .POST(HttpRequest.BodyPublishers.ofString(body))
-
-    headers.foreach { case (key, value) =>
-      requestBuilder.header(key, value)
-    }
-
-    val response = client.send(
-      requestBuilder.build(),
-      JHttpResponse.BodyHandlers.ofString()
-    )
-
-    HttpResponse(response.statusCode(), response.body())
-  }
 }
 
 object ExaSearchTool {
@@ -345,7 +292,7 @@ object ExaSearchTool {
   def create(
     toolConfig: ExaSearchToolConfig,
     config: Option[ExaSearchConfig] = None,
-    httpClient: BaseHttpClient = new JavaHttpClient(),
+    httpClient: Llm4sHttpClient = Llm4sHttpClient.create(),
     restoreInterrupt: () => Unit = () => Thread.currentThread().interrupt()
   ): Result[ToolFunction[Map[String, Any], ExaSearchResult]] =
     // Validate entire config using shared validators
@@ -402,7 +349,7 @@ object ExaSearchTool {
     apiKey: String,
     apiUrl: String = "https://api.exa.ai",
     config: Option[ExaSearchConfig] = None,
-    httpClient: BaseHttpClient = new JavaHttpClient(),
+    httpClient: Llm4sHttpClient = Llm4sHttpClient.create(),
     restoreInterrupt: () => Unit = () => Thread.currentThread().interrupt()
   ): Result[ToolFunction[Map[String, Any], ExaSearchResult]] =
     // Validate only the parameters this function receives
@@ -425,18 +372,18 @@ object ExaSearchTool {
     query: String,
     config: ExaSearchConfig,
     toolConfig: ExaSearchToolConfig,
-    httpClient: BaseHttpClient,
+    httpClient: Llm4sHttpClient,
     restoreInterrupt: () => Unit
   ): Either[String, ExaSearchResult] = {
 
     val url  = s"${toolConfig.apiUrl}/search"
     val body = buildRequestBody(query, config)
 
-    // Use catchingPromiscuously instead of Try — Try skips fatal exceptions
-    // like InterruptedException, but we need to catch and handle them properly
+    // Catch only non-fatal exceptions. Fatal errors (OOM, StackOverflow, etc.) will crash fast.
+    // InterruptedException is handled explicitly to restore the interrupt flag.
     val responseEither: Either[String, HttpResponse] =
-      catchingPromiscuously(classOf[Throwable])
-        .either {
+      try
+        Right(
           httpClient.post(
             url = url,
             headers = Map(
@@ -447,49 +394,42 @@ object ExaSearchTool {
             body = ujson.write(body),
             timeout = config.timeoutMs
           )
-        }
-        .left
-        .map { e =>
-          // Sanitize exception messages to avoid leaking internal details
-          e match {
-            case _: InterruptedException =>
-              // Restore interrupt flag for proper thread shutdown and timeout semantics
-              restoreInterrupt()
-              "Search request was cancelled or interrupted."
-            case _: java.net.http.HttpTimeoutException =>
-              s"Search request timed out after ${config.timeoutMs}ms. Please try again with a simpler query."
-            case _: java.net.UnknownHostException =>
-              "Unable to reach search service. Please check network connectivity."
-            case _: java.net.ConnectException =>
-              "Failed to connect to search service. The service may be temporarily unavailable."
-            case _ =>
-              // Generic error without exposing stack traces or internal details
-              "Search request failed due to a network error. Please try again."
-          }
-        }
+        )
+      catch {
+        case _: InterruptedException =>
+          // Restore interrupt flag for proper thread shutdown and timeout semantics
+          restoreInterrupt()
+          Left("Search request was cancelled or interrupted.")
+        case _: java.net.http.HttpTimeoutException =>
+          Left(s"Search request timed out after ${config.timeoutMs}ms. Please try again with a simpler query.")
+        case _: java.net.UnknownHostException =>
+          Left("Unable to reach search service. Please check network connectivity.")
+        case _: java.net.ConnectException =>
+          Left("Failed to connect to search service. The service may be temporarily unavailable.")
+        case NonFatal(_) =>
+          // Catch all other non-fatal exceptions (IOException, etc.)
+          // Fatal errors (OutOfMemoryError, StackOverflowError, etc.) will propagate
+          Left("Search request failed due to a network error. Please try again.")
+      }
 
     responseEither.flatMap { response =>
       if (response.statusCode == 200) {
-        // Parse successful response
-        catchingPromiscuously(classOf[Throwable])
-          .either {
-            val json = ujson.read(response.body)
-            parseResponse(json, query)
-          }
-          .left
-          .map { e =>
-            // Sanitize parsing errors
-            e match {
-              case _: InterruptedException =>
-                // Restore interrupt flag for proper thread shutdown and timeout semantics
-                restoreInterrupt()
-                "Response parsing was cancelled or interrupted."
-              case _: ujson.ParseException =>
-                "Failed to parse search results. The response format may be invalid."
-              case _ =>
-                "Failed to process search results. Please try again."
-            }
-          }
+        // Parse successful response, catching only non-fatal exceptions
+        try {
+          val json = ujson.read(response.body)
+          Right(parseResponse(json, query))
+        } catch {
+          case _: InterruptedException =>
+            // Restore interrupt flag for proper thread shutdown and timeout semantics
+            restoreInterrupt()
+            Left("Response parsing was cancelled or interrupted.")
+          case _: ujson.ParseException =>
+            Left("Failed to parse search results. The response format may be invalid.")
+          case NonFatal(_) =>
+            // Catch all other non-fatal exceptions
+            // Fatal errors (OutOfMemoryError, StackOverflowError, etc.) will propagate
+            Left("Failed to process search results. Please try again.")
+        }
       } else {
         // Use sanitized error messages for non-200 responses
         Left(sanitizeErrorMessage(response.statusCode, response.body))
