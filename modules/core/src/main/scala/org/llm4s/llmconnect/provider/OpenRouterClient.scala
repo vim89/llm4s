@@ -210,7 +210,10 @@ class OpenRouterClient(
   private def parseStreamingArguments(raw: String): ujson.Value =
     if (raw.isEmpty) ujson.Null else scala.util.Try(ujson.read(raw)).getOrElse(ujson.Str(raw))
 
-  private def createRequestBody(conversation: Conversation, options: CompletionOptions): ujson.Obj = {
+  /**
+   * Test-visible seam for request serialization; intentionally scoped to provider package to avoid broader API surface.
+   */
+  protected[provider] def createRequestBody(conversation: Conversation, options: CompletionOptions): ujson.Obj = {
     val messages = conversation.messages.map {
       case UserMessage(content) =>
         ujson.Obj("role" -> "user", "content" -> content)
@@ -231,7 +234,7 @@ class OpenRouterClient(
           })
         }
         base
-      case ToolMessage(toolCallId, content) =>
+      case ToolMessage(content, toolCallId) =>
         ujson.Obj(
           "role"         -> "tool",
           "tool_call_id" -> toolCallId,
