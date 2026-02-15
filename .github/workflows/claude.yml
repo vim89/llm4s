@@ -39,7 +39,6 @@ jobs:
           set -euo pipefail
 
           trigger_text="$(jq -r '
-            def nonempty: select(. != null and . != "");
             [
               .comment.body?,
               .review.body?,
@@ -67,7 +66,7 @@ jobs:
             exit 1
           fi
 
-          if [[ "$review_doc" == *".."* ]]; then
+          if [[ "$review_doc" == *"/../"* ]] || [[ "$review_doc" == "../"* ]] || [[ "$review_doc" == *"/.." ]]; then
             echo "Path traversal is not allowed for --reviewdoc: $review_doc" >&2
             exit 1
           fi
