@@ -166,6 +166,8 @@ jobs:
         shell: bash
         env:
           STRUCTURED_OUTPUT: ${{ steps.claude.outputs.structured_output }}
+          PR_NUMBER: ${{ steps.context.outputs.pr_number }}
+          REVIEW_DOC_PATH: ${{ steps.prepare_prompt.outputs.review_doc_path }}
         run: |
           set -euo pipefail
 
@@ -182,8 +184,8 @@ jobs:
           {
             echo "# Claude Review Summary"
             echo
-            echo "- PR: #${{ steps.context.outputs.pr_number }}"
-            echo "- Guideline doc: \\`${{ steps.prepare_prompt.outputs.review_doc_path }}\\`"
+            echo "- PR: #${PR_NUMBER}"
+            echo "- Guideline doc: ${REVIEW_DOC_PATH}"
             echo "- Status: $status"
             echo "- Blocking findings: $blocking_count"
             echo "- Non-blocking findings: $non_blocking_count"
@@ -201,15 +203,18 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           STRUCTURED_OUTPUT: ${{ steps.claude.outputs.structured_output }}
+          PR_NUMBER: ${{ steps.context.outputs.pr_number }}
+          REVIEW_DOC_PATH: ${{ steps.prepare_prompt.outputs.review_doc_path }}
         shell: bash
         run: |
           set -euo pipefail
 
-          pr_number='${{ steps.context.outputs.pr_number }}'
           review_markdown="$(jq -r '.review_summary_markdown' <<< "$STRUCTURED_OUTPUT")"
+          repo="${GITHUB_REPOSITORY}"
 
-          gh pr comment "$pr_number" --repo "${{ github.repository }}" --body "$(cat <<EOF
+          gh pr comment "$PR_NUMBER" --repo "$repo" --body "$(cat <<EOF
           $review_markdown
           ---
-          Guideline source: \\`${{ steps.prepare_prompt.outputs.review_doc_path }}\\`
-          EOF)"
+          Guideline source: $REVIEW_DOC_PATH
+          EOF
+          )"
