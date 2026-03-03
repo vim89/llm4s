@@ -124,7 +124,7 @@ object HTTPTool {
    */
   val tool: ToolFunction[Map[String, Any], HTTPResult] = create()
 
-  private def makeRequest(
+  private[http] def makeRequest(
     urlStr: String,
     method: String,
     headers: Option[Map[String, String]],

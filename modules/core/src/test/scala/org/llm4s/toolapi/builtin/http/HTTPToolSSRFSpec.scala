@@ -1,7 +1,6 @@
 package org.llm4s.toolapi.builtin.http
 
 import com.sun.net.httpserver.{ HttpExchange, HttpServer }
-import org.llm4s.toolapi.SafeParameterExtractor
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -159,11 +158,15 @@ class HTTPToolSSRFSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll 
       allowedMethods = Seq("GET")
     )
 
-  def invoke(config: HttpConfig, url: String): Either[String, HTTPResult] = {
-    val tool   = HTTPTool.create(config)
-    val params = ujson.Obj("url" -> url)
-    tool.handler(SafeParameterExtractor(params))
-  }
+  def invoke(config: HttpConfig, url: String): Either[String, HTTPResult] =
+    HTTPTool.makeRequest(
+      urlStr = url,
+      method = "GET",
+      headers = None,
+      body = None,
+      contentType = None,
+      config = config
+    )
 
   // ── SSRF: initial URL validation ──────────────────────────────────────────
 
