@@ -171,35 +171,34 @@ object HTTPTool {
               else if (!config.validateDomainWithSSRF(domain))
                 Left(s"SSRF_BLOCKED: domain '$domain' is not allowed")
               else
-                executeRequest(url, currentUrlStr, method, headers, body, contentType, config).flatMap {
-                  result =>
-                    // Only treat standard redirect codes as redirects.
-                    // 304 (Not Modified) and other 3xx codes are not redirects.
-                    val isRedirect =
-                      Set(301, 302, 307, 308).contains(result.statusCode)
-                    if (config.followRedirects && isRedirect) {
-                      // Case-insensitive lookup – servers capitalise headers inconsistently.
-                      val locationOpt =
-                        result.headers
-                          .find { case (k, _) => k.equalsIgnoreCase("Location") }
-                          .map(_._2)
-                      locationOpt match {
-                        case None =>
-                          Right(result) // No Location header; return the redirect as-is.
-                        case Some(_) if hopsLeft <= 0 =>
-                          Left(
-                            s"TOO_MANY_REDIRECTS: Too many redirects (max ${config.maxRedirects})"
-                          )
-                        case Some(location) =>
-                          // Resolve relative Location values against the current URL so that
-                          // paths like "/callback" or "../other" are handled correctly.
-                          val absoluteLocation =
-                            Try(url.toURI.resolve(location).toString).getOrElse(location)
-                          go(absoluteLocation, hopsLeft - 1)
-                      }
-                    } else {
-                      Right(result)
+                executeRequest(url, currentUrlStr, method, headers, body, contentType, config).flatMap { result =>
+                  // Only treat standard redirect codes as redirects.
+                  // 304 (Not Modified) and other 3xx codes are not redirects.
+                  val isRedirect =
+                    Set(301, 302, 307, 308).contains(result.statusCode)
+                  if (config.followRedirects && isRedirect) {
+                    // Case-insensitive lookup – servers capitalise headers inconsistently.
+                    val locationOpt =
+                      result.headers
+                        .find { case (k, _) => k.equalsIgnoreCase("Location") }
+                        .map(_._2)
+                    locationOpt match {
+                      case None =>
+                        Right(result) // No Location header; return the redirect as-is.
+                      case Some(_) if hopsLeft <= 0 =>
+                        Left(
+                          s"TOO_MANY_REDIRECTS: Too many redirects (max ${config.maxRedirects})"
+                        )
+                      case Some(location) =>
+                        // Resolve relative Location values against the current URL so that
+                        // paths like "/callback" or "../other" are handled correctly.
+                        val absoluteLocation =
+                          Try(url.toURI.resolve(location).toString).getOrElse(location)
+                        go(absoluteLocation, hopsLeft - 1)
                     }
+                  } else {
+                    Right(result)
+                  }
                 }
             }
           }

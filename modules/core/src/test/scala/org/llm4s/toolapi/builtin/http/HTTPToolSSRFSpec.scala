@@ -326,4 +326,5 @@ class HTTPToolSSRFSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll 
     )
     result.isLeft shouldBe true
     result.swap.toOption.get should include("TOO_MANY_REDIRECTS")
-  }}
+  }
+}
