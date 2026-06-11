@@ -217,6 +217,7 @@ lazy val llm4s = (project in file("."))
     providerTestkit,
     llm4sEffect,
     llm4sZio,
+    javaApi,
     samples,
     configPolicy,
     workspaceShared,
@@ -1348,6 +1349,16 @@ lazy val docs = (project in file("modules/docs"))
     },
     Compile / mainClass             := None,
     Compile / discoveredMainClasses := Seq.empty
+  )
+
+lazy val javaApi = (project in file("modules/java-api"))
+  .dependsOn(core, agent, openai, anthropic, ollama, gemini, openaiCompatible)
+  .settings(
+    name := "java-api",
+    commonSettings,
+    libraryDependencies ++= Seq(
+      Deps.scalatest % Test
+    )
   )
 
 lazy val benchmarks = (project in file("modules/benchmarks"))
