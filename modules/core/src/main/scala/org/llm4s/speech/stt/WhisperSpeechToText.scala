@@ -27,13 +27,19 @@ final class WhisperSpeechToText(
   override val supportedFormats: List[String] = List("audio/wav", "audio/mp3", "audio/m4a", "audio/flac", "audio/ogg")
 
   override def transcribe(input: AudioInput, options: STTOptions): Result[Transcription] = {
-    val startTime = System.currentTimeMillis()
-    val wavResult = inputToWavPath(input)
+    val startTime             = System.currentTimeMillis()
+    val wavResult             = inputToWavPath(input)
+    val effectiveOutputFormat = WhisperSpeechToText.effectiveOutputFormat(outputFormat, options)
+
+    // Snapshot which sibling output paths already exist, so cleanup below only removes transcript files
+    // this invocation actually created and never touches a user's pre-existing files.
+    val preExistingOutputs: Set[Path] = wavResult.toOption
+      .map { case (path, _) => WhisperSpeechToText.existingGeneratedOutputs(path, effectiveOutputFormat) }
+      .getOrElse(Set.empty)
 
     val result = for {
       wavAndTemp <- wavResult
-      effectiveOutputFormat = WhisperSpeechToText.effectiveOutputFormat(outputFormat, options)
-      args                  = buildWhisperArgs(wavAndTemp._1, options)
+      args = buildWhisperArgs(wavAndTemp._1, options)
       stdout <- Safety
         .fromTry(Try(args.!!))
         .left
@@ -50,8 +56,14 @@ final class WhisperSpeechToText(
       }
     } yield transcription
 
-    // Clean up any temp file that was created, regardless of transcription success or failure
-    wavResult.foreach { case (path, isTemp) => if (isTemp) Try(Files.deleteIfExists(path)) }
+    // Clean up regardless of transcription success or failure: the temp WAV (if we created one) and any
+    // sibling transcript file Whisper newly wrote next to the input. The latter matters for FileAudio inputs,
+    // where the input is a real user file and the generated <stem>.<format> would otherwise be left behind.
+    // Files that already existed before the run (see preExistingOutputs) are preserved.
+    wavResult.foreach { case (path, isTemp) =>
+      if (isTemp) Try(Files.deleteIfExists(path))
+      WhisperSpeechToText.deleteGeneratedOutputs(path, effectiveOutputFormat, preserve = preExistingOutputs)
+    }
 
     result
   }
@@ -88,6 +100,7 @@ final class WhisperSpeechToText(
 }
 
 object WhisperSpeechToText {
+  import SttJsonSupport._
 
   final private[stt] case class ParsedOutput(
     text: String,
@@ -118,10 +131,13 @@ object WhisperSpeechToText {
       effectiveFormat
     )
 
+    // Flags follow the openai-whisper CLI dialect (underscored), matching the default `whisper` command:
+    // --output_format / --language / --initial_prompt / --word_timestamps. openai-whisper's
+    // --word_timestamps takes an explicit boolean value, hence the trailing "True".
     val optFlags = List(
       options.language.map(l => Seq("--language", l)),
       options.prompt.map(p => Seq("--initial_prompt", p)),
-      if (options.enableTimestamps) Some(Seq("--word-timestamps")) else None
+      if (options.enableTimestamps) Some(Seq("--word_timestamps", "True")) else None
     ).flatten
 
     baseArgs ++ optFlags.combineAll
@@ -184,6 +200,24 @@ object WhisperSpeechToText {
     val candidates = outputPathCandidates(inputPath, outputFormat)
     candidates.collectFirst(Function.unlift(readIfExists)).getOrElse(stdout)
   }
+
+  /** Candidate sibling output paths that already exist on disk before a run (so they can be preserved). */
+  private[stt] def existingGeneratedOutputs(inputPath: Path, outputFormat: String): Set[Path] =
+    outputPathCandidates(inputPath, outputFormat).filter(p => Files.exists(p)).toSet
+
+  /**
+   * Delete transcript files Whisper generated next to the input, so they don't litter the user's directory.
+   * Paths in `preserve` (typically those that already existed before the run) are left untouched, so a user's
+   * pre-existing transcript/metadata sidecar is never removed.
+   */
+  private[stt] def deleteGeneratedOutputs(
+    inputPath: Path,
+    outputFormat: String,
+    preserve: Set[Path] = Set.empty
+  ): Unit =
+    outputPathCandidates(inputPath, outputFormat)
+      .filterNot(preserve.contains)
+      .foreach(p => Try(Files.deleteIfExists(p)))
 
   private def outputPathCandidates(inputPath: Path, outputFormat: String): List[Path] = {
     val fileName = inputPath.getFileName.toString
@@ -250,23 +284,4 @@ object WhisperSpeechToText {
   ): List[WordTimestamp] =
     if (threshold <= 0.0) words.toList else words.filter(_.meetsConfidence(threshold)).toList
 
-  private def averageConfidence(words: Seq[WordTimestamp]): Option[Double] = {
-    val confidences = words.flatMap(_.confidence)
-    if (confidences.nonEmpty) Some(confidences.sum / confidences.size) else None
-  }
-
-  private def renderWords(words: Seq[WordTimestamp]): String =
-    words.map(_.word.trim).filter(_.nonEmpty).mkString(" ").trim
-
-  private def field(value: Value, key: String): Option[Value] =
-    Try(value(key)).toOption
-
-  private def stringField(value: Value, key: String): Option[String] =
-    field(value, key).flatMap(v => Try(v.str).toOption)
-
-  private def doubleField(value: Value, key: String): Option[Double] =
-    field(value, key).flatMap(v => Try(v.num).toOption)
-
-  private def arrayField(value: Value, key: String): Seq[Value] =
-    field(value, key).flatMap(v => Try(v.arr.toSeq).toOption).getOrElse(Seq.empty)
 }
