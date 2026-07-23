@@ -6,6 +6,22 @@ Thank you for your interest in contributing to LLM4S!
 
 This project follows our [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you agree to uphold these standards.
 
+## Developer Certificate of Origin (DCO)
+
+All commits must be signed off to certify you have the right to submit the code under the project's [MIT license](LICENSE), per the [Developer Certificate of Origin](https://developercertificate.org/). Add the `Signed-off-by` trailer by committing with `-s`:
+
+```bash
+git commit -s -m "[FEATURE] Add my change"
+```
+
+If you forget, sign off your most recent commit with:
+
+```bash
+git commit --amend -s --no-edit
+```
+
+Pull requests are checked for DCO sign-off automatically in CI.
+
 ## Getting Started as a Contributor
 
 ### 1. Prerequisites checklist
