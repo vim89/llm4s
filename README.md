@@ -20,7 +20,15 @@
 
 ## ⭐ Stars Over Time
 
-[![Star History Chart](https://api.star-history.com/svg?repos=llm4s/llm4s&type=Date)](https://star-history.com/#llm4s/llm4s&Date)
+<p align="center">
+  <a href="https://star-history.com/#llm4s/llm4s&Date">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=llm4s/llm4s&type=Date&theme=dark" />
+      <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=llm4s/llm4s&type=Date" />
+      <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=llm4s/llm4s&type=Date" width="600" />
+    </picture>
+  </a>
+</p>
 
 
 
