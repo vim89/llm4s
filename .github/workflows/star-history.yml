@@ -2,11 +2,11 @@ name: Star History
 
 on:
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '0 0 1 * *'   # monthly: midnight UTC on day 1
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: star-history
   cancel-in-progress: true
 
 permissions:
@@ -21,6 +21,17 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Exit if triggered by actions bot or [skip ci]
+        run: |
+          if [ "${GITHUB_ACTOR}" = "github-actions[bot]" ]; then
+            echo "Triggered by actions bot; exiting."
+            exit 0
+          fi
+          if git log -1 --pretty=%B | grep -q '\[skip ci\]'; then
+            echo "Last commit contains [skip ci]; exiting."
+            exit 0
+          fi
+
       - name: Generate Star History
         uses: narayann7/star-history-action@v1
         with:
@@ -32,10 +43,12 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Stage likely-generated files (adjust paths if your action writes elsewhere)
           git add README.md || true
+          git add assets/star-history/ || true
           if git diff --cached --quiet; then
             echo "No star history chart changes to commit, exiting."
             exit 0
           fi
           git commit -m "chore: update star history chart [skip ci]"
-          git push origin HEAD:${GITHUB_REF#refs/heads/}
+          git push origin "HEAD:${GITHUB_REF#refs/heads/}"
