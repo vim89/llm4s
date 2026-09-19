@@ -3,7 +3,7 @@ package org.llm4s.samples.dashboard.providersetup
 import org.llm4s.error.ValidationError
 import org.llm4s.samples.dashboard.providersetup.ProviderSetupMessages.*
 import org.llm4s.samples.dashboard.providersetup.ProviderSetupModel.*
-import org.llm4s.types.ProviderModelTypes.{ ProviderKind, ProviderName }
+import org.llm4s.types.ProviderModelTypes.{ ProviderId, ProviderName }
 import org.llm4s.types.Result
 import termflow.tui.Tui
 import termflow.tui.Tui.*
@@ -163,13 +163,13 @@ object ProviderSetupProviderSelection:
         .getOrElse(SessionOverrideTarget.ProviderKind(activeDocId))
     else SessionOverrideTarget.ProviderKind(activeDocId)
 
-  def selectedSetupProviderKind(model: Model): Result[ProviderKind] =
+  def selectedSetupProviderId(model: Model): Result[ProviderId] =
     val activeDocId = ProviderSetupTabs.activeSetupDoc(model).id
     if activeDocId.is(SetupTabDocIds.Providers) then
       selectedConfiguredProvider(model)
-        .map(provider => providerKindFromString(provider.providerId))
-        .getOrElse(providerKindFromString(selectedProviderDoc(model).id.value))
-    else providerKindFromString(activeDocId.value)
+        .map(provider => configuredProviderId(provider.providerId))
+        .getOrElse(providerIdFromDocId(selectedProviderDoc(model).id.value))
+    else providerIdFromDocId(activeDocId.value)
 
   def currentSetupSessionRequest(model: Model): Result[ProviderSetupSetupPolicy.SetupSessionRequest] =
     val activeDoc    = ProviderSetupTabs.activeSetupDoc(model)
@@ -180,25 +180,44 @@ object ProviderSetupProviderSelection:
         .orElse(Option.when(isDefaultTab)(defaultConfiguredProvider(model.configStatus)))
         .flatten
     val sessionTarget = selectedSessionOverrideTarget(model)
-    val selectedProviderKindResult =
-      if ProviderSetupSetupPolicy.isProvidersTab(model) then selectedSetupProviderKind(model).map(Some(_))
+    val selectedProviderIdResult =
+      if ProviderSetupSetupPolicy.isProvidersTab(model) then selectedSetupProviderId(model).map(Some(_))
       else Right(None)
 
-    selectedProviderKindResult.map { selectedProviderKind =>
+    selectedProviderIdResult.map { selectedProviderId =>
       ProviderSetupSetupPolicy.SetupSessionRequest(
         isDefaultProviderTab = isDefaultTab,
         activeTab = model.activeTab,
         activeDocId = activeDoc.id,
-        selectedProviderKind = selectedProviderKind,
+        selectedProviderId = selectedProviderId,
         selectedConfiguredProvider = selectedConfigured,
         sessionTarget = sessionTarget
       )
     }
 
-  private def providerKindFromString(value: String): Result[ProviderKind] =
-    ProviderKind
-      .fromString(value)
-      .toRight(ValidationError("providerKind", s"Expected provider kind but got: $value"))
+  /**
+   * Converts a configured provider's id straight to a `ProviderId`.
+   *
+   * Providers are an open vocabulary, so a configured entry names a provider whether or not
+   * this sample ships a doc page for it - `openrouter`, `requesty` and `vertexai` are all
+   * configurable today and none of them has one. Validating these against `providerDocs`
+   * would refuse to open a session the config supports.
+   */
+  private def configuredProviderId(value: String): Result[ProviderId] =
+    if value.trim.isEmpty then Left(ValidationError("providerId", "Configured provider has an empty provider id"))
+    else Right(ProviderId(value))
+
+  /**
+   * Resolves a setup-tab doc id to a `ProviderId`.
+   *
+   * Unlike a configured provider id, a doc id is closed by construction: it must name one of
+   * the provider pages this sample ships, so a miss here is a bug in the tab wiring.
+   */
+  private def providerIdFromDocId(value: String): Result[ProviderId] =
+    ProviderSetupContent.providerDocs
+      .find(_.id.value == value)
+      .map(doc => ProviderId(doc.id.value))
+      .toRight(ValidationError("providerId", s"Expected provider doc id but got: $value"))
 
   def chooseSelectedProviderIndex(existing: Int, configStatus: ConfigStatus): Int =
     if configStatus.namedProviders.isEmpty then existing

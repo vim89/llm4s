@@ -7,6 +7,7 @@ import org.llm4s.model.ModelRegistryService
 import org.llm4s.types.Result
 
 import java.nio.file.{ Path, Paths }
+import java.util.Locale
 
 /**
  * Static configuration for the chat-tui demo.
@@ -85,7 +86,9 @@ object ChatTuiConfig:
       case -1 =>
         Left(ConfigurationError(s"LLM_MODEL must be 'provider/model'; got: $spec"))
       case i =>
-        val provider = spec.substring(0, i).trim.toLowerCase
+        // Locale.ROOT, as in `ProviderId`: a default-locale fold spells the "openai" this
+        // is about to match against as "openaı" on a Turkish JVM.
+        val provider = spec.substring(0, i).trim.toLowerCase(Locale.ROOT)
         val model    = spec.substring(i + 1).trim
         if provider.isEmpty || model.isEmpty then
           Left(ConfigurationError(s"LLM_MODEL must be 'provider/model'; got: $spec"))
@@ -179,4 +182,4 @@ object ChatTuiConfig:
    * Used in the title bar and `/model` semantics.
    */
   private def canonicalModelName(p: ProviderConfig): String =
-    s"${p.provider.toString.toLowerCase}/${p.model}"
+    s"${p.providerId.asString}/${p.model}"

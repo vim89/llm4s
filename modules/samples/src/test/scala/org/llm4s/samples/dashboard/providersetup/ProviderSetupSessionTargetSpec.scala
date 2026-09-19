@@ -5,7 +5,7 @@ import org.llm4s.llmconnect.ProviderExchangeLogging
 import org.llm4s.llmconnect.config.{ ContextWindowResolver, OpenAIConfig }
 import org.llm4s.model.{ ModelRegistryConfig, ModelRegistryService }
 import org.llm4s.samples.dashboard.providersetup.ProviderSetupModel.*
-import org.llm4s.types.ProviderModelTypes.ProviderKind
+import org.llm4s.types.ProviderModelTypes.ProviderId
 import org.llm4s.types.ProviderModelTypes.ProviderName
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -31,7 +31,7 @@ class ProviderSetupSessionTargetSpec extends AnyFlatSpec with Matchers:
     val request = ProviderSetupProviderSelection.currentSetupSessionRequest(model).toOption.get
 
     request.isDefaultProviderTab shouldBe false
-    request.selectedProviderKind shouldBe Some(ProviderKind.Ollama)
+    request.selectedProviderId shouldBe Some(ProviderId("ollama"))
     request.selectedConfiguredProvider.map(_.name) shouldBe Some("ollama-qwen")
     request.sessionTarget shouldBe SessionOverrideTarget.NamedProvider(ProviderName("ollama-qwen"))
   }
@@ -45,9 +45,53 @@ class ProviderSetupSessionTargetSpec extends AnyFlatSpec with Matchers:
     val request = ProviderSetupProviderSelection.currentSetupSessionRequest(model).toOption.get
 
     request.isDefaultProviderTab shouldBe true
-    request.selectedProviderKind shouldBe None
+    request.selectedProviderId shouldBe None
     request.selectedConfiguredProvider.map(_.name) shouldBe Some("anthropic-main")
     request.sessionTarget shouldBe SessionOverrideTarget.NamedProvider(ProviderName("anthropic-main"))
+  }
+
+  it should "resolve a configured provider that this sample ships no doc page for" in {
+    // openrouter, requesty and vertexai are all configurable but have no entry in
+    // `ProviderSetupContent.providerDocs`. Validating configured ids against that list would
+    // refuse to open a session for them - providers are an open vocabulary.
+    val model = baseModel.copy(
+      configStatus = undocumentedStatus,
+      ui = baseModel.ui.copy(
+        shell = baseModel.ui.shell.copy(activeTab = SetupTabId.Providers),
+        setup = baseModel.ui.setup.copy(selectedProviderIndex = 0)
+      )
+    )
+
+    val request = ProviderSetupProviderSelection.currentSetupSessionRequest(model).toOption.get
+
+    request.selectedProviderId shouldBe Some(ProviderId("openrouter"))
+    request.selectedConfiguredProvider.map(_.name) shouldBe Some("openrouter-main")
+  }
+
+  it should "resolve a configured provider this build has never heard of" in {
+    val model = baseModel.copy(
+      configStatus = undocumentedStatus,
+      ui = baseModel.ui.copy(
+        shell = baseModel.ui.shell.copy(activeTab = SetupTabId.Providers),
+        setup = baseModel.ui.setup.copy(selectedProviderIndex = 1)
+      )
+    )
+
+    val request = ProviderSetupProviderSelection.currentSetupSessionRequest(model).toOption.get
+
+    request.selectedProviderId shouldBe Some(ProviderId("bedrock"))
+  }
+
+  it should "reject a configured provider with a blank provider id" in {
+    val model = baseModel.copy(
+      configStatus = undocumentedStatus,
+      ui = baseModel.ui.copy(
+        shell = baseModel.ui.shell.copy(activeTab = SetupTabId.Providers),
+        setup = baseModel.ui.setup.copy(selectedProviderIndex = 2)
+      )
+    )
+
+    ProviderSetupProviderSelection.currentSetupSessionRequest(model).isLeft shouldBe true
   }
 
   it should "use the provider kind doc id as the session target on provider doc tabs" in {
@@ -60,10 +104,45 @@ class ProviderSetupSessionTargetSpec extends AnyFlatSpec with Matchers:
 
     request.isDefaultProviderTab shouldBe false
     request.activeDocId shouldBe SetupTabDocIds.Status
-    request.selectedProviderKind shouldBe None
+    request.selectedProviderId shouldBe None
     request.selectedConfiguredProvider shouldBe None
     request.sessionTarget shouldBe SessionOverrideTarget.ProviderKind(SetupTabDocIds.Status)
   }
+
+  private def undocumentedStatus =
+    ConfigStatus(
+      headline = "configured",
+      detail = "configured detail",
+      providerId = Some("openrouter"),
+      modelName = Some("openai/gpt-4o-mini"),
+      providerName = Some("openrouter-main"),
+      namedProviders = Vector(
+        ConfiguredProvider(
+          name = "openrouter-main",
+          providerId = "openrouter",
+          modelName = "openai/gpt-4o-mini",
+          discoveredModels = Vector("openai/gpt-4o-mini"),
+          discoveryDetail = "openrouter models",
+          isDefault = true
+        ),
+        ConfiguredProvider(
+          name = "bedrock-main",
+          providerId = "bedrock",
+          modelName = "anthropic.claude-sonnet-4",
+          discoveredModels = Vector.empty,
+          discoveryDetail = "no discovery",
+          isDefault = false
+        ),
+        ConfiguredProvider(
+          name = "broken",
+          providerId = "  ",
+          modelName = "whatever",
+          discoveredModels = Vector.empty,
+          discoveryDetail = "no discovery",
+          isDefault = false
+        )
+      )
+    )
 
   private def configuredStatus =
     ConfigStatus(
