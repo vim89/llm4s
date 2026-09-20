@@ -52,10 +52,12 @@ Slice order — each is an issue with its own scope and gotchas:
    "this API does not exist". Slices 1 and 2 both hit this and it went unnoticed until slice 3;
    `pages.yml` now fails the deploy if a known package is absent, and the ScalaDoc CI job runs
    `docs/doc` on every PR.
-8. **A provider is a `ProviderDescriptor`, not an edit to shared files** - since slice 4 PR 2
-   ([#1131](https://github.com/llm4s/llm4s/issues/1131)). Implement
-   `org.llm4s.llmconnect.spi.ProviderDescriptor`, and register it by listing it in an
-   `Llm4sProviderModule` or passing it to `ProviderRegistry.of` / `.withProvider`. Nothing in
+8. **A provider is a `ProviderDescriptor`, not an edit to shared files** - since slice 4 PRs 2
+   and 3 ([#1131](https://github.com/llm4s/llm4s/issues/1131)). Implement
+   `org.llm4s.llmconnect.spi.ProviderDescriptor`, list it in an `Llm4sProviderModule`, and
+   declare that module in `META-INF/services/org.llm4s.llmconnect.spi.Llm4sProviderModule` - a
+   `class` with a public no-arg constructor, never an `object`. Adding a provider is then adding
+   a dependency; `ProviderRegistry.of` / `.withProvider` remain for explicit registration. Nothing in
    `llm4s-core` needs editing: `ProviderCapabilities`, `ProviderCapabilitiesRegistry` and the
    twelve `NamedProviderValidators` objects are gone, and the dispatch `match` expressions in
    `LLMConnect` and `NamedProviderLoader` with them. The one remaining central list is
@@ -141,6 +143,20 @@ sbt testSmoke          # modules/it @Cloud tier (live API keys)
 sbt it/itTierCheck     # every suite in modules/it must declare exactly one tier
 sbt "samples/runMain org.llm4s.samples.basic.BasicLLMCallingExample"
 ```
+
+## Commits
+
+**Every commit needs a `Signed-off-by` trailer** - commit with `git commit -s`. This is the
+[Developer Certificate of Origin](https://developercertificate.org/): the trailer certifies the
+committer has the right to submit the code under the project's MIT licence, so it must name a
+real person and cannot be added on someone else's behalf. `.github/workflows/dco.yml` and the DCO
+app both check it, and both fail the PR over a single commit that lacks it - including a commit
+appended to a branch whose earlier commits have it.
+
+Fixing an unsigned commit rewrites history, so it costs a force-push: `git commit --amend -s`
+for the most recent one, `git rebase --signoff main` for a branch of them, then
+`git push --force-with-lease`. Signing as you go is cheaper than either. See
+[CONTRIBUTING.md](CONTRIBUTING.md#developer-certificate-of-origin-dco).
 
 ## Environment Variables
 
