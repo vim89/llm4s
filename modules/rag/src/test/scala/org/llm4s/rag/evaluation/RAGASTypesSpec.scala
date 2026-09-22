@@ -219,6 +219,7 @@ class RAGASTypesSpec extends AnyFlatSpec with Matchers {
       case EvaluationError(code, message) =>
         code shouldBe Some("PARSE_ERROR")
         message shouldBe "Failed to parse LLM response: invalid JSON"
+      case _ => fail("Pattern matching failed")
     }
   }
 
