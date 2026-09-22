@@ -119,12 +119,18 @@ final case class ClaimVerification(
 /**
  * Error type for evaluation failures.
  */
-final case class EvaluationError(
+final case class EvaluationError private (
   override val code: Option[String],
   override val message: String
 ) extends LLMError
 
 object EvaluationError {
+  def apply(code: Option[String], message: String): EvaluationError =
+    new EvaluationError(code, message)
+
+  def unapply(error: EvaluationError): Option[(Option[String], String)] =
+    Some((error.code, error.message))
+
   def apply(message: String): EvaluationError =
     EvaluationError(code = Some("EVALUATION_ERROR"), message = message)
 
