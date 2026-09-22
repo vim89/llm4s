@@ -213,6 +213,15 @@ class RAGASTypesSpec extends AnyFlatSpec with Matchers {
     error.code shouldBe Some("PARSE_ERROR")
   }
 
+  it should "unapply to its code and message" in {
+    val error = EvaluationError.parseError("invalid JSON")
+    error match {
+      case EvaluationError(code, message) =>
+        code shouldBe Some("PARSE_ERROR")
+        message shouldBe "Failed to parse LLM response: invalid JSON"
+    }
+  }
+
   // ==========================================================================
   // EvaluatorOptions
   // ==========================================================================
