@@ -149,14 +149,9 @@ class AnthropicClient(
           case e: com.anthropic.errors.AnthropicInvalidDataException => ValidationError("input", e.getMessage)
           case e: Exception                                          => e.toLLMError
         }
-        attempt
-          .map { response =>
-            val completionResult = Right(convertFromAnthropicResponse(response))
-            recordExchange(startedAt, requestBody, Some(serializeResponseBody(response)), completionResult)
-            completionResult
-          }
-          .tapLeft(error => recordExchange(startedAt, requestBody, None, Left(error)))
-          .flatten
+        val result       = attempt.map(convertFromAnthropicResponse)
+        val responseBody = attempt.toOption.map(serializeResponseBody)
+        recordingExchange(startedAt, requestBody)(result)(responseBody)
       }
   }
 
@@ -375,18 +370,17 @@ curl https://api.anthropic.com/v1/messages \
           }
 
         // Return the accumulated completion
-        attempt
-          .flatMap(_ =>
-            accumulator.toCompletion.map { c =>
-              val cost       = c.usage.flatMap(u => CostEstimator.estimate(config.model, u))
-              val completion = c.copy(model = config.model, estimatedCost = cost)
-              recordExchange(startedAt, requestBody, Some(rawStream.result()), Right(completion))
-              completion
-            }
-          )
-          .tapLeft(error =>
-            recordExchange(startedAt, requestBody, Option.when(rawStream.nonEmpty)(rawStream.result()), Left(error))
-          )
+        val result = attempt.flatMap(_ =>
+          accumulator.toCompletion.map { c =>
+            val cost = c.usage.flatMap(u => CostEstimator.estimate(config.model, u))
+            c.copy(model = config.model, estimatedCost = cost)
+          }
+        )
+
+        recordingExchange(startedAt, requestBody)(result)(
+          successResponse = Some(rawStream.result()),
+          failureResponse = Option.when(rawStream.nonEmpty)(rawStream.result())
+        )
       }
   }
 
@@ -644,6 +638,34 @@ curl https://api.anthropic.com/v1/messages \
       responseBody = responseBody,
       result = result
     )
+
+  /**
+   * Records the exchange and returns `result` unchanged, for call sites where
+   * success and failure share the same response body (the body is captured
+   * from the SDK call before conversion, so it's available for either outcome).
+   */
+  private def recordingExchange(
+    startedAt: Instant,
+    requestBody: String
+  )(result: Result[Completion])(responseBody: => Option[String]): Result[Completion] =
+    result
+      .tapRight(c => recordExchange(startedAt, requestBody, responseBody, Right(c)))
+      .tapLeft(e => recordExchange(startedAt, requestBody, responseBody, Left(e)))
+
+  /**
+   * Records the exchange and returns `result` unchanged, for call sites where
+   * the response body differs between outcomes - streaming only accumulates a
+   * body worth recording once at least one chunk has arrived.
+   */
+  private def recordingExchange(
+    startedAt: Instant,
+    requestBody: String
+  )(
+    result: Result[Completion]
+  )(successResponse: => Option[String], failureResponse: => Option[String]): Result[Completion] =
+    result
+      .tapRight(c => recordExchange(startedAt, requestBody, successResponse, Right(c)))
+      .tapLeft(e => recordExchange(startedAt, requestBody, failureResponse, Left(e)))
 }
 
 object AnthropicClient {
