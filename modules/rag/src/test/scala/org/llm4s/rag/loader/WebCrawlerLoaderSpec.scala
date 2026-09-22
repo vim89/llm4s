@@ -210,4 +210,48 @@ class WebCrawlerLoaderSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     loader.seedUrls shouldBe Seq.empty
     loader.load().toList shouldBe empty
   }
+
+  // ==========================================================================
+  // delayBeforeFetch
+  // ==========================================================================
+
+  "delayBeforeFetch" should "skip the delay on the first request regardless of configured delay" in {
+    WebCrawlerLoader.delayBeforeFetch(
+      configDelayMs = 1000,
+      robotsCrawlDelaySeconds = None,
+      isFirstRequest = true
+    ) shouldBe None
+  }
+
+  it should "use the configured delay when robots.txt sets none" in {
+    WebCrawlerLoader.delayBeforeFetch(
+      configDelayMs = 1000,
+      robotsCrawlDelaySeconds = None,
+      isFirstRequest = false
+    ) shouldBe Some(1000)
+  }
+
+  it should "use the robots.txt crawl-delay when it is longer than the configured delay" in {
+    WebCrawlerLoader.delayBeforeFetch(
+      configDelayMs = 500,
+      robotsCrawlDelaySeconds = Some(2),
+      isFirstRequest = false
+    ) shouldBe Some(2000)
+  }
+
+  it should "use the configured delay when it is longer than the robots.txt crawl-delay" in {
+    WebCrawlerLoader.delayBeforeFetch(
+      configDelayMs = 3000,
+      robotsCrawlDelaySeconds = Some(1),
+      isFirstRequest = false
+    ) shouldBe Some(3000)
+  }
+
+  it should "skip the delay when both the configured delay and robots.txt crawl-delay are zero" in {
+    WebCrawlerLoader.delayBeforeFetch(
+      configDelayMs = 0,
+      robotsCrawlDelaySeconds = None,
+      isFirstRequest = false
+    ) shouldBe None
+  }
 }

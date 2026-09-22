@@ -146,11 +146,9 @@ final case class WebCrawlerLoader(
         return LoadResult.skipped(fetchUrl, "Blocked by robots.txt")
       }
 
-      val robotsDelayMs  = robotsRules.flatMap(_.crawlDelay).map(_ * 1000).getOrElse(0)
-      val effectiveDelay = math.max(config.delayMs, robotsDelayMs)
-      if (!isFirstRequest && effectiveDelay > 0) {
-        Thread.sleep(effectiveDelay)
-      }
+      WebCrawlerLoader
+        .delayBeforeFetch(config.delayMs, robotsRules.flatMap(_.crawlDelay), isFirstRequest)
+        .foreach(delay => Thread.sleep(delay.toLong))
 
       // Fetch the page
       fetchPage(fetchUrl) match {
@@ -370,4 +368,18 @@ object WebCrawlerLoader {
    */
   def singlePage(url: String): WebCrawlerLoader =
     WebCrawlerLoader(Seq(url), CrawlerConfig.singlePage)
+
+  /**
+   * How long to wait before the next fetch, given the configured delay and any
+   * robots.txt crawl-delay (in seconds). None means fetch immediately.
+   */
+  private[loader] def delayBeforeFetch(
+    configDelayMs: Int,
+    robotsCrawlDelaySeconds: Option[Int],
+    isFirstRequest: Boolean
+  ): Option[Int] = {
+    val robotsDelayMs  = robotsCrawlDelaySeconds.map(_ * 1000).getOrElse(0)
+    val effectiveDelay = math.max(configDelayMs, robotsDelayMs)
+    if (!isFirstRequest && effectiveDelay > 0) Some(effectiveDelay) else None
+  }
 }
