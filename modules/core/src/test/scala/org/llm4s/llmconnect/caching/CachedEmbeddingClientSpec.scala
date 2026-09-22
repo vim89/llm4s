@@ -81,6 +81,7 @@ class CachedEmbeddingClientSpec extends AnyFlatSpec with Matchers with MockFacto
         code shouldBe Some("500")
         message shouldBe "server error"
         provider shouldBe "test"
+      case _ => fail("Pattern matching failed")
     }
   }
 
