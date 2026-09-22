@@ -287,4 +287,12 @@ class StreamingAccumulatorTest extends AnyFunSuite with Matchers {
     accumulator.getCurrentThinking shouldBe None
     accumulator.hasThinking shouldBe false
   }
+
+  test("should stamp the completion with the given creation time") {
+    val accumulator = StreamingAccumulator.create()
+    accumulator.addChunk(StreamedChunk("msg-1", Some("content"), None, None))
+
+    val completion = accumulator.toCompletion(created = 1_700_000_000L)
+    completion.toOption.get.created shouldBe 1_700_000_000L
+  }
 }
