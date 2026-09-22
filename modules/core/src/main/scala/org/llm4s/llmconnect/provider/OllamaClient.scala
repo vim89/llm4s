@@ -81,8 +81,7 @@ class OllamaClient(
         } else {
           HttpErrorMapper.mapHttpError(response.statusCode, response.body, providerName)
         }
-      recordExchange(startedAt, requestText, response.body, result)
-      result
+      recordingExchange(startedAt, requestText, response.body)(result)
     } catch {
       case e: InterruptedException =>
         Thread.currentThread().interrupt()
@@ -93,24 +92,13 @@ class OllamaClient(
           cause = Some(e),
           context = Map.empty
         )
-        recordExchange(startedAt, requestText, "", Left(error))
-        Left(
-          ExecutionError(
-            s"Ollama request interrupted: ${e.getMessage}",
-            operation = "ollama.chat",
-            exitCode = None,
-            cause = Some(e),
-            context = Map.empty
-          )
-        )
+        recordingExchange(startedAt, requestText, "")(Left(error))
       case e: IOException =>
         val error = NetworkError("Failed to connect to Ollama", Some(e), config.baseUrl)
-        recordExchange(startedAt, requestText, "", Left(error))
-        Left(error)
+        recordingExchange(startedAt, requestText, "")(Left(error))
       case scala.util.control.NonFatal(e) =>
         val error = ServiceError(500, "ollama", s"Unexpected error: ${e.getMessage}")
-        recordExchange(startedAt, requestText, "", Left(error))
-        Left(error)
+        recordingExchange(startedAt, requestText, "")(Left(error))
     }
   }
 
@@ -130,6 +118,20 @@ class OllamaClient(
       result = result
     )
 
+  /**
+   * Records the provider exchange and returns `result` unchanged. Isolated so the
+   * eight record-then-return call sites in `connect` and `streamComplete` (one per
+   * success/error branch) don't each repeat the pairing.
+   */
+  private def recordingExchange(
+    startedAt: Instant,
+    requestBody: String,
+    responseBody: String
+  )(result: Result[Completion]): Result[Completion] = {
+    recordExchange(startedAt, requestBody, responseBody, result)
+    result
+  }
+
   override def streamComplete(
     conversation: Conversation,
     options: CompletionOptions = CompletionOptions(),
@@ -147,9 +149,9 @@ class OllamaClient(
       if (response.statusCode != 200) {
         val err = new String(response.body.readAllBytes(), StandardCharsets.UTF_8)
         response.body.close()
-        val result = HttpErrorMapper.mapHttpError(response.statusCode, err, providerName)
-        recordExchange(startedAt, requestText, err, result)
-        result
+        recordingExchange(startedAt, requestText, err)(
+          HttpErrorMapper.mapHttpError(response.statusCode, err, providerName)
+        )
       } else {
         val accumulator = StreamingAccumulator.create()
         val reader      = new BufferedReader(new InputStreamReader(response.body, StandardCharsets.UTF_8))
@@ -200,8 +202,7 @@ class OllamaClient(
             c.copy(model = config.model, estimatedCost = cost)
           }
 
-        recordExchange(startedAt, requestText, rawResponse.result(), result)
-        result
+        recordingExchange(startedAt, requestText, rawResponse.result())(result)
       }
     } catch {
       case e: InterruptedException =>
@@ -213,24 +214,13 @@ class OllamaClient(
           cause = Some(e),
           context = Map.empty
         )
-        recordExchange(startedAt, requestText, rawResponse.result(), Left(error))
-        Left(
-          ExecutionError(
-            s"Ollama streaming request interrupted: ${e.getMessage}",
-            operation = "ollama.stream",
-            exitCode = None,
-            cause = Some(e),
-            context = Map.empty
-          )
-        )
+        recordingExchange(startedAt, requestText, rawResponse.result())(Left(error))
       case e: IOException =>
         val error = NetworkError("Failed to connect to Ollama stream", Some(e), config.baseUrl)
-        recordExchange(startedAt, requestText, rawResponse.result(), Left(error))
-        Left(error)
+        recordingExchange(startedAt, requestText, rawResponse.result())(Left(error))
       case scala.util.control.NonFatal(e) =>
         val error = ServiceError(500, "ollama", s"Unexpected streaming error: ${e.getMessage}")
-        recordExchange(startedAt, requestText, rawResponse.result(), Left(error))
-        Left(error)
+        recordingExchange(startedAt, requestText, rawResponse.result())(Left(error))
     }
   }
 
