@@ -181,30 +181,30 @@ class OpenAIClient private[provider] (
     onChunk: StreamedChunk => Unit
   ): Result[Completion] = completeWithMetrics {
     val startedAt = Instant.now()
-    // Transform options and messages for model-specific constraints
-    val result =
-      TransformationResult
-        .transform(
-          model,
-          options,
-          conversation.messages,
-          dropUnsupported = true,
-          org.llm4s.model.RequestTransformer.default(registryService)
-        )
-        .flatMap { transformed =>
-          val transformedConversation = conversation.copy(messages = transformed.messages)
-          val chatOptions =
-            prepareChatOptions(transformedConversation, transformed.options, transformed.requiresMaxCompletionTokens)
-          val requestBody = serializeChatOptions(chatOptions)
+    // Transform options and messages for model-specific constraints.
+    // Only a transform failure is recorded here: executeFakeStreaming/executeNativeStreaming
+    // already record their own exchange on both success and failure.
+    TransformationResult
+      .transform(
+        model,
+        options,
+        conversation.messages,
+        dropUnsupported = true,
+        org.llm4s.model.RequestTransformer.default(registryService)
+      )
+      .tapLeft(error => recordExchange(startedAt, None, None, Left(error)))
+      .flatMap { transformed =>
+        val transformedConversation = conversation.copy(messages = transformed.messages)
+        val chatOptions =
+          prepareChatOptions(transformedConversation, transformed.options, transformed.requiresMaxCompletionTokens)
+        val requestBody = serializeChatOptions(chatOptions)
 
-          if (transformed.requiresFakeStreaming) {
-            executeFakeStreaming(startedAt, requestBody, chatOptions, onChunk)
-          } else {
-            executeNativeStreaming(startedAt, requestBody, chatOptions, onChunk)
-          }
+        if (transformed.requiresFakeStreaming) {
+          executeFakeStreaming(startedAt, requestBody, chatOptions, onChunk)
+        } else {
+          executeNativeStreaming(startedAt, requestBody, chatOptions, onChunk)
         }
-
-    result.tapLeft(error => recordExchange(startedAt, None, None, Left(error)))
+      }
   }
 
   override protected def releaseResources(): Unit =

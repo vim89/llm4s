@@ -287,6 +287,17 @@ class NonRecoverableErrorSpec extends AnyFlatSpec with Matchers {
     error.context should contain("key" -> "MODEL_NAME")
   }
 
+  it should "support pattern matching" in {
+    val error = NotFoundError("not found", "key")
+
+    error match {
+      case NotFoundError(message, key) =>
+        message shouldBe "not found"
+        key shouldBe "key"
+      case _ => fail("Pattern matching failed")
+    }
+  }
+
   // ============ ContextError ============
 
   "ContextError" should "create token budget exceeded error" in {

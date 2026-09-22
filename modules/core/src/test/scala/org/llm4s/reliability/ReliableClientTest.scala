@@ -339,6 +339,106 @@ class ReliableClientTest extends AnyFunSuite with Matchers {
     mockClient.callCount.get() shouldBe 0
   }
 
+  test("Deadline path treats InterruptedException from the operation as a TimeoutError") {
+    val mockClient = new MockClient(() => throw new InterruptedException("boom"))
+
+    val config = ReliabilityConfig(
+      retryPolicy = RetryPolicy.noRetry,
+      circuitBreaker = CircuitBreakerConfig(failureThreshold = 10, recoveryTimeout = 1.minute, successThreshold = 2),
+      deadline = Some(1.second)
+    )
+
+    val reliableClient = new ReliableClient(mockClient, "test", config, None)
+    val result         = reliableClient.complete(testConversation)
+
+    result match {
+      case Left(_: TimeoutError) => succeed
+      case _                     => fail("Expected TimeoutError for an interrupted operation")
+    }
+  }
+
+  test("Deadline path treats an interrupted retry delay as a TimeoutError") {
+    val mockClient = new MockClient(() => {
+      Thread.currentThread().interrupt()
+      Left(TimeoutError("timeout", 1.second, "test"))
+    })
+
+    val config = ReliabilityConfig(
+      retryPolicy = RetryPolicy.fixedDelay(maxAttempts = 3, delay = 50.millis),
+      circuitBreaker = CircuitBreakerConfig(failureThreshold = 10, recoveryTimeout = 1.minute, successThreshold = 2),
+      deadline = Some(10.seconds)
+    )
+
+    val reliableClient = new ReliableClient(mockClient, "test", config, None)
+    val result         = reliableClient.complete(testConversation)
+
+    result match {
+      case Left(_: TimeoutError) => succeed
+      case _                     => fail("Expected TimeoutError for an interrupted retry delay")
+    }
+    mockClient.callCount.get() shouldBe 1
+  }
+
+  test("Deadline path stops retrying without sleeping when the delay would exceed the deadline") {
+    val times      = scala.collection.mutable.Queue(0L, 100L, 250L, 250L)
+    val mockClient = new MockClient(() => Left(TimeoutError("timeout", 1.second, "test")))
+
+    val config = ReliabilityConfig(
+      retryPolicy = RetryPolicy.fixedDelay(maxAttempts = 5, delay = 200.millis),
+      circuitBreaker = CircuitBreakerConfig(failureThreshold = 10, recoveryTimeout = 1.minute, successThreshold = 2),
+      deadline = Some(150.millis)
+    )
+
+    val reliableClient = new ReliableClient(mockClient, "test", config, None, clock = () => times.dequeue())
+    val result         = reliableClient.complete(testConversation)
+
+    result match {
+      case Left(_: TimeoutError) => succeed
+      case _                     => fail("Expected TimeoutError when the retry delay would exceed the deadline")
+    }
+    mockClient.callCount.get() shouldBe 1
+  }
+
+  test("No-deadline path treats InterruptedException from the operation as an ExecutionError") {
+    val mockClient = new MockClient(() => throw new InterruptedException("boom"))
+
+    val config = ReliabilityConfig(
+      retryPolicy = RetryPolicy.noRetry,
+      circuitBreaker = CircuitBreakerConfig(failureThreshold = 10, recoveryTimeout = 1.minute, successThreshold = 2),
+      deadline = None
+    )
+
+    val reliableClient = new ReliableClient(mockClient, "test", config, None)
+    val result         = reliableClient.complete(testConversation)
+
+    result match {
+      case Left(_: ExecutionError) => succeed
+      case _                       => fail("Expected ExecutionError for an interrupted operation")
+    }
+  }
+
+  test("No-deadline path treats an interrupted retry delay as an ExecutionError") {
+    val mockClient = new MockClient(() => {
+      Thread.currentThread().interrupt()
+      Left(TimeoutError("timeout", 1.second, "test"))
+    })
+
+    val config = ReliabilityConfig(
+      retryPolicy = RetryPolicy.fixedDelay(maxAttempts = 3, delay = 50.millis),
+      circuitBreaker = CircuitBreakerConfig(failureThreshold = 10, recoveryTimeout = 1.minute, successThreshold = 2),
+      deadline = None
+    )
+
+    val reliableClient = new ReliableClient(mockClient, "test", config, None)
+    val result         = reliableClient.complete(testConversation)
+
+    result match {
+      case Left(_: ExecutionError) => succeed
+      case _                       => fail("Expected ExecutionError for an interrupted retry delay")
+    }
+    mockClient.callCount.get() shouldBe 1
+  }
+
   test("Custom retry policy does not retry 4xx ServiceError by default") {
     val serviceError = ServiceError(400, "test", "Bad request")
     val mockClient   = new MockClient(() => Left(serviceError))
