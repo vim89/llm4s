@@ -23,12 +23,12 @@ import scala.concurrent.duration.Duration
  *   .withContext("endpoint", "https://api.openai.com")
  * }}}
  */
-final case class TimeoutError(
+final case class TimeoutError private (
   message: String,
   timeoutDuration: Duration,
   operation: String,
-  cause: Option[Throwable] = None,
-  override val context: Map[String, String] = Map.empty
+  cause: Option[Throwable],
+  override val context: Map[String, String]
 ) extends LLMError
     with RecoverableError {
 
@@ -43,4 +43,17 @@ final case class TimeoutError(
   /** Updates the operation and adds it to the context. */
   def withOperation(op: String): TimeoutError =
     copy(operation = op, context = context + ("operation" -> op))
+}
+
+object TimeoutError {
+  def apply(
+    message: String,
+    timeoutDuration: Duration,
+    operation: String,
+    cause: Option[Throwable] = None,
+    context: Map[String, String] = Map.empty
+  ): TimeoutError = new TimeoutError(message, timeoutDuration, operation, cause, context)
+
+  def unapply(error: TimeoutError): Option[(String, Duration, String, Option[Throwable], Map[String, String])] =
+    Some((error.message, error.timeoutDuration, error.operation, error.cause, error.context))
 }

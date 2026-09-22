@@ -511,4 +511,38 @@ class ReliableClientTest extends AnyFunSuite with Matchers {
     reliableClient.resetCircuitBreaker()
     reliableClient.currentCircuitState shouldBe CircuitState.Closed
   }
+
+  test("decideRetry returns Retry with the policy's delay for a retryable error within budget") {
+    val config = ReliabilityConfig(
+      retryPolicy = RetryPolicy.fixedDelay(maxAttempts = 3, delay = 10.millis),
+      circuitBreaker = CircuitBreakerConfig(failureThreshold = 10, recoveryTimeout = 1.minute, successThreshold = 2),
+      deadline = None
+    )
+    val reliableClient = new ReliableClient(new MockClient(() => Right(testCompletion)), "test", config, None)
+
+    reliableClient.decideRetry(1, TimeoutError("timeout", 1.second, "test")) shouldBe
+      RetryDecision.Retry(10.millis)
+  }
+
+  test("decideRetry returns DoNotRetry for a non-retryable error") {
+    val config = ReliabilityConfig(
+      retryPolicy = RetryPolicy.exponentialBackoff(maxAttempts = 3),
+      circuitBreaker = CircuitBreakerConfig(failureThreshold = 10, recoveryTimeout = 1.minute, successThreshold = 2),
+      deadline = None
+    )
+    val reliableClient = new ReliableClient(new MockClient(() => Right(testCompletion)), "test", config, None)
+
+    reliableClient.decideRetry(1, AuthenticationError("Invalid API key", "test")) shouldBe RetryDecision.DoNotRetry
+  }
+
+  test("decideRetry returns DoNotRetry once max attempts are reached") {
+    val config = ReliabilityConfig(
+      retryPolicy = RetryPolicy.fixedDelay(maxAttempts = 3, delay = 10.millis),
+      circuitBreaker = CircuitBreakerConfig(failureThreshold = 10, recoveryTimeout = 1.minute, successThreshold = 2),
+      deadline = None
+    )
+    val reliableClient = new ReliableClient(new MockClient(() => Right(testCompletion)), "test", config, None)
+
+    reliableClient.decideRetry(3, TimeoutError("timeout", 1.second, "test")) shouldBe RetryDecision.DoNotRetry
+  }
 }

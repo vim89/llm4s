@@ -11,7 +11,7 @@ package org.llm4s.error
  * @param memoryId         The ID of the memory record that was concurrently modified
  * @param attemptedVersion The version number that was expected but not found
  */
-final case class OptimisticLockFailure(
+final case class OptimisticLockFailure private (
   override val message: String,
   memoryId: String,
   attemptedVersion: Long
@@ -21,4 +21,12 @@ final case class OptimisticLockFailure(
     "memoryId"         -> memoryId,
     "attemptedVersion" -> attemptedVersion.toString
   )
+}
+
+object OptimisticLockFailure {
+  def apply(message: String, memoryId: String, attemptedVersion: Long): OptimisticLockFailure =
+    new OptimisticLockFailure(message, memoryId, attemptedVersion)
+
+  def unapply(error: OptimisticLockFailure): Option[(String, String, Long)] =
+    Some((error.message, error.memoryId, error.attemptedVersion))
 }

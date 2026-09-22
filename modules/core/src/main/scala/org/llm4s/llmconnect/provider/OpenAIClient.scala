@@ -270,19 +270,35 @@ class OpenAIClient private[provider] (
       e.toLLMError
     }
 
-    attempt
-      .flatMap(_ =>
+    recordingExchange(startedAt, Some(requestBody)) {
+      attempt.flatMap(_ =>
         accumulator.toCompletion.map { c =>
-          val cost       = c.usage.flatMap(u => CostEstimator.estimate(model, u))
-          val completion = c.copy(model = model, estimatedCost = cost)
-          recordExchange(startedAt, Some(requestBody), Some(rawStream.result()), Right(completion))
-          completion
+          val cost = c.usage.flatMap(u => CostEstimator.estimate(model, u))
+          c.copy(model = model, estimatedCost = cost)
         }
       )
-      .tapLeft(error =>
-        recordExchange(startedAt, Some(requestBody), Option.when(rawStream.nonEmpty)(rawStream.result()), Left(error))
-      )
+    }(
+      successResponse = _ => Some(rawStream.result()),
+      failureResponse = Option.when(rawStream.nonEmpty)(rawStream.result())
+    )
   }
+
+  /**
+   * Runs a completion-producing operation and records the provider exchange exactly
+   * once, regardless of whether it succeeds or fails. Isolated so callers with a
+   * uniform request/response shape don't duplicate the call-then-tap pairing that
+   * `recordExchange` requires.
+   */
+  private def recordingExchange(
+    startedAt: Instant,
+    requestBody: Option[String]
+  )(operation: => Result[Completion])(
+    successResponse: Completion => Option[String],
+    failureResponse: => Option[String]
+  ): Result[Completion] =
+    operation
+      .tapRight(completion => recordExchange(startedAt, requestBody, successResponse(completion), Right(completion)))
+      .tapLeft(error => recordExchange(startedAt, requestBody, failureResponse, Left(error)))
 
   /**
    * Processes streaming response chunks from the OpenAI API.

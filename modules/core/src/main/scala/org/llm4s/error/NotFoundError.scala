@@ -16,10 +16,17 @@ package org.llm4s.error
  * error.context  // Map("key" -> "OPENAI_API_KEY")
  * }}}
  */
-final case class NotFoundError(
+final case class NotFoundError private (
   override val message: String,
   key: String
 ) extends LLMError
     with NonRecoverableError {
   override val context: Map[String, String] = Map("key" -> key)
+}
+
+object NotFoundError {
+  def apply(message: String, key: String): NotFoundError = new NotFoundError(message, key)
+
+  def unapply(error: NotFoundError): Option[(String, String)] =
+    Some((error.message, error.key))
 }
