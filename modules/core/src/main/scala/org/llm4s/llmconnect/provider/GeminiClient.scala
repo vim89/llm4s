@@ -103,16 +103,10 @@ class GeminiClient(
 
         val attempt = Try {
           val response = httpClient.post(url, headers, requestText, timeout = 120000)
-
-          if (response.statusCode >= 200 && response.statusCode < 300) {
-            val completionResult = parseCompletionResponse(response.body)
-            recordExchange(startedAt, requestText, Some(response.body), completionResult)
-            completionResult
-          } else {
-            val errorResult = handleErrorResponse(response.statusCode, response.body)
-            recordExchange(startedAt, requestText, Some(response.body), errorResult)
-            errorResult
-          }
+          val result =
+            if (response.statusCode >= 200 && response.statusCode < 300) parseCompletionResponse(response.body)
+            else handleErrorResponse(response.statusCode, response.body)
+          recordingExchange(startedAt, requestText)(result)(Some(response.body))
         }.toEither.left
           .map(e => e.toLLMError)
           .flatten
@@ -150,16 +144,14 @@ class GeminiClient(
         if (response.statusCode < 200 || response.statusCode >= 300) {
           val err = new String(response.body.readAllBytes(), StandardCharsets.UTF_8)
           response.body.close()
-          val errorResult = handleErrorResponse(response.statusCode, err)
-          recordExchange(startedAt, requestText, Some(err), errorResult)
-          errorResult
+          recordingExchange(startedAt, requestText)(handleErrorResponse(response.statusCode, err))(Some(err))
         } else {
           val accumulator = StreamingAccumulator.create()
           val messageId   = UUID.randomUUID().toString
           val reader      = new BufferedReader(new InputStreamReader(response.body, StandardCharsets.UTF_8))
           val rawStream   = StringBuilder()
 
-          Try {
+          val result = Try {
             try {
               var line: String = null
               while ({ line = reader.readLine(); line != null }) {
@@ -194,15 +186,15 @@ class GeminiClient(
             .map(_.toLLMError)
             .flatMap(_ =>
               accumulator.toCompletion.map { c =>
-                val cost       = c.usage.flatMap(u => CostEstimator.estimate(config.model, u))
-                val completion = c.copy(model = config.model, estimatedCost = cost)
-                recordExchange(startedAt, requestText, Some(rawStream.result()), Right(completion))
-                completion
+                val cost = c.usage.flatMap(u => CostEstimator.estimate(config.model, u))
+                c.copy(model = config.model, estimatedCost = cost)
               }
             )
-            .tapLeft(error =>
-              recordExchange(startedAt, requestText, Option.when(rawStream.nonEmpty)(rawStream.result()), Left(error))
-            )
+
+          recordingExchange(startedAt, requestText)(result)(
+            successResponse = Some(rawStream.result()),
+            failureResponse = Option.when(rawStream.nonEmpty)(rawStream.result())
+          )
         }
       }
   }
@@ -510,6 +502,34 @@ class GeminiClient(
       responseBody = responseBody,
       result = result
     )
+
+  /**
+   * Records the exchange and returns `result` unchanged, for call sites where
+   * success and failure share the same response body (the full HTTP response
+   * text is already available before the status check).
+   */
+  private def recordingExchange(
+    startedAt: Instant,
+    requestBody: String
+  )(result: Result[Completion])(responseBody: => Option[String]): Result[Completion] =
+    result
+      .tapRight(c => recordExchange(startedAt, requestBody, responseBody, Right(c)))
+      .tapLeft(e => recordExchange(startedAt, requestBody, responseBody, Left(e)))
+
+  /**
+   * Records the exchange and returns `result` unchanged, for call sites where
+   * the response body differs between outcomes - streaming only accumulates a
+   * body worth recording once at least one chunk has arrived.
+   */
+  private def recordingExchange(
+    startedAt: Instant,
+    requestBody: String
+  )(
+    result: Result[Completion]
+  )(successResponse: => Option[String], failureResponse: => Option[String]): Result[Completion] =
+    result
+      .tapRight(c => recordExchange(startedAt, requestBody, successResponse, Right(c)))
+      .tapLeft(e => recordExchange(startedAt, requestBody, failureResponse, Left(e)))
 
   override protected def releaseResources(): Unit =
     (httpClient: Any) match {
