@@ -79,6 +79,21 @@ class ToolProcessorSpec extends AnyFlatSpec with Matchers {
 
   private val noOpContext = AgentContext.Default
 
+  // ── formatToolResult ──────────────────────────────────────────────────────────
+
+  "ToolProcessor.formatToolResult" should "render a successful result as JSON with success=true" in {
+    val (content, success) = ToolProcessor.formatToolResult(Right(ujson.Obj("echo" -> "hi")))
+    content shouldBe ujson.Obj("echo" -> "hi").render()
+    success shouldBe true
+  }
+
+  it should "render a failed result as structured JSON with success=false" in {
+    val error              = ToolCallError.ExecutionError("some_tool", new RuntimeException("boom"))
+    val (content, success) = ToolProcessor.formatToolResult(Left(error))
+    content shouldBe ToolCallErrorJson.toJson(error).render()
+    success shouldBe false
+  }
+
   // ── processToolCalls ──────────────────────────────────────────────────────────
 
   "ToolProcessor.processToolCalls" should "add a ToolMessage for a successful tool call" in {
