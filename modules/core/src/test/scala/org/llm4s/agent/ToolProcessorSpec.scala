@@ -227,4 +227,21 @@ class ToolProcessorSpec extends AnyFlatSpec with Matchers {
     asyncMsgs should have size syncMsgs.size
     asyncMsgs.head.toolCallId shouldBe syncMsgs.head.toolCallId
   }
+
+  it should "return structured JSON error on tool failure rather than Left" in {
+    val registry = mkFailRegistry()
+    val state    = mkState(registry)
+    val tc       = failToolCall()
+
+    val result = ToolProcessor.processToolCallsAsync(
+      state,
+      Seq(tc),
+      ToolExecutionStrategy.Sequential,
+      noOpContext
+    )
+
+    val toolMessages = result.conversation.messages.collect { case m: ToolMessage => m }
+    toolMessages should have size 1
+    toolMessages.head.content should include("error")
+  }
 }
