@@ -384,9 +384,45 @@ class ToolRegistrySpec extends AnyFlatSpec with Matchers {
       sleepTool => {
         val registry = new ToolRegistry(Seq(sleepTool))
         val config   = ToolExecutionConfig(timeout = Some(2.seconds))
-        val request  = ToolCallRequest("sleep", ujson.Obj("ms" -> 50))
-        val result   = registry.execute(request, config)
+        // ms = 0: this test asserts that a non-timing-out result flows through the timeout
+        // wrapper correctly, not that a specific margin holds under load. A nonzero sleep would
+        // race the timeout on a real wall clock, which a busy CI runner can occasionally lose
+        // regardless of how generous the margin is; a tool that never sleeps cannot lose that race.
+        val request = ToolCallRequest("sleep", ujson.Obj("ms" -> 0))
+        val result  = registry.execute(request, config)
         result.isRight shouldBe true
+      }
+    )
+  }
+
+  it should "never leak an interrupt onto a later unrelated call when a timeout races the tool's own completion" in {
+    createSleepTool().fold(
+      e => fail(s"Tool creation failed: ${e.formatted}"),
+      sleepTool => {
+        val registry = new ToolRegistry(Seq(sleepTool))
+        // A single-thread pool forces every call below onto the same physical thread, so a
+        // leaked interrupt from one call's timeout would corrupt the very next call.
+        val singleThreadExecutor                      = java.util.concurrent.Executors.newSingleThreadExecutor()
+        implicit val singleThreadEc: ExecutionContext = ExecutionContext.fromExecutor(singleThreadExecutor)
+
+        try
+          // The timeout matches the tool's own sleep duration, so the scheduler's timeout and
+          // the tool's natural completion race to complete the promise first. Repeating this
+          // narrows in on the window where the timeout wins just as the worker thread is
+          // already returning to the pool - the case a naive fix (clearing the interrupt only
+          // from inside the worker's own task body) cannot cover.
+          for (_ <- 1 to 200) {
+            registry.execute(
+              ToolCallRequest("sleep", ujson.Obj("ms" -> 15)),
+              ToolExecutionConfig(timeout = Some(15.millis))
+            )
+            val afterRace = registry.execute(
+              ToolCallRequest("sleep", ujson.Obj("ms" -> 1)),
+              ToolExecutionConfig(timeout = Some(2.seconds))
+            )
+            afterRace.isRight shouldBe true
+          }
+        finally singleThreadExecutor.shutdown()
       }
     )
   }
