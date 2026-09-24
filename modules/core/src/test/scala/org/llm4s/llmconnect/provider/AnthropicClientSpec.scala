@@ -114,6 +114,106 @@ class AnthropicClientSpec extends AnyFunSuite with Matchers {
     }
   }
 
+  test("complete() maps an HTTP error response to an LLMError and records the exchange") {
+    withServer { exchange =>
+      val body  = """{"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"}}"""
+      val bytes = body.getBytes(StandardCharsets.UTF_8)
+      exchange.getResponseHeaders.add("Content-Type", "application/json")
+      exchange.sendResponseHeaders(401, bytes.length)
+      val os = exchange.getResponseBody
+      os.write(bytes)
+      os.close()
+    } { baseUrl =>
+      val exchanges = ListBuffer.empty[ProviderExchange]
+      val sink = new ProviderExchangeSink {
+        override def record(exchange: ProviderExchange): Unit =
+          exchanges += exchange
+      }
+      val client = new AnthropicClient(
+        testConfig.copy(baseUrl = baseUrl),
+        exchangeLogging = ProviderExchangeLogging.Enabled(sink)
+      )
+
+      val result = client.complete(Conversation(Seq(UserMessage("hello"))), CompletionOptions())
+
+      assert(result.isLeft)
+      exchanges should have size 1
+      exchanges.head.responseBody shouldBe None
+    }
+  }
+
+  test("streamComplete() maps a connection failure to an LLMError and records the exchange") {
+    val exchanges = ListBuffer.empty[ProviderExchange]
+    val sink = new ProviderExchangeSink {
+      override def record(exchange: ProviderExchange): Unit =
+        exchanges += exchange
+    }
+    // Nothing is listening on this port, so the SDK call fails before any bytes are read.
+    val client = new AnthropicClient(
+      testConfig.copy(baseUrl = "http://localhost:1"),
+      exchangeLogging = ProviderExchangeLogging.Enabled(sink)
+    )
+
+    val result = client.streamComplete(Conversation(Seq(UserMessage("hello"))), CompletionOptions(), _ => ())
+
+    assert(result.isLeft)
+    exchanges should have size 1
+    exchanges.head.responseBody shouldBe None
+  }
+
+  test("streamComplete() accumulates chunks from a real SSE response and records the exchange") {
+    withServer { exchange =>
+      val events = Seq(
+        "message_start" -> (
+          """{"type":"message_start","message":{"id":"msg_stream_1","type":"message","role":"assistant",""" +
+            """"content":[],"model":"claude-3-5-sonnet-latest","stop_reason":null,"stop_sequence":null,""" +
+            """"usage":{"input_tokens":8,"output_tokens":0}}}"""
+        ),
+        "content_block_start" ->
+          """{"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}""",
+        "content_block_delta" ->
+          """{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Hello"}}""",
+        "content_block_stop" ->
+          """{"type":"content_block_stop","index":0}""",
+        "message_delta" -> (
+          """{"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},""" +
+            """"usage":{"output_tokens":3}}"""
+        ),
+        "message_stop" ->
+          """{"type":"message_stop"}"""
+      )
+      val body  = events.map { case (event, data) => s"event: $event\ndata: $data\n\n" }.mkString
+      val bytes = body.getBytes(StandardCharsets.UTF_8)
+      exchange.getResponseHeaders.add("Content-Type", "text/event-stream")
+      exchange.sendResponseHeaders(200, bytes.length)
+      val os = exchange.getResponseBody
+      os.write(bytes)
+      os.close()
+    } { baseUrl =>
+      val exchanges = ListBuffer.empty[ProviderExchange]
+      val sink = new ProviderExchangeSink {
+        override def record(exchange: ProviderExchange): Unit =
+          exchanges += exchange
+      }
+      val client = new AnthropicClient(
+        testConfig.copy(baseUrl = baseUrl),
+        exchangeLogging = ProviderExchangeLogging.Enabled(sink)
+      )
+      val chunks = ListBuffer.empty[String]
+
+      val result = client.streamComplete(
+        Conversation(Seq(UserMessage("hello"))),
+        CompletionOptions(),
+        chunk => chunk.content.foreach(chunks += _)
+      )
+
+      assert(result.isRight)
+      chunks.mkString shouldBe "Hello"
+      exchanges should have size 1
+      exchanges.head.responseBody.value should include("content_block_delta")
+    }
+  }
+
   test("anthropic client request body does not send top_p by default") {
     withServer { exchange =>
       val requestBody = new String(exchange.getRequestBody.readAllBytes(), StandardCharsets.UTF_8)
