@@ -59,12 +59,19 @@ class VertexAIAuthProvider(
   private val logger = LoggerFactory.getLogger(getClass)
 
   @volatile private var cachedToken: Option[CachedToken] = None
+  private val refreshLock                                = new Object
 
   /** Returns a valid OAuth2 access token, fetching or refreshing as needed. */
   def getAccessToken(): Result[String] =
     cachedToken match {
       case Some(t) if !t.isExpired => Right(t.token)
-      case _                       => fetchAndCacheToken()
+      case _ =>
+        refreshLock.synchronized {
+          cachedToken match {
+            case Some(t) if !t.isExpired => Right(t.token)
+            case _                       => fetchAndCacheToken()
+          }
+        }
     }
 
   private def fetchAndCacheToken(): Result[String] =

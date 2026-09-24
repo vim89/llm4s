@@ -2,6 +2,7 @@ package org.llm4s.llmconnect.provider
 
 import org.llm4s.error.{ AuthenticationError, LLMError, NetworkError }
 import org.llm4s.http.{ HttpResponse, Llm4sHttpClient }
+import org.llm4s.types.Result
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -224,6 +225,41 @@ class VertexAIAuthProviderSpec extends AnyFlatSpec with Matchers with MockFactor
     val err = result.left.toOption.get
     err shouldBe a[NetworkError]
     LLMError.isRecoverable(err) shouldBe true
+  }
+
+  it should "fetch only once when racing concurrent callers on a cache miss" in {
+    val fetchCount = new java.util.concurrent.atomic.AtomicInteger(0)
+    val mockHttp   = stub[Llm4sHttpClient]
+    (mockHttp.get _)
+      .when(*, *, *, *)
+      .onCall { (_, _, _, _) =>
+        fetchCount.incrementAndGet()
+        Thread.sleep(50)
+        HttpResponse(200, tokenResponseBody, Map.empty)
+      }
+
+    val provider = new VertexAIAuthProvider(
+      credentialFilePath = None,
+      httpClient = mockHttp,
+      envReader = _ => None
+    )
+
+    val threadCount = 8
+    val latch       = new java.util.concurrent.CountDownLatch(1)
+    val results     = new java.util.concurrent.CopyOnWriteArrayList[Result[String]]()
+    val threads = (1 to threadCount).map { _ =>
+      val t = new Thread(() => {
+        latch.await()
+        val _ = results.add(provider.getAccessToken())
+      })
+      t.start()
+      t
+    }
+    latch.countDown()
+    threads.foreach(_.join())
+
+    fetchCount.get() shouldBe 1
+    results.forEach(_.isRight shouldBe true)
   }
 
   "CachedToken" should "not be expired when expiresAtMillis is in the future" in {
