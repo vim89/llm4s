@@ -45,10 +45,7 @@ class InstrumentedImageGenerationClient(
     prompt: String,
     options: ImageGenerationOptions
   ): Either[ImageGenerationError, GeneratedImage] = {
-    val startNanos = System.nanoTime()
-    val result     = delegate.generateImage(prompt, options)
-    val duration   = Duration.fromNanos(System.nanoTime() - startNanos).toMillis
-
+    val (result, duration) = timed(delegate.generateImage(prompt, options))
     recordMetricsAndTrace("generate", result.map(Seq(_)), Some(options.size), options.quality, duration)
     result
   }
@@ -58,10 +55,7 @@ class InstrumentedImageGenerationClient(
     count: Int,
     options: ImageGenerationOptions
   ): Either[ImageGenerationError, Seq[GeneratedImage]] = {
-    val startNanos = System.nanoTime()
-    val result     = delegate.generateImages(prompt, count, options)
-    val duration   = Duration.fromNanos(System.nanoTime() - startNanos).toMillis
-
+    val (result, duration) = timed(delegate.generateImages(prompt, count, options))
     recordMetricsAndTrace("generate", result, Some(options.size), options.quality, duration)
     result
   }
@@ -72,10 +66,7 @@ class InstrumentedImageGenerationClient(
     maskPath: Option[Path],
     options: ImageEditOptions
   ): Either[ImageGenerationError, Seq[GeneratedImage]] = {
-    val startNanos = System.nanoTime()
-    val result     = delegate.editImage(imagePath, prompt, maskPath, options)
-    val duration   = Duration.fromNanos(System.nanoTime() - startNanos).toMillis
-
+    val (result, duration) = timed(delegate.editImage(imagePath, prompt, maskPath, options))
     recordMetricsAndTrace("edit", result, options.size, None, duration)
     result
   }
@@ -83,44 +74,48 @@ class InstrumentedImageGenerationClient(
   override def generateImageAsync(
     prompt: String,
     options: ImageGenerationOptions
-  )(implicit ec: ExecutionContext): Future[Either[ImageGenerationError, GeneratedImage]] = {
-    val startNanos = System.nanoTime()
-    delegate.generateImageAsync(prompt, options).map { result =>
-      val duration = Duration.fromNanos(System.nanoTime() - startNanos).toMillis
+  )(implicit ec: ExecutionContext): Future[Either[ImageGenerationError, GeneratedImage]] =
+    timedAsync(delegate.generateImageAsync(prompt, options)).map { case (result, duration) =>
       recordMetricsAndTrace("generate", result.map(Seq(_)), Some(options.size), options.quality, duration)
       result
     }
-  }
 
   override def generateImagesAsync(
     prompt: String,
     count: Int,
     options: ImageGenerationOptions
-  )(implicit ec: ExecutionContext): Future[Either[ImageGenerationError, Seq[GeneratedImage]]] = {
-    val startNanos = System.nanoTime()
-    delegate.generateImagesAsync(prompt, count, options).map { result =>
-      val duration = Duration.fromNanos(System.nanoTime() - startNanos).toMillis
+  )(implicit ec: ExecutionContext): Future[Either[ImageGenerationError, Seq[GeneratedImage]]] =
+    timedAsync(delegate.generateImagesAsync(prompt, count, options)).map { case (result, duration) =>
       recordMetricsAndTrace("generate", result, Some(options.size), options.quality, duration)
       result
     }
-  }
 
   override def editImageAsync(
     imagePath: Path,
     prompt: String,
     maskPath: Option[Path],
     options: ImageEditOptions
-  )(implicit ec: ExecutionContext): Future[Either[ImageGenerationError, Seq[GeneratedImage]]] = {
-    val startNanos = System.nanoTime()
-    delegate.editImageAsync(imagePath, prompt, maskPath, options).map { result =>
-      val duration = Duration.fromNanos(System.nanoTime() - startNanos).toMillis
+  )(implicit ec: ExecutionContext): Future[Either[ImageGenerationError, Seq[GeneratedImage]]] =
+    timedAsync(delegate.editImageAsync(imagePath, prompt, maskPath, options)).map { case (result, duration) =>
       recordMetricsAndTrace("edit", result, options.size, None, duration)
       result
     }
-  }
 
   override def health(): Either[ImageGenerationError, ServiceStatus] =
     delegate.health()
+
+  /** Runs `operation`, pairing its result with the elapsed wall time in milliseconds. */
+  private def timed[A](operation: => A): (A, Long) = {
+    val startNanos = System.nanoTime()
+    val result     = operation
+    (result, Duration.fromNanos(System.nanoTime() - startNanos).toMillis)
+  }
+
+  /** Runs a `Future`-producing `operation`, pairing its result with the elapsed wall time in milliseconds. */
+  private def timedAsync[A](operation: => Future[A])(implicit ec: ExecutionContext): Future[(A, Long)] = {
+    val startNanos = System.nanoTime()
+    operation.map(result => (result, Duration.fromNanos(System.nanoTime() - startNanos).toMillis))
+  }
 
   private def errorKindFromImageError(err: ImageGenerationError): ErrorKind = err match {
     case _: AuthenticationError        => ErrorKind.Authentication

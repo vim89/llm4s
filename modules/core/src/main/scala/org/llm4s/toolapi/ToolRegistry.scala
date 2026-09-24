@@ -5,7 +5,7 @@ import org.llm4s.types.Result
 
 import scala.concurrent.{ Await, ExecutionContext, Future, Promise, blocking }
 import scala.concurrent.duration._
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.{ AtomicInteger, AtomicReference }
 import java.util.concurrent.{ Executors, ScheduledExecutorService, TimeUnit }
 import scala.util.control.NonFatal
 
@@ -172,30 +172,36 @@ class ToolRegistry(initialTools: Seq[ToolFunction[_, _]]) {
         val timeoutError =
           Left(ToolCallError.Timeout(request.functionName, duration)): Either[ToolCallError, ujson.Value]
 
-        // Capture the worker thread so we can interrupt it if the timeout fires.
-        // @volatile ensures the write in the Future is visible to the scheduler thread.
-        @volatile var workerThread: Thread = null
+        // Holds the worker thread while it's eligible for a timeout interrupt. Both the
+        // worker (on normal completion) and the scheduler (on timeout) race to claim it via
+        // getAndSet(null); whichever clears it first is the only one allowed to act, so a
+        // scheduled interrupt can never land on a thread the pool has already reused for
+        // unrelated work.
+        val workerThreadRef = new AtomicReference[Thread](null)
 
         val runFuture = Future {
-          workerThread = Thread.currentThread()
+          workerThreadRef.set(Thread.currentThread())
           val resultOrEx =
             scala.util.control.Exception.nonFatalCatch.either(blocking(runOneAttempt(request)))
+          val claimedByTimeout = workerThreadRef.getAndSet(null) == null
           // Clear interrupt status before returning the thread to the pool.
           Thread.interrupted()
+          if (claimedByTimeout) throw new InterruptedException("tool execution raced with timeout")
           // Re-throw non-fatal exceptions, or return the successful result.
           resultOrEx.fold(throw _, identity)
         }
 
         val scheduled = ToolRegistry.timeoutScheduler.schedule(
           new Runnable {
-            override def run(): Unit =
-              // trySuccess returns true only if this is the first completer of the promise,
-              // preventing a spurious interrupt when the tool finishes just before us.
-              if (promise.trySuccess(timeoutError)) {
-                // Best-effort interrupt: unblocks Thread.sleep, socket I/O, Await.result, etc.
-                val t = workerThread
-                if (t != null) t.interrupt()
+            override def run(): Unit = {
+              val t = workerThreadRef.getAndSet(null)
+              // Only the side that wins the claim on workerThreadRef may interrupt: if this
+              // is null, the worker already finished and claimed it first.
+              if (t != null) {
+                promise.trySuccess(timeoutError)
+                t.interrupt()
               }
+            }
           },
           duration.length,
           duration.unit
