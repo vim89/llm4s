@@ -103,13 +103,15 @@ class TraceCollectorTracing[F[_]](
       )
     )
 
-  private def eventToSpan(event: TraceEvent): Span = {
+  private def eventToSpan(event: TraceEvent): Span = eventToSpan(event, SpanId.generate())
+
+  private[trace] def eventToSpan(event: TraceEvent, spanId: SpanId): Span = {
     val spanName = event.eventType
 
     event match {
       case TraceEvent.AgentInitialized(query, tools, ts) =>
         Span(
-          spanId = SpanId.generate(),
+          spanId = spanId,
           traceId = traceId,
           parentSpanId = None,
           name = spanName,
@@ -125,7 +127,7 @@ class TraceCollectorTracing[F[_]](
 
       case TraceEvent.CompletionReceived(id, model, toolCalls, content, ts) =>
         Span(
-          spanId = SpanId.generate(),
+          spanId = spanId,
           traceId = traceId,
           parentSpanId = None,
           name = spanName,
@@ -143,7 +145,7 @@ class TraceCollectorTracing[F[_]](
 
       case TraceEvent.ToolExecuted(name, input, output, duration, success, ts) =>
         Span(
-          spanId = SpanId.generate(),
+          spanId = spanId,
           traceId = traceId,
           parentSpanId = None,
           name = spanName,
@@ -163,7 +165,7 @@ class TraceCollectorTracing[F[_]](
       case TraceEvent.ErrorOccurred(error, context, ts) =>
         val errorMessage = Option(error.getMessage).getOrElse("")
         Span(
-          spanId = SpanId.generate(),
+          spanId = spanId,
           traceId = traceId,
           parentSpanId = None,
           name = spanName,
@@ -180,7 +182,7 @@ class TraceCollectorTracing[F[_]](
 
       case TraceEvent.TokenUsageRecorded(usage, model, operation, ts) =>
         Span(
-          spanId = SpanId.generate(),
+          spanId = spanId,
           traceId = traceId,
           parentSpanId = None,
           name = spanName,
@@ -199,7 +201,7 @@ class TraceCollectorTracing[F[_]](
 
       case TraceEvent.AgentStateUpdated(status, messageCount, logCount, ts) =>
         Span(
-          spanId = SpanId.generate(),
+          spanId = spanId,
           traceId = traceId,
           parentSpanId = None,
           name = spanName,
@@ -225,7 +227,7 @@ class TraceCollectorTracing[F[_]](
           })
         }.toMap
         Span(
-          spanId = SpanId.generate(),
+          spanId = spanId,
           traceId = traceId,
           parentSpanId = None,
           name = s"custom:$name",
@@ -238,7 +240,7 @@ class TraceCollectorTracing[F[_]](
 
       case TraceEvent.EmbeddingUsageRecorded(usage, model, operation, inputCount, ts) =>
         Span(
-          spanId = SpanId.generate(),
+          spanId = spanId,
           traceId = traceId,
           parentSpanId = None,
           name = spanName,
@@ -257,7 +259,7 @@ class TraceCollectorTracing[F[_]](
 
       case TraceEvent.CostRecorded(costUsd, model, operation, tokenCount, costType, ts) =>
         Span(
-          spanId = SpanId.generate(),
+          spanId = spanId,
           traceId = traceId,
           parentSpanId = None,
           name = spanName,
@@ -293,7 +295,7 @@ class TraceCollectorTracing[F[_]](
         val costAttr       = totalCostUsd.map(v => "total_cost_usd" -> SpanValue.DoubleValue(v))
         val attrs          = baseAttrs ++ embeddingAttr ++ promptAttr ++ completionAttr ++ costAttr
         Span(
-          spanId = SpanId.generate(),
+          spanId = spanId,
           traceId = traceId,
           parentSpanId = None,
           name = spanName,
@@ -306,7 +308,7 @@ class TraceCollectorTracing[F[_]](
 
       case TraceEvent.CacheHit(similarity, threshold, ts) =>
         Span(
-          spanId = SpanId.generate(),
+          spanId = spanId,
           traceId = traceId,
           parentSpanId = None,
           name = spanName,
@@ -323,7 +325,7 @@ class TraceCollectorTracing[F[_]](
 
       case TraceEvent.CacheMiss(reason, ts) =>
         Span(
-          spanId = SpanId.generate(),
+          spanId = spanId,
           traceId = traceId,
           parentSpanId = None,
           name = spanName,
@@ -364,7 +366,7 @@ class TraceCollectorTracing[F[_]](
         val errorAttr = errorMessage.map(v => "error_message" -> SpanValue.StringValue(v))
         val attrs     = baseAttrs ++ costAttr ++ errorAttr
         Span(
-          spanId = SpanId.generate(),
+          spanId = spanId,
           traceId = traceId,
           parentSpanId = None,
           name = spanName,

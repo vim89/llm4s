@@ -119,9 +119,16 @@ class StreamingAccumulator {
   def hasThinking: Boolean = thinkingBuilder.nonEmpty
 
   /**
-   * Convert accumulated data to a Completion
+   * Convert accumulated data to a Completion, stamped with the current time
    */
-  def toCompletion: Result[Completion] = {
+  def toCompletion: Result[Completion] = toCompletion(System.currentTimeMillis() / 1000)
+
+  /**
+   * Convert accumulated data to a Completion, stamped with the given creation time.
+   * Pure given the accumulator's current state - split out from the no-arg overload
+   * so the conversion itself is testable without a real clock.
+   */
+  def toCompletion(created: Long): Result[Completion] = {
     val finalToolCalls = getCurrentToolCalls
 
     val message = AssistantMessage(
@@ -141,7 +148,7 @@ class StreamingAccumulator {
     Right(
       Completion(
         id = messageId.getOrElse(""),
-        created = System.currentTimeMillis() / 1000,
+        created = created,
         content = contentBuilder.toString(),
         model = "unknown",
         message = message,

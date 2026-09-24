@@ -189,4 +189,17 @@ class TraceCollectorTracingSpec extends AnyFlatSpec with Matchers with BeforeAnd
     val spans = store.getSpans(customTraceId)
     spans should have size 1
   }
+
+  it should "produce a span with the given spanId, deterministically for the same event" in {
+    import org.llm4s.trace.model.SpanId
+
+    val event  = TraceEvent.ToolExecuted("tool", "in", "out", 10L, true)
+    val spanId = SpanId.generate()
+
+    val span1 = collector.eventToSpan(event, spanId)
+    val span2 = collector.eventToSpan(event, spanId)
+
+    span1.spanId shouldBe spanId
+    span1 shouldBe span2
+  }
 }
