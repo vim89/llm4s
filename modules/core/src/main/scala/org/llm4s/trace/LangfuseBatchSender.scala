@@ -65,11 +65,7 @@ class DefaultLangfuseBatchSender(
     }
 
     // Ensure URL includes the API ingestion endpoint (same normalization as LangfuseTracing)
-    val apiUrl = if (config.langfuseUrl.endsWith("/api/public/ingestion")) {
-      config.langfuseUrl
-    } else {
-      config.langfuseUrl.stripSuffix("/") + "/api/public/ingestion"
-    }
+    val apiUrl = DefaultLangfuseBatchSender.normalizeIngestionUrl(config.langfuseUrl)
 
     logger.debug(s"[Langfuse] Sending batch to URL: $apiUrl")
     logger.debug(s"[Langfuse] Using public key: ${config.publicKey.take(10)}...")
@@ -118,4 +114,14 @@ class DefaultLangfuseBatchSender(
         logger.error(s"[Langfuse] Request URL: $apiUrl")
     }
   }
+}
+
+object DefaultLangfuseBatchSender {
+
+  /**
+   * Appends the Langfuse ingestion API path to `baseUrl` unless it's already present.
+   */
+  private[trace] def normalizeIngestionUrl(baseUrl: String): String =
+    if (baseUrl.endsWith("/api/public/ingestion")) baseUrl
+    else baseUrl.stripSuffix("/") + "/api/public/ingestion"
 }

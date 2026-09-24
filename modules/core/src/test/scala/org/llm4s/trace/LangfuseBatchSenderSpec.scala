@@ -151,6 +151,21 @@ class LangfuseBatchSenderSpec extends AnyFlatSpec with Matchers {
     json.obj("batch").arr should have size 3
   }
 
+  "DefaultLangfuseBatchSender.normalizeIngestionUrl" should "append the ingestion path to a bare base URL" in {
+    DefaultLangfuseBatchSender.normalizeIngestionUrl("https://cloud.langfuse.com") shouldBe
+      "https://cloud.langfuse.com/api/public/ingestion"
+  }
+
+  it should "strip a trailing slash before appending the ingestion path" in {
+    DefaultLangfuseBatchSender.normalizeIngestionUrl("https://cloud.langfuse.com/") shouldBe
+      "https://cloud.langfuse.com/api/public/ingestion"
+  }
+
+  it should "leave a URL that already ends with the ingestion path unchanged" in {
+    DefaultLangfuseBatchSender.normalizeIngestionUrl("https://cloud.langfuse.com/api/public/ingestion") shouldBe
+      "https://cloud.langfuse.com/api/public/ingestion"
+  }
+
   it should "encode credentials correctly in Base64" in {
     val mockClient = new MockHttpClient(HttpResponse(200, ""))
     val sender     = new DefaultLangfuseBatchSender(httpClient = mockClient, restoreInterrupt = () => ())
