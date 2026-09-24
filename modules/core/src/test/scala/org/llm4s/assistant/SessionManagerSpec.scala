@@ -123,6 +123,22 @@ class SessionManagerSpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     }
   }
 
+  it should "use the injected suffix generator to disambiguate a filename collision" in {
+    val agent = createTestAgent()
+    var calls = 0
+    val manager = new SessionManager(
+      DirectoryPath(tempDir.toString),
+      agent,
+      uniqueSuffix = () => { calls += 1; s"stub-$calls" }
+    )
+
+    manager.saveSession(createTestState("s1"), Some("Same Title"))
+    manager.saveSession(createTestState("s2"), Some("Same Title"))
+
+    calls shouldBe 1
+    Files.exists(tempDir.resolve("Same_Title-stub-1.json")) shouldBe true
+  }
+
   // ==========================================================================
   // Session Load Tests
   // ==========================================================================

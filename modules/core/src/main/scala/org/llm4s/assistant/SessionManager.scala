@@ -13,7 +13,6 @@ import java.time.format.DateTimeFormatter
 import scala.util.Try
 import org.slf4j.LoggerFactory
 import upickle.default._
-import org.apache.commons.io.FileUtils
 
 /**
  * Manages session persistence for the interactive assistant.
@@ -49,10 +48,15 @@ import org.apache.commons.io.FileUtils
  *
  * @param sessionDir Directory path where sessions are stored
  * @param agent Agent instance for markdown formatting
+ * @param uniqueSuffix Generator for the suffix used to disambiguate filename collisions; injectable for testing
  * @see [[SessionState]] for the state being persisted
  * @see [[SessionInfo]] for session metadata returned after save
  */
-class SessionManager(sessionDir: DirectoryPath, agent: Agent) {
+class SessionManager(
+  sessionDir: DirectoryPath,
+  agent: Agent,
+  uniqueSuffix: () => String = () => System.nanoTime().toString
+) {
   private val logger = LoggerFactory.getLogger(getClass)
 
   /**
@@ -269,7 +273,7 @@ class SessionManager(sessionDir: DirectoryPath, agent: Agent) {
     )
 
   /**
-   * Finds a unique filename using system temp directory for uniqueness guarantee
+   * Finds a unique filename, appending a generated suffix on collision
    */
   private def findUniqueFilename(baseFilename: String): String = {
     def checkExists(filename: String): Boolean =
@@ -279,10 +283,7 @@ class SessionManager(sessionDir: DirectoryPath, agent: Agent) {
     if (!checkExists(baseFilename)) {
       baseFilename
     } else {
-      // Use system temp directory to generate guaranteed unique filename
-      val tempFile     = FileUtils.getFile(FileUtils.getTempDirectory, s"session_${System.nanoTime()}")
-      val uniqueSuffix = tempFile.getName.substring(8) // Remove "session_" prefix
-      s"$baseFilename-$uniqueSuffix"
+      s"$baseFilename-${uniqueSuffix()}"
     }
   }
 
