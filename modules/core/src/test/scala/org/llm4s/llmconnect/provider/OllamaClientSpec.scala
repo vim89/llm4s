@@ -230,6 +230,46 @@ class OllamaClientHttpSpec extends AnyFunSuite with MockFactory {
     assert(result.left.toOption.get.isInstanceOf[org.llm4s.error.ServiceError])
   }
 
+  test("complete() maps IOException to NetworkError and records the exchange") {
+    val mockHttp = stub[Llm4sHttpClient]
+    val recorded = ListBuffer.empty[ProviderExchange]
+    val sink = new ProviderExchangeSink:
+      override def record(exchange: ProviderExchange): Unit =
+        recorded += exchange
+    (mockHttp.post _).when(*, *, *, *).throws(new java.io.IOException("connection reset"))
+
+    val client = mkClient(mockHttp, ProviderExchangeLogging.enabled(sink))
+    val result = client.complete(conversation("Hello"), CompletionOptions())
+
+    assert(result.isLeft)
+    assert(result.left.toOption.get.isInstanceOf[org.llm4s.error.NetworkError])
+    assert(recorded.size == 1)
+    assert(recorded.head.errorMessage.isDefined)
+  }
+
+  test("complete() maps InterruptedException to ExecutionError and restores the interrupt flag") {
+    val mockHttp = stub[Llm4sHttpClient]
+    (mockHttp.post _).when(*, *, *, *).throws(new InterruptedException("interrupted"))
+
+    val client = mkClient(mockHttp)
+    val result = client.complete(conversation("Hello"), CompletionOptions())
+
+    assert(result.isLeft)
+    assert(result.left.toOption.get.isInstanceOf[org.llm4s.error.ExecutionError])
+    assert(Thread.interrupted(), "interrupt flag should have been restored")
+  }
+
+  test("complete() maps an unexpected exception to ServiceError") {
+    val mockHttp = stub[Llm4sHttpClient]
+    (mockHttp.post _).when(*, *, *, *).throws(new RuntimeException("boom"))
+
+    val client = mkClient(mockHttp)
+    val result = client.complete(conversation("Hello"), CompletionOptions())
+
+    assert(result.isLeft)
+    assert(result.left.toOption.get.isInstanceOf[org.llm4s.error.ServiceError])
+  }
+
   // ── request body tests via OllamaRequestBodyTestHelper ──────────────────
 
   test("request body includes system, user and assistant messages with correct roles") {
@@ -358,5 +398,45 @@ class OllamaClientHttpSpec extends AnyFunSuite with MockFactory {
 
     assert(result.isLeft)
     assert(result.left.toOption.get.isInstanceOf[org.llm4s.error.AuthenticationError])
+  }
+
+  test("streamComplete() maps IOException to NetworkError and records the exchange") {
+    val mockHttp = stub[Llm4sHttpClient]
+    val recorded = ListBuffer.empty[ProviderExchange]
+    val sink = new ProviderExchangeSink:
+      override def record(exchange: ProviderExchange): Unit =
+        recorded += exchange
+    (mockHttp.postStream _).when(*, *, *, *).throws(new java.io.IOException("connection reset"))
+
+    val client = mkClient(mockHttp, ProviderExchangeLogging.enabled(sink))
+    val result = client.streamComplete(conversation("Hello"), CompletionOptions(), _ => ())
+
+    assert(result.isLeft)
+    assert(result.left.toOption.get.isInstanceOf[org.llm4s.error.NetworkError])
+    assert(recorded.size == 1)
+    assert(recorded.head.errorMessage.isDefined)
+  }
+
+  test("streamComplete() maps InterruptedException to ExecutionError and restores the interrupt flag") {
+    val mockHttp = stub[Llm4sHttpClient]
+    (mockHttp.postStream _).when(*, *, *, *).throws(new InterruptedException("interrupted"))
+
+    val client = mkClient(mockHttp)
+    val result = client.streamComplete(conversation("Hello"), CompletionOptions(), _ => ())
+
+    assert(result.isLeft)
+    assert(result.left.toOption.get.isInstanceOf[org.llm4s.error.ExecutionError])
+    assert(Thread.interrupted(), "interrupt flag should have been restored")
+  }
+
+  test("streamComplete() maps an unexpected exception to ServiceError") {
+    val mockHttp = stub[Llm4sHttpClient]
+    (mockHttp.postStream _).when(*, *, *, *).throws(new RuntimeException("boom"))
+
+    val client = mkClient(mockHttp)
+    val result = client.streamComplete(conversation("Hello"), CompletionOptions(), _ => ())
+
+    assert(result.isLeft)
+    assert(result.left.toOption.get.isInstanceOf[org.llm4s.error.ServiceError])
   }
 }
