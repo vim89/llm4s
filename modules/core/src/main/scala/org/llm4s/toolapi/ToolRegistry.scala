@@ -5,8 +5,8 @@ import org.llm4s.types.Result
 
 import scala.concurrent.{ Await, ExecutionContext, Future, Promise, blocking }
 import scala.concurrent.duration._
-import java.util.concurrent.atomic.{ AtomicInteger, AtomicReference }
-import java.util.concurrent.{ Executors, ScheduledExecutorService, TimeUnit }
+import java.util.concurrent.atomic.AtomicInteger
+import scala.annotation.unused
 import scala.util.control.NonFatal
 
 /**
@@ -149,70 +149,87 @@ class ToolRegistry(initialTools: Seq[ToolFunction[_, _]]) {
   /**
    * Executes a single tool attempt with an optional wall-clock timeout.
    *
-   * When a timeout is configured and the tool exceeds it, this method returns
-   * [[ToolCallError.Timeout]] and performs a best-effort interrupt of the worker
-   * thread. The interrupt signal will unblock standard Java/Scala interruptible
+   * When a timeout is configured, the tool runs on a dedicated virtual thread and this
+   * method's caller thread joins it with a deadline. If the tool exceeds the deadline,
+   * this method returns [[ToolCallError.Timeout]] and performs a best-effort interrupt of
+   * the worker thread. The interrupt signal will unblock standard Java/Scala interruptible
    * operations such as `Thread.sleep`, socket I/O, and `Await.result`. CPU-bound
    * operations that never call a blocking primitive cannot be interrupted this way;
-   * that is a JVM-level limitation.
+   * that is a JVM-level limitation. Because the worker thread is never shared with any
+   * other call, a late-delivered interrupt can never leak onto unrelated work.
    *
    * @param request    The tool call request to execute.
    * @param timeoutOpt Optional maximum duration; `None` means no timeout.
-   * @param ec         ExecutionContext on which the tool Future is dispatched.
+   * @param ec         ExecutionContext retained for signature compatibility with the
+   *                   other retry/timeout entry points; not used on the timeout path.
    */
   private def runOneAttemptWithTimeout(
     request: ToolCallRequest,
     timeoutOpt: Option[FiniteDuration]
-  )(implicit ec: ExecutionContext): Either[ToolCallError, ujson.Value] =
+  )(implicit @unused ec: ExecutionContext): Either[ToolCallError, ujson.Value] =
     timeoutOpt match {
       case None =>
         runOneAttempt(request)
       case Some(duration) =>
         val promise = Promise[Either[ToolCallError, ujson.Value]]()
-        val timeoutError =
-          Left(ToolCallError.Timeout(request.functionName, duration)): Either[ToolCallError, ujson.Value]
 
-        // Holds the worker thread while it's eligible for a timeout interrupt. Both the
-        // worker (on normal completion) and the scheduler (on timeout) race to claim it via
-        // getAndSet(null); whichever clears it first is the only one allowed to act, so a
-        // scheduled interrupt can never land on a thread the pool has already reused for
-        // unrelated work.
-        val workerThreadRef = new AtomicReference[Thread](null)
-
-        val runFuture = Future {
-          workerThreadRef.set(Thread.currentThread())
-          val resultOrEx =
-            scala.util.control.Exception.nonFatalCatch.either(blocking(runOneAttempt(request)))
-          val claimedByTimeout = workerThreadRef.getAndSet(null) == null
-          // Clear interrupt status before returning the thread to the pool.
-          Thread.interrupted()
-          if (claimedByTimeout) throw new InterruptedException("tool execution raced with timeout")
-          // Re-throw non-fatal exceptions, or return the successful result.
-          resultOrEx.fold(throw _, identity)
-        }
-
-        val scheduled = ToolRegistry.timeoutScheduler.schedule(
-          new Runnable {
-            override def run(): Unit = {
-              val t = workerThreadRef.getAndSet(null)
-              // Only the side that wins the claim on workerThreadRef may interrupt: if this
-              // is null, the worker already finished and claimed it first.
-              if (t != null) {
-                promise.trySuccess(timeoutError)
-                t.interrupt()
+        // The worker runs on a dedicated virtual thread instead of the shared
+        // ExecutionContext's pool. That is required, not just tidier: interrupting a
+        // *pooled* thread is only safe if the interrupt is delivered before the pool can
+        // reuse that thread for unrelated work, and nothing guarantees that ordering under
+        // load. A thread owned solely by this call cannot be reused by anything else, so an
+        // interrupt delivered after it has already finished is at worst a harmless no-op
+        // against a dead thread - never a leak onto a later, unrelated call.
+        //
+        // The timeout itself is enforced by this method's own caller thread joining the
+        // worker with a deadline, rather than by a shared background scheduler. A scheduler
+        // shared across every concurrent tool call is a coordination bottleneck in exactly
+        // the scenario this races against - many calls timing out concurrently under CI's
+        // parallel test load - since a delayed dispatch on that single shared thread looks
+        // identical to a delayed interrupt. `Thread.join` has no such shared resource: each
+        // call's wait is local to its own caller thread.
+        val workerThread = Thread
+          .ofVirtual()
+          .name(s"tool-exec-${request.functionName}")
+          .start { () =>
+            // InterruptedException is deliberately excluded from NonFatal (it signals
+            // cooperative cancellation, not a defect), but here it's the routine outcome
+            // whenever the caller thread's join times out and interrupts this thread
+            // mid-call, so it must be caught alongside NonFatal - otherwise it escapes
+            // uncaught and `promise` is never resolved from this side. That's harmless
+            // (the caller's own timeoutError below still resolves the promise), but the
+            // uncaught exception would otherwise propagate to this virtual thread's
+            // default uncaught-exception handler for no useful purpose.
+            // scalafix:off DisableSyntax.NoKeywordTry, DisableSyntax.NoKeywordCatch
+            val resultOrEx: Either[Throwable, Either[ToolCallError, ujson.Value]] =
+              try Right(runOneAttempt(request))
+              catch {
+                case NonFatal(t)             => Left(t)
+                case t: InterruptedException => Left(t)
               }
-            }
-          },
-          duration.length,
-          duration.unit
-        )
+            // scalafix:on
+            promise.trySuccess(
+              resultOrEx.fold(t => Left(ToolCallError.ExecutionError(request.functionName, t)), identity)
+            )
+          }
 
-        runFuture.onComplete { result =>
-          scheduled.cancel(false)
-          promise.tryComplete(result)
+        workerThread.join(duration.toMillis)
+        if (workerThread.isAlive) {
+          // Claim the promise for Timeout *before* interrupting the worker. If the interrupt
+          // were sent first, the worker's own catch block could race ahead and call
+          // promise.trySuccess(ExecutionError(InterruptedException)) before this thread's
+          // trySuccess(Timeout) runs - whichever call reaches the promise first wins, and
+          // interrupt delivery has no ordering guarantee relative to this thread's next line.
+          // Claiming first makes the outcome deterministic: the worker's later trySuccess is
+          // then always the no-op, regardless of how quickly it reacts to the interrupt.
+          promise.trySuccess(Left(ToolCallError.Timeout(request.functionName, duration))): Unit
+          workerThread.interrupt()
         }
 
-        Await.result(promise.future, duration + 1.second)
+        // The promise is already completed by this point - either the worker resolved it
+        // before the join deadline, or the timeout branch above just did. This Await is a
+        // formality that returns immediately; its duration is a defensive upper bound only.
+        Await.result(promise.future, 1.second)
     }
 
   /**
@@ -378,30 +395,6 @@ class ToolRegistry(initialTools: Seq[ToolFunction[_, _]]) {
 }
 
 object ToolRegistry {
-
-  /** Shared scheduler for per-tool timeouts. Single thread, no thread per tool call. */
-  private[toolapi] lazy val timeoutScheduler: ScheduledExecutorService = {
-    val executor = Executors.newSingleThreadScheduledExecutor { (r: Runnable) =>
-      val t = new Thread(r, "tool-registry-timeout")
-      t.setDaemon(true)
-      t
-    }
-    sys.addShutdownHook {
-      executor.shutdown()
-      // scalafix:off
-      try
-        if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
-          executor.shutdownNow()
-        }
-      catch {
-        case _: InterruptedException =>
-          executor.shutdownNow()
-          Thread.currentThread().interrupt()
-      }
-      // scalafix:on
-    }
-    executor
-  }
 
   /**
    * Creates an empty tool registry with no tools
