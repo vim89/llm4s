@@ -173,30 +173,33 @@ class ToolRegistry(initialTools: Seq[ToolFunction[_, _]]) {
           Left(ToolCallError.Timeout(request.functionName, duration)): Either[ToolCallError, ujson.Value]
 
         // `claimed` is the single source of truth for who owns the outcome: the worker and
-        // the scheduler both race to flip it with compareAndSet(false, true), and only the
-        // winner may publish a result or send an interrupt. This must be decided independently
-        // of `workerThreadRef`, which merely records which thread to interrupt: if the
-        // scheduler fires before the worker's Future has been dispatched, workerThreadRef is
-        // still null, but `claimed` still records the timeout, so a worker that starts a moment
-        // later sees the claim and bails out before ever running the tool.
+        // the scheduler both race to flip it with compareAndSet(false, true). The winner is the
+        // only side that may touch `promise`, and it does so synchronously inside the same CAS
+        // block that won the race - never via a separate completion hop. That is what closes the
+        // real race here: `promise` is a second shared resource, and if winning `claimed` and
+        // resolving `promise` were two separate steps, the loser's stale outcome could still win
+        // the actual `promise` race by reaching it first. `workerThreadRef` is unrelated data:
+        // it only records which thread the scheduler should interrupt if it wins, independent of
+        // whether the worker has registered its thread yet.
         val claimed         = new AtomicBoolean(false)
         val workerThreadRef = new AtomicReference[Thread](null)
 
         val runFuture = Future {
           workerThreadRef.set(Thread.currentThread())
-          if (claimed.get()) {
-            Thread.interrupted()
-            throw new InterruptedException("tool execution raced with timeout")
-          } else {
+          if (!claimed.get()) {
             val resultOrEx =
               scala.util.control.Exception.nonFatalCatch.either(blocking(runOneAttempt(request)))
             // Clear interrupt status before returning the thread to the pool.
             Thread.interrupted()
             if (claimed.compareAndSet(false, true)) {
-              resultOrEx.fold(throw _, identity)
-            } else {
-              throw new InterruptedException("tool execution raced with timeout")
+              promise.trySuccess(
+                resultOrEx.fold(t => Left(ToolCallError.ExecutionError(request.functionName, t)), identity)
+              )
             }
+          } else {
+            // The scheduler already claimed the outcome; clear any interrupt it sent so it
+            // doesn't leak onto whatever this pooled thread runs next.
+            Thread.interrupted()
           }
         }
 
@@ -212,10 +215,7 @@ class ToolRegistry(initialTools: Seq[ToolFunction[_, _]]) {
           duration.unit
         )
 
-        runFuture.onComplete { result =>
-          scheduled.cancel(false)
-          promise.tryComplete(result)
-        }
+        runFuture.onComplete(_ => scheduled.cancel(false))
 
         Await.result(promise.future, duration + 1.second)
     }
