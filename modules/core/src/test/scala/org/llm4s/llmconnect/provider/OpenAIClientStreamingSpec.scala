@@ -143,4 +143,44 @@ final class OpenAIClientStreamingSpec extends AnyFlatSpec with Matchers {
     recorded.head.responseBody.value should include("Hello")
     recorded.head.errorMessage shouldBe empty
   }
+
+  it should "record a failed provider exchange when native streaming throws" in {
+    val model = "gpt-4"
+    val config = OpenAIConfig.fromValues(
+      modelName = model,
+      apiKey = "test-api-key",
+      organization = None,
+      baseUrl = "https://example.invalid/v1"
+    )
+    val recorded = ListBuffer.empty[ProviderExchange]
+    val sink = new ProviderExchangeSink:
+      override def record(exchange: ProviderExchange): Unit =
+        recorded += exchange
+
+    val transport = new OpenAIClientTransport {
+      override def getChatCompletions(model: String, options: ChatCompletionsOptions): ChatCompletions =
+        throw new UnsupportedOperationException("not used in this test")
+
+      override def getChatCompletionsStream(
+        model: String,
+        options: ChatCompletionsOptions
+      ): IterableStream[ChatCompletions] =
+        throw new RuntimeException("stream connection failed")
+    }
+
+    val client = OpenAIClient.forTest(
+      model,
+      transport,
+      config,
+      exchangeLogging = ProviderExchangeLogging.enabled(sink)
+    )
+
+    val result = client.streamComplete(Conversation(Seq(UserMessage("hello"))), CompletionOptions(), _ => ())
+
+    result.isLeft shouldBe true
+    recorded should have size 1
+    recorded.head.provider shouldBe "openai"
+    recorded.head.responseBody shouldBe empty
+    recorded.head.errorMessage.value should include("stream connection failed")
+  }
 }

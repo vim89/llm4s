@@ -20,12 +20,12 @@ package org.llm4s.error
  *   .withContext("command", "npm install")
  * }}}
  */
-final case class ExecutionError(
+final case class ExecutionError private (
   message: String,
   operation: String,
-  exitCode: Option[Int] = None,
-  cause: Option[Throwable] = None,
-  override val context: Map[String, String] = Map.empty
+  exitCode: Option[Int],
+  cause: Option[Throwable],
+  override val context: Map[String, String]
 ) extends LLMError
     with RecoverableError {
 
@@ -40,4 +40,17 @@ final case class ExecutionError(
   /** Sets the exit code and adds it to the context. */
   def withExitCode(code: Int): ExecutionError =
     copy(exitCode = Some(code), context = context + ("exitCode" -> code.toString))
+}
+
+object ExecutionError {
+  def apply(
+    message: String,
+    operation: String,
+    exitCode: Option[Int] = None,
+    cause: Option[Throwable] = None,
+    context: Map[String, String] = Map.empty
+  ): ExecutionError = new ExecutionError(message, operation, exitCode, cause, context)
+
+  def unapply(error: ExecutionError): Option[(String, String, Option[Int], Option[Throwable], Map[String, String])] =
+    Some((error.message, error.operation, error.exitCode, error.cause, error.context))
 }

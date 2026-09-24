@@ -158,49 +158,50 @@ final class ReliableClient(
         case success @ Right(_) =>
           success
 
-        case Left(error) if attemptNumber < config.retryPolicy.maxAttempts && config.retryPolicy.isRetryable(error) =>
-          // Record retry attempt
-          collector.foreach(_.recordRetryAttempt(providerName, attemptNumber))
+        case Left(error) =>
+          decideRetry(attemptNumber, error) match {
+            case RetryDecision.Retry(delay) =>
+              collector.foreach(_.recordRetryAttempt(providerName, attemptNumber))
 
-          // Calculate delay and check if we have time (recompute after operation to avoid stale value)
-          val delay               = config.retryPolicy.delayFor(attemptNumber, error)
-          val remainingAfterDelay = (deadlineMs - clock()) - delay.toMillis
+              // Recompute remaining time after operation to avoid a stale value
+              val remainingAfterDelay = (deadlineMs - clock()) - delay.toMillis
 
-          if (remainingAfterDelay <= 0) {
-            // Not enough time for retry
-            collector.foreach(_.recordError(ErrorKind.Timeout, providerName))
-            Left(
-              TimeoutError(
-                message =
-                  s"Operation exceeded deadline of ${deadline.toSeconds}s after $attemptNumber attempts. Last error: ${error.message}",
-                timeoutDuration = deadline,
-                operation = "reliable-client.complete"
-              )
-            )
-          } else {
-            // Sleep and retry
-            try
-              Thread.sleep(delay.toMillis)
-            catch {
-              case _: InterruptedException =>
-                return Left(
+              if (remainingAfterDelay <= 0) {
+                // Not enough time for retry
+                collector.foreach(_.recordError(ErrorKind.Timeout, providerName))
+                Left(
                   TimeoutError(
-                    message = s"Operation interrupted during retry delay after $attemptNumber attempts",
+                    message =
+                      s"Operation exceeded deadline of ${deadline.toSeconds}s after $attemptNumber attempts. Last error: ${error.message}",
                     timeoutDuration = deadline,
                     operation = "reliable-client.complete"
                   )
                 )
-            }
-            loop(attemptNumber + 1, Some(error))
-          }
+              } else {
+                // Sleep and retry
+                try
+                  Thread.sleep(delay.toMillis)
+                catch {
+                  case _: InterruptedException =>
+                    return Left(
+                      TimeoutError(
+                        message = s"Operation interrupted during retry delay after $attemptNumber attempts",
+                        timeoutDuration = deadline,
+                        operation = "reliable-client.complete"
+                      )
+                    )
+                }
+                loop(attemptNumber + 1, Some(error))
+              }
 
-        case Left(error) =>
-          // Max attempts reached or non-retryable error
-          if (attemptNumber > 1) {
-            // Preserve original error type, add context via collector
-            collector.foreach(_.recordError(ErrorKind.fromLLMError(error), providerName))
+            case RetryDecision.DoNotRetry =>
+              // Max attempts reached or non-retryable error
+              if (attemptNumber > 1) {
+                // Preserve original error type, add context via collector
+                collector.foreach(_.recordError(ErrorKind.fromLLMError(error), providerName))
+              }
+              Left(error)
           }
-          Left(error)
       }
     }
 
@@ -232,35 +233,48 @@ final class ReliableClient(
       case success @ Right(_) =>
         success
 
-      case Left(error) if attemptNumber < config.retryPolicy.maxAttempts && config.retryPolicy.isRetryable(error) =>
-        // Record retry attempt
-        collector.foreach(_.recordRetryAttempt(providerName, attemptNumber))
-
-        // Calculate delay
-        val delay = config.retryPolicy.delayFor(attemptNumber, error)
-        try
-          Thread.sleep(delay.toMillis)
-        catch {
-          case _: InterruptedException =>
-            return Left(
-              ExecutionError(
-                message = s"Operation interrupted during retry delay after $attemptNumber attempts",
-                operation = "reliable-client.complete"
-              )
-            )
-        }
-
-        // Retry
-        executeWithRetry(operation, attemptNumber + 1)
-
       case Left(error) =>
-        // Max attempts reached or non-retryable error - preserve original error
-        if (attemptNumber > 1) {
-          collector.foreach(_.recordError(ErrorKind.fromLLMError(error), providerName))
+        decideRetry(attemptNumber, error) match {
+          case RetryDecision.Retry(delay) =>
+            // Record retry attempt
+            collector.foreach(_.recordRetryAttempt(providerName, attemptNumber))
+
+            try
+              Thread.sleep(delay.toMillis)
+            catch {
+              case _: InterruptedException =>
+                return Left(
+                  ExecutionError(
+                    message = s"Operation interrupted during retry delay after $attemptNumber attempts",
+                    operation = "reliable-client.complete"
+                  )
+                )
+            }
+
+            // Retry
+            executeWithRetry(operation, attemptNumber + 1)
+
+          case RetryDecision.DoNotRetry =>
+            // Max attempts reached or non-retryable error - preserve original error
+            if (attemptNumber > 1) {
+              collector.foreach(_.recordError(ErrorKind.fromLLMError(error), providerName))
+            }
+            Left(error)
         }
-        Left(error)
     }
   }
+
+  /**
+   * Pure decision of whether a failed attempt should be retried, and if so after
+   * how long. Isolated from `executeWithRetry`/`executeWithDeadlineAndRetry` so the
+   * retry/no-retry boundary (previously duplicated in both loops) is a single,
+   * directly testable calculation with no clock reads or sleeping.
+   */
+  private[reliability] def decideRetry(attemptNumber: Int, error: LLMError): RetryDecision =
+    if (attemptNumber < config.retryPolicy.maxAttempts && config.retryPolicy.isRetryable(error))
+      RetryDecision.Retry(config.retryPolicy.delayFor(attemptNumber, error))
+    else
+      RetryDecision.DoNotRetry
 
   /**
    * Check circuit breaker state and transition if needed.
@@ -430,4 +444,14 @@ object CircuitState {
   case object Closed   extends CircuitState // Normal operation
   case object Open     extends CircuitState // Failing fast
   case object HalfOpen extends CircuitState // Testing recovery
+}
+
+/**
+ * Outcome of [[ReliableClient.decideRetry]]: whether a failed attempt should be
+ * retried, and after how long.
+ */
+sealed private[reliability] trait RetryDecision
+private[reliability] object RetryDecision {
+  final case class Retry(delay: Duration) extends RetryDecision
+  case object DoNotRetry                  extends RetryDecision
 }

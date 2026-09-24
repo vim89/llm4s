@@ -206,6 +206,20 @@ class RecoverableErrorSpec extends AnyFlatSpec with Matchers {
     error.cause shouldBe Some(cause)
   }
 
+  it should "support pattern matching" in {
+    val error = TimeoutError("timeout", 10.seconds, "op")
+
+    error match {
+      case TimeoutError(message, timeoutDuration, operation, cause, context) =>
+        message shouldBe "timeout"
+        timeoutDuration shouldBe 10.seconds
+        operation shouldBe "op"
+        cause shouldBe None
+        context shouldBe empty
+      case _ => fail("Pattern matching failed")
+    }
+  }
+
   // ============ ExecutionError ============
 
   "ExecutionError" should "create basic error" in {
@@ -245,6 +259,20 @@ class RecoverableErrorSpec extends AnyFlatSpec with Matchers {
     val error = ExecutionError("failed", "op", cause = Some(cause))
 
     error.cause shouldBe Some(cause)
+  }
+
+  it should "support pattern matching" in {
+    val error = ExecutionError("failed", "op")
+
+    error match {
+      case ExecutionError(message, operation, exitCode, cause, context) =>
+        message shouldBe "failed"
+        operation shouldBe "op"
+        exitCode shouldBe None
+        cause shouldBe None
+        context shouldBe empty
+      case _ => fail("Pattern matching failed")
+    }
   }
 
   // ============ RateLimitError ============
@@ -379,6 +407,42 @@ class RecoverableErrorSpec extends AnyFlatSpec with Matchers {
     // Just verify the formatted method doesn't fail
     val error = NetworkError("test", None, "endpoint")
     error.formatted should include("NetworkError")
+  }
+
+  // ============ OptimisticLockFailure ============
+
+  "OptimisticLockFailure" should "create with memoryId and attemptedVersion" in {
+    val error = OptimisticLockFailure("conflict", "mem-1", 2L)
+
+    error.message shouldBe "conflict"
+    error.memoryId shouldBe "mem-1"
+    error.attemptedVersion shouldBe 2L
+  }
+
+  it should "be a RecoverableError" in {
+    val error = OptimisticLockFailure("conflict", "mem-1", 2L)
+
+    error shouldBe a[RecoverableError]
+    LLMError.isRecoverable(error) shouldBe true
+  }
+
+  it should "include memoryId and attemptedVersion in context" in {
+    val error = OptimisticLockFailure("conflict", "mem-1", 2L)
+
+    error.context should contain("memoryId" -> "mem-1")
+    error.context should contain("attemptedVersion" -> "2")
+  }
+
+  it should "support pattern matching" in {
+    val error = OptimisticLockFailure("conflict", "mem-1", 2L)
+
+    error match {
+      case OptimisticLockFailure(message, memoryId, attemptedVersion) =>
+        message shouldBe "conflict"
+        memoryId shouldBe "mem-1"
+        attemptedVersion shouldBe 2L
+      case _ => fail("Pattern matching failed")
+    }
   }
 
   // ============ LLMError Companion Object ============
