@@ -3,6 +3,7 @@ package org.llm4s.agent
 import org.llm4s.agent.streaming.AgentEvent
 import org.llm4s.llmconnect.model._
 import org.llm4s.toolapi._
+import org.llm4s.trace.{ TraceEvent, Tracing }
 import org.llm4s.types.Result
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -78,6 +79,35 @@ class ToolProcessorSpec extends AnyFlatSpec with Matchers {
     )
 
   private val noOpContext = AgentContext.Default
+
+  private class RecordingTracing extends Tracing {
+    var toolCalls: Vector[(String, String, String)] = Vector.empty
+
+    override def traceEvent(event: TraceEvent): Result[Unit]      = Right(())
+    override def traceAgentState(state: AgentState): Result[Unit] = Right(())
+    override def traceToolCall(toolName: String, input: String, output: String): Result[Unit] = {
+      toolCalls = toolCalls :+ ((toolName, input, output))
+      Right(())
+    }
+    override def traceError(error: Throwable, context: String): Result[Unit]                        = Right(())
+    override def traceCompletion(completion: Completion, model: String): Result[Unit]               = Right(())
+    override def traceTokenUsage(usage: TokenUsage, model: String, operation: String): Result[Unit] = Right(())
+  }
+
+  // ── formatToolResult ──────────────────────────────────────────────────────────
+
+  "ToolProcessor.formatToolResult" should "render a successful result as JSON with success=true" in {
+    val (content, success) = ToolProcessor.formatToolResult(Right(ujson.Obj("echo" -> "hi")))
+    content shouldBe ujson.Obj("echo" -> "hi").render()
+    success shouldBe true
+  }
+
+  it should "render a failed result as structured JSON with success=false" in {
+    val error              = ToolCallError.ExecutionError("some_tool", new RuntimeException("boom"))
+    val (content, success) = ToolProcessor.formatToolResult(Left(error))
+    content shouldBe ToolCallErrorJson.toJson(error).render()
+    success shouldBe false
+  }
 
   // ── processToolCalls ──────────────────────────────────────────────────────────
 
@@ -211,5 +241,67 @@ class ToolProcessorSpec extends AnyFlatSpec with Matchers {
     val syncMsgs  = syncResult.conversation.messages.collect { case m: ToolMessage => m }
     asyncMsgs should have size syncMsgs.size
     asyncMsgs.head.toolCallId shouldBe syncMsgs.head.toolCallId
+  }
+
+  it should "return structured JSON error on tool failure rather than Left" in {
+    val registry = mkFailRegistry()
+    val state    = mkState(registry)
+    val tc       = failToolCall()
+
+    val result = ToolProcessor.processToolCallsAsync(
+      state,
+      Seq(tc),
+      ToolExecutionStrategy.Sequential,
+      noOpContext
+    )
+
+    val toolMessages = result.conversation.messages.collect { case m: ToolMessage => m }
+    toolMessages should have size 1
+    toolMessages.head.content should include("error")
+  }
+
+  it should "log the failure at error level when debug is enabled" in {
+    val registry = mkFailRegistry()
+    val state    = mkState(registry)
+    val tc       = failToolCall()
+
+    noException should be thrownBy ToolProcessor.processToolCallsAsync(
+      state,
+      Seq(tc),
+      ToolExecutionStrategy.Sequential,
+      noOpContext.copy(debug = true)
+    )
+  }
+
+  it should "invoke the tracer with the tool result when tracing is configured" in {
+    val registry = mkEchoRegistry()
+    val state    = mkState(registry)
+    val tc       = echoToolCall("traced")
+    val tracing  = new RecordingTracing
+
+    ToolProcessor.processToolCallsAsync(
+      state,
+      Seq(tc),
+      ToolExecutionStrategy.Sequential,
+      noOpContext.copy(tracing = Some(tracing))
+    )
+
+    tracing.toolCalls.map(_._1) should contain("echo")
+  }
+
+  // ── processToolCallsWithEvents (debug logging) ────────────────────────────────
+
+  "ToolProcessor.processToolCallsWithEvents" should "log the failure at error level when debug is enabled" in {
+    val registry = mkFailRegistry()
+    val state    = mkState(registry)
+    val tc       = failToolCall()
+    val events   = ArrayBuffer[AgentEvent]()
+
+    noException should be thrownBy ToolProcessor.processToolCallsWithEvents(
+      state,
+      Seq(tc),
+      events += _,
+      noOpContext.copy(debug = true)
+    )
   }
 }
