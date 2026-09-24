@@ -10,10 +10,18 @@ import org.llm4s.error.LLMError
  * @param message Human-readable error message from the provider or client.
  * @param provider Source component ("openai", "voyage", "encoder", "extractor", etc.)
  */
-final case class EmbeddingError(
+final case class EmbeddingError private (
   override val code: Option[String],
   override val message: String,
   provider: String
 ) extends LLMError {
   override val context: Map[String, String] = Map("provider" -> provider)
+}
+
+object EmbeddingError {
+  def apply(code: Option[String], message: String, provider: String): EmbeddingError =
+    new EmbeddingError(code, message, provider)
+
+  def unapply(error: EmbeddingError): Option[(Option[String], String, String)] =
+    Some((error.code, error.message, error.provider))
 }

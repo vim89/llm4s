@@ -74,6 +74,17 @@ class CachedEmbeddingClientSpec extends AnyFlatSpec with Matchers with MockFacto
     cachedClient.embed(request).isRight shouldBe true
   }
 
+  "EmbeddingError" should "unapply to its code, message and provider" in {
+    val error = EmbeddingError(code = Some("500"), message = "server error", provider = "test")
+    error match {
+      case EmbeddingError(code, message, provider) =>
+        code shouldBe Some("500")
+        message shouldBe "server error"
+        provider shouldBe "test"
+      case _ => fail("Pattern matching failed")
+    }
+  }
+
   it should "deduplicate identical texts within the same batch before calling the base client" in {
     val baseClient   = mock[EmbeddingClient]
     val cache        = new InMemoryEmbeddingCache[Seq[Double]]()
