@@ -5,7 +5,7 @@ import org.llm4s.types.Result
 
 import scala.concurrent.{ Await, ExecutionContext, Future, Promise, blocking }
 import scala.concurrent.duration._
-import java.util.concurrent.atomic.{ AtomicInteger, AtomicReference }
+import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger, AtomicReference }
 import java.util.concurrent.{ Executors, ScheduledExecutorService, TimeUnit }
 import scala.util.control.NonFatal
 
@@ -172,36 +172,41 @@ class ToolRegistry(initialTools: Seq[ToolFunction[_, _]]) {
         val timeoutError =
           Left(ToolCallError.Timeout(request.functionName, duration)): Either[ToolCallError, ujson.Value]
 
-        // Holds the worker thread while it's eligible for a timeout interrupt. Both the
-        // worker (on normal completion) and the scheduler (on timeout) race to claim it via
-        // getAndSet(null); whichever clears it first is the only one allowed to act, so a
-        // scheduled interrupt can never land on a thread the pool has already reused for
-        // unrelated work.
+        // `claimed` is the single source of truth for who owns the outcome: the worker and
+        // the scheduler both race to flip it with compareAndSet(false, true), and only the
+        // winner may publish a result or send an interrupt. This must be decided independently
+        // of `workerThreadRef`, which merely records which thread to interrupt: if the
+        // scheduler fires before the worker's Future has been dispatched, workerThreadRef is
+        // still null, but `claimed` still records the timeout, so a worker that starts a moment
+        // later sees the claim and bails out before ever running the tool.
+        val claimed         = new AtomicBoolean(false)
         val workerThreadRef = new AtomicReference[Thread](null)
 
         val runFuture = Future {
           workerThreadRef.set(Thread.currentThread())
-          val resultOrEx =
-            scala.util.control.Exception.nonFatalCatch.either(blocking(runOneAttempt(request)))
-          val claimedByTimeout = workerThreadRef.getAndSet(null) == null
-          // Clear interrupt status before returning the thread to the pool.
-          Thread.interrupted()
-          if (claimedByTimeout) throw new InterruptedException("tool execution raced with timeout")
-          // Re-throw non-fatal exceptions, or return the successful result.
-          resultOrEx.fold(throw _, identity)
+          if (claimed.get()) {
+            Thread.interrupted()
+            throw new InterruptedException("tool execution raced with timeout")
+          } else {
+            val resultOrEx =
+              scala.util.control.Exception.nonFatalCatch.either(blocking(runOneAttempt(request)))
+            // Clear interrupt status before returning the thread to the pool.
+            Thread.interrupted()
+            if (claimed.compareAndSet(false, true)) {
+              resultOrEx.fold(throw _, identity)
+            } else {
+              throw new InterruptedException("tool execution raced with timeout")
+            }
+          }
         }
 
         val scheduled = ToolRegistry.timeoutScheduler.schedule(
           new Runnable {
-            override def run(): Unit = {
-              val t = workerThreadRef.getAndSet(null)
-              // Only the side that wins the claim on workerThreadRef may interrupt: if this
-              // is null, the worker already finished and claimed it first.
-              if (t != null) {
+            override def run(): Unit =
+              if (claimed.compareAndSet(false, true)) {
                 promise.trySuccess(timeoutError)
-                t.interrupt()
+                Option(workerThreadRef.get()).foreach(_.interrupt())
               }
-            }
           },
           duration.length,
           duration.unit
