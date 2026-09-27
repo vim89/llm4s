@@ -1,6 +1,6 @@
 package org.llm4s.llmconnect.provider
 
-import org.llm4s.llmconnect.model.{ CompletionOptions, ToolCall }
+import org.llm4s.llmconnect.model.{ CompletionOptions, ResponseFormat, ResponseFormatMapper, ToolCall }
 
 import scala.util.Try
 
@@ -14,18 +14,20 @@ import scala.util.Try
  * questions on which they differ, and every answer defaults to the standard
  * format, so a provider overrides only where it departs from it:
  *
- *  - '''Request:''' extra [[headers]]; how message text is encoded
- *    ([[encodeContent]]); whether an assistant turn with no text still sends
- *    `content` ([[alwaysSendAssistantContent]]); and any reasoning fields
- *    ([[addReasoning]]).
+ *  - '''Request:''' extra [[headers]]; the role system messages go under
+ *    ([[systemRole]]); how message text is encoded ([[encodeContent]]); whether an assistant turn with no text still sends
+ *    `content` ([[alwaysSendAssistantContent]]) or is sent at all
+ *    ([[sendEmptyAssistantTurns]]); the tool-call ids the provider
+ *    accepts ([[encodeToolCallId]]); the `response_format` shape
+ *    ([[encodeResponseFormat]]); and any reasoning fields ([[addReasoning]]).
  *  - '''Response:''' how `content` is read back ([[decodeContent]]); where the
  *    model's thinking is ([[thinking]]); where its reasoning-token count is
  *    ([[reasoningTokens]]); and how a non-streaming `tool_calls` array is
  *    parsed ([[parseToolCalls]]).
  *
  * The generic `openai-compatible` provider uses [[OpenAICompatibleDialect.standard]],
- * which overrides nothing but headers. DeepSeek, Z.ai and OpenRouter each
- * override two to five members. A new OpenAI-compatible provider whose
+ * which overrides nothing but headers. DeepSeek, Z.ai, OpenRouter, Mistral and Cohere
+ * each override two to six members. A new OpenAI-compatible provider whose
  * differences fit these members is a dialect and a descriptor, not a client;
  * one whose differences do not should extend this trait rather than fork
  * [[OpenAICompatibleClient]] ([[https://github.com/llm4s/llm4s/issues/1132 #1132]]).
@@ -38,6 +40,12 @@ trait OpenAICompatibleDialect:
    */
   def headers: Seq[(String, String)] = Seq.empty
 
+  /**
+   * The role a [[org.llm4s.llmconnect.model.SystemMessage]] is sent under. Standard:
+   * `"system"`. Cohere's Compatibility API documents system instructions under `"developer"`.
+   */
+  def systemRole: String = "system"
+
   /** Encodes the text of a user, system, assistant or tool message. Standard: a JSON string. */
   def encodeContent(text: String): ujson.Value = ujson.Str(text)
 
@@ -47,6 +55,32 @@ trait OpenAICompatibleDialect:
    * omitted, which is what most providers expect alongside `tool_calls`.
    */
   def alwaysSendAssistantContent: Boolean = false
+
+  /**
+   * Whether an assistant turn with neither text nor tool calls is sent at all. Standard:
+   * `true` - it goes out as `{"role": "assistant"}` (with `content` if
+   * [[alwaysSendAssistantContent]]). A provider that rejects a message carrying neither
+   * `content` nor `tool_calls`, as Mistral does, answers `false` and the turn is left out.
+   */
+  def sendEmptyAssistantTurns: Boolean = true
+
+  /**
+   * The id sent for a tool call - on an assistant turn's `tool_calls` and on the `tool`
+   * message answering it. Standard: the id as the model produced it.
+   *
+   * A provider that accepts only its own id format overrides this. It must map the same id to
+   * the same result every time, since the call and its answer are encoded separately and must
+   * still match; ids that came from another provider in the same conversation go through it too.
+   */
+  def encodeToolCallId(id: String): String = id
+
+  /**
+   * The `response_format` sent for `CompletionOptions.responseFormat`, or `None` to send none.
+   * Standard: OpenAI's shapes - `{"type": "json_object"}`, and `{"type": "json_schema",
+   * "json_schema": {"name", "strict", "schema"}}` for a schema.
+   */
+  def encodeResponseFormat(format: ResponseFormat): Option[ujson.Value] =
+    ResponseFormatMapper.toOpenAIResponseFormat(format)
 
   /**
    * Adds provider-specific reasoning fields to a request body, given the

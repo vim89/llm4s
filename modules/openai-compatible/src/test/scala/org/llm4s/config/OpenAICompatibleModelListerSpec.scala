@@ -7,8 +7,9 @@ import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
 /**
- * The model listers `llm4s-openai-compatible` ships. The DeepSeek case is core's
- * `ProviderModelListerSpec` case, moved here with the lister (#1132).
+ * The model listers `llm4s-openai-compatible` ships. The DeepSeek and Mistral cases are core's
+ * `ProviderModelListerSpec` cases, moved here with the listers (#1132); the Mistral one is
+ * the last, and the core spec went with it.
  */
 class OpenAICompatibleModelListerSpec extends AnyFunSuite with Matchers:
 
@@ -83,6 +84,81 @@ class OpenAICompatibleModelListerSpec extends AnyFunSuite with Matchers:
         mockHttp.lastUrl shouldBe Some("https://api.deepseek.com/models")
       case Left(err) =>
         fail(s"Expected discovered DeepSeek models, got error: ${err.message}")
+  }
+
+  test("Mistral lister discovers models from /v1/models") {
+    val config = namedConfig(ProviderId("mistral"), "mistral-large-latest", apiKey = Some("mistral-key"))
+    val responseBody =
+      """{
+        |  "data": [
+        |    {
+        |      "id": "mistral-large-latest",
+        |      "created": 1710000000,
+        |      "owned_by": "mistral"
+        |    }
+        |  ]
+        |}""".stripMargin
+
+    val mockHttp = MockHttpClient(HttpResponse(200, responseBody, Map.empty))
+    val result   = MistralModelLister.listModels(config, mockHttp)
+
+    result match
+      case Right(models) =>
+        models.map(_.name.asString) shouldBe List("mistral-large-latest")
+        models.map(_.provider) shouldBe List(ProviderId("mistral"))
+        mockHttp.lastUrl shouldBe Some("https://api.mistral.ai/v1/models")
+      case Left(err) =>
+        fail(s"Expected discovered Mistral models, got error: ${err.message}")
+  }
+
+  // PR #1210 review: chat accepts a Mistral base URL that already ends in /v1
+  // (MistralConfig.apiBaseUrl), and the lister must reach the same place rather than /v1/v1/models.
+  test("Mistral lister lists <root>/v1/models for a configured base URL with or without /v1") {
+    Seq(
+      "https://mistral.example.test"     -> "https://mistral.example.test/v1/models",
+      "https://mistral.example.test/"    -> "https://mistral.example.test/v1/models",
+      "https://mistral.example.test/v1"  -> "https://mistral.example.test/v1/models",
+      "https://mistral.example.test/v1/" -> "https://mistral.example.test/v1/models"
+    ).foreach { (baseUrl, expected) =>
+      withClue(baseUrl) {
+        val config   = namedConfig(ProviderId("mistral"), "m", baseUrl = Some(baseUrl), apiKey = Some("k"))
+        val mockHttp = MockHttpClient(HttpResponse(200, modelsBody, Map.empty))
+
+        MistralModelLister.listModels(config, mockHttp).map(_.map(_.name.asString)) shouldBe Right(List("some-model"))
+        mockHttp.lastUrl shouldBe Some(expected)
+      }
+    }
+  }
+
+  test("every lister in the module lists under the base its chat client posts to") {
+    // Chat posts to <api base>/chat/completions; listing must use <api base>/models. DeepSeek,
+    // OpenRouter and the generic provider use the configured base URL as the API base; Mistral
+    // derives it with MistralConfig.apiBaseUrl. (Z.ai and Cohere have no lister.)
+    val cases = Seq(
+      (DeepSeekModelLister, ProviderId("deepseek"), "https://ds.example.test", "https://ds.example.test/models"),
+      (
+        OpenRouterModelLister,
+        ProviderId("openrouter"),
+        "https://or.example.test/api/v1",
+        "https://or.example.test/api/v1/models"
+      ),
+      (
+        OpenAICompatibleModelLister,
+        ProviderId("openai-compatible"),
+        "http://localhost:8000/v1/",
+        "http://localhost:8000/v1/models"
+      ),
+      (MistralModelLister, ProviderId("mistral"), "https://api.mistral.ai/v1", "https://api.mistral.ai/v1/models")
+    )
+    cases.foreach { (lister, id, baseUrl, expected) =>
+      withClue(id.asString) {
+        val mockHttp = MockHttpClient(HttpResponse(200, modelsBody, Map.empty))
+        lister
+          .listModels(namedConfig(id, "m", baseUrl = Some(baseUrl), apiKey = Some("k")), mockHttp)
+          .isRight shouldBe true
+        mockHttp.lastUrl shouldBe Some(expected)
+      }
+    }
   }
 
   test("openai-compatible lister sends no Authorization header without a key") {

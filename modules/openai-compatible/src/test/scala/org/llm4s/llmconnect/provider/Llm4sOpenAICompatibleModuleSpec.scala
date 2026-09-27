@@ -13,8 +13,9 @@ import org.scalatest.wordspec.AnyWordSpec
 /**
  * `llm4s-openai-compatible` registers itself, and what it registers works.
  *
- * These are the DeepSeek, Z.ai and OpenRouter rows of core's `BuiltinProvidersSpec`, which
- * left with the providers (#1132), plus the generic `openai-compatible` provider and the part
+ * These are the DeepSeek, Z.ai, OpenRouter, Mistral and Cohere rows of core's `BuiltinProvidersSpec`,
+ * which left with the providers (#1132). Mistral's and Cohere's asserted `streaming = false`
+ * (#925); on the shared client they stream, plus the generic `openai-compatible` provider and the part
  * that only a carved module has to prove: that depending on it is enough - the services
  * entry is found and the descriptors arrive.
  */
@@ -29,7 +30,9 @@ class Llm4sOpenAICompatibleModuleSpec extends AnyWordSpec with Matchers:
     (OpenAICompatibleProvider, "OpenAICompatibleConfig", "OpenAICompatibleClient"),
     (DeepSeekProvider, "DeepSeekConfig", "DeepSeekClient"),
     (ZaiProvider, "ZaiConfig", "ZaiClient"),
-    (OpenRouterProvider, "OpenAIConfig", "OpenRouterClient")
+    (OpenRouterProvider, "OpenAIConfig", "OpenRouterClient"),
+    (MistralProvider, "MistralConfig", "MistralClient"),
+    (CohereProvider, "CohereConfig", "CohereClient")
   )
 
   private val chatIds = expectations.map(_._1.id.asString)
@@ -59,12 +62,19 @@ class Llm4sOpenAICompatibleModuleSpec extends AnyWordSpec with Matchers:
       new Llm4sOpenAICompatibleModule().embeddingProviders shouldBe empty
     }
 
-    "not be part of core's built-in set, which no longer ships them" in {
-      chatIds.foreach(id => ProviderRegistry.builtin.find(ProviderId(id)) shouldBe None)
+    "be the only module that supplies them" in {
+      // Core held these in `BuiltinProviders` until #1132 deleted it; nothing but this
+      // module may supply them now.
+      val modules = ProviderRegistry.default.report.modules
+      chatIds.foreach { id =>
+        modules.filter(_.providerIds.contains(id)).map(_.moduleClass) shouldBe Seq(
+          classOf[Llm4sOpenAICompatibleModule].getName
+        )
+      }
     }
 
     "be registrable explicitly where discovery cannot run" in {
-      val registry = ProviderRegistry.builtin.withModule(new Llm4sOpenAICompatibleModule)
+      val registry = ProviderRegistry.ofModules(new Llm4sOpenAICompatibleModule)
 
       expectations.foreach((descriptor, _, _) => registry.get(descriptor.id) shouldBe Right(descriptor))
     }
@@ -114,7 +124,9 @@ class Llm4sOpenAICompatibleModuleSpec extends AnyWordSpec with Matchers:
       OpenAICompatibleProvider.modelLister shouldBe defined
       DeepSeekProvider.modelLister shouldBe defined
       OpenRouterProvider.modelLister shouldBe defined
-      // Z.ai had no lister in core either.
+      MistralProvider.modelLister shouldBe defined
+      // Z.ai and Cohere had no lister in core either.
       ZaiProvider.modelLister shouldBe None
+      CohereProvider.modelLister shouldBe None
     }
   }

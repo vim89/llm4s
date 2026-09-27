@@ -1,5 +1,6 @@
 package org.llm4s.llmconnect.provider
 
+import org.llm4s.error.ValidationError
 import org.llm4s.llmconnect.config.OpenAICompatibleConfig
 import org.llm4s.llmconnect.provider.OpenAICompatibleClient.StreamToolCalls
 import org.llm4s.llmconnect.model._
@@ -127,13 +128,19 @@ class OpenAICompatibleClient(
     val toolCalls   = new StreamToolCalls
     val sseParser   = SSEParser.createStreamingParser()
     val reader      = new BufferedReader(new InputStreamReader(body, StandardCharsets.UTF_8))
+    var usage       = Option.empty[TokenUsage]
     Iterator.continually(reader.readLine()).takeWhile(_ != null).foreach { line =>
       rawStream.append(line).append('\n')
       sseParser.addChunk(line + "\n")
       while (sseParser.hasEvents)
         sseParser.nextEvent().foreach { event =>
           event.data.filter(_ != "[DONE]").foreach { data =>
-            parseStreamingEvent(ujson.read(data), toolCalls).foreach { (chunk, rawArguments) =>
+            val json = ujson.read(data)
+            // Usage arrives on the last event, alongside the final delta or on an event of its
+            // own with no choices. A later report replaces an earlier one; one without both
+            // counts is ignored rather than failing the stream.
+            streamedUsage(json).foreach(u => usage = Some(u))
+            parseStreamingEvent(json, toolCalls).foreach { (chunk, rawArguments) =>
               // The accumulator concatenates argument fragments, so it gets each fragment
               // verbatim. The parsed form handed to `onChunk` cannot be concatenated safely:
               // a fragment that is itself valid JSON, such as `"Paris"`, parses to the bare
@@ -149,20 +156,34 @@ class OpenAICompatibleClient(
     // `StreamingAccumulator.toCompletion` puts the tool calls on the message only; a
     // non-streaming `complete` also reports them as `Completion.toolCalls`, so this does too.
     accumulator.toCompletion.map { c =>
+      val finalUsage = usage.orElse(c.usage)
       c.copy(
         model = settings.model,
         toolCalls = c.message.toolCalls.toList,
-        estimatedCost = c.usage.flatMap(u => CostEstimator.estimate(settings.model, u))
+        usage = finalUsage,
+        estimatedCost = finalUsage.flatMap(u => CostEstimator.estimate(settings.model, u))
       )
     }
   }
 
   private def renderRequest(conversation: Conversation, options: CompletionOptions, stream: Boolean): Result[String] =
-    Try {
-      val body = createRequestBody(conversation, options)
-      if (stream) body("stream") = true
-      body.render()
-    }.toResult
+    // An empty `messages` array is rejected by every chat-completions endpoint; saying so here
+    // costs no round trip and names the problem. The check is on the messages that will be
+    // sent, not the conversation: a dialect that drops empty assistant turns (Mistral) can
+    // reduce a non-empty conversation to nothing.
+    Either
+      .cond(
+        sendableMessages(conversation).nonEmpty,
+        (),
+        ValidationError("conversation", s"${settings.displayName} requires at least one message")
+      )
+      .flatMap { _ =>
+        Try {
+          val body = createRequestBody(conversation, options)
+          if (stream) body("stream") = true
+          body.render()
+        }.toResult
+      }
       .tapRight { requestText =>
         logger.debug(s"Sending request to ${settings.displayName} API at $endpoint")
         logger.debug(s"Request body: ${Redaction.redactForLogging(requestText)}")
@@ -186,15 +207,28 @@ class OpenAICompatibleClient(
     }.toResult
 
   /**
+   * The messages of `conversation` that go into a request: all of them, except an assistant
+   * turn with neither text nor tool calls when the dialect does not send those
+   * ([[OpenAICompatibleDialect.sendEmptyAssistantTurns]]). Both the request body and the
+   * empty-conversation check use this, so they cannot disagree.
+   */
+  private def sendableMessages(conversation: Conversation): Seq[Message] =
+    conversation.messages.filterNot {
+      case AssistantMessage(content, toolCalls) =>
+        content.forall(_.isEmpty) && toolCalls.isEmpty && !dialect.sendEmptyAssistantTurns
+      case _ => false
+    }
+
+  /**
    * Builds the request body for `conversation`, without the `stream` flag.
    * Scoped to the provider package so specs can inspect it.
    */
   protected[provider] def createRequestBody(conversation: Conversation, options: CompletionOptions): ujson.Obj = {
-    val messages = conversation.messages.map {
+    val messages = sendableMessages(conversation).map {
       case UserMessage(content) =>
         ujson.Obj("role" -> "user", "content" -> dialect.encodeContent(content))
       case SystemMessage(content) =>
-        ujson.Obj("role" -> "system", "content" -> dialect.encodeContent(content))
+        ujson.Obj("role" -> dialect.systemRole, "content" -> dialect.encodeContent(content))
       case AssistantMessage(content, toolCalls) =>
         val message = ujson.Obj("role" -> "assistant")
         content.filter(_.nonEmpty) match {
@@ -206,7 +240,7 @@ class OpenAICompatibleClient(
         if (toolCalls.nonEmpty) {
           message("tool_calls") = ujson.Arr.from(toolCalls.map { tc =>
             ujson.Obj(
-              "id"       -> tc.id,
+              "id"       -> dialect.encodeToolCallId(tc.id),
               "type"     -> "function",
               "function" -> ujson.Obj("name" -> tc.name, "arguments" -> tc.arguments.render())
             )
@@ -214,7 +248,11 @@ class OpenAICompatibleClient(
         }
         message
       case ToolMessage(content, toolCallId) =>
-        ujson.Obj("role" -> "tool", "tool_call_id" -> toolCallId, "content" -> dialect.encodeContent(content))
+        ujson.Obj(
+          "role"         -> "tool",
+          "tool_call_id" -> dialect.encodeToolCallId(toolCallId),
+          "content"      -> dialect.encodeContent(content)
+        )
     }
 
     val body = ujson.Obj(
@@ -229,7 +267,7 @@ class OpenAICompatibleClient(
     if (options.frequencyPenalty != 0) body("frequency_penalty") = options.frequencyPenalty
     if (options.tools.nonEmpty) body("tools") = new ToolRegistry(options.tools).getOpenAITools()
     options.responseFormat.foreach { fmt =>
-      ResponseFormatMapper.toOpenAIResponseFormat(fmt).foreach(rf => body("response_format") = rf)
+      dialect.encodeResponseFormat(fmt).foreach(rf => body("response_format") = rf)
     }
     dialect.addReasoning(body, settings.model, options)
     body
@@ -268,6 +306,17 @@ class OpenAICompatibleClient(
         thinkingTokens = dialect.reasoningTokens(ujson.Obj.from(u))
       )
     }
+
+  /**
+   * The token usage a streamed event reports, if it reports a usable one.
+   *
+   * Providers that report usage on a stream do so on its last event - Mistral and DeepSeek
+   * always, OpenAI when asked with `stream_options.include_usage` - and send `"usage": null`
+   * or omit it elsewhere. Unlike [[parseUsage]] on a completion, a malformed report here is
+   * dropped rather than failing a stream whose text has already been delivered.
+   */
+  private def streamedUsage(json: ujson.Value): Option[TokenUsage] =
+    json.objOpt.flatMap(_.get("usage")).flatMap(u => Try(parseUsage(u)).toOption.flatten)
 
   /**
    * One streamed event as chunks: one per tool call, the first also carrying the text, finish

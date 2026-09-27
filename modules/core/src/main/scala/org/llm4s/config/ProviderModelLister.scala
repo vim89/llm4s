@@ -6,7 +6,6 @@ import org.llm4s.http.HttpResponse.*
 import org.llm4s.types.{ Result, TryOps }
 import org.llm4s.types.ProviderModelTypes.ModelName
 import org.llm4s.config.ProvidersConfigModel.{ NamedProviderConfig, ProviderId }
-import org.llm4s.llmconnect.config.MistralConfig
 
 import scala.util.Try
 
@@ -38,12 +37,12 @@ trait ProviderModelLister:
   ): Result[List[DiscoveredModel]]
 
 /**
- * Model listers for the providers built into `llm4s-core`, and the factory
- * behind most of them.
+ * The factory behind most providers' model listers.
  *
- * A provider module outside core supplies its own lister the same way: call
- * [[openAICompatible]] if the provider serves the OpenAI `/models` shape, or
- * implement [[ProviderModelLister]] if it does not.
+ * `llm4s-core` ships no provider, so it holds no lister of its own: each provider
+ * module supplies one on its descriptor - calling [[openAICompatible]] if the
+ * provider serves the OpenAI `/models` shape, or implementing
+ * [[ProviderModelLister]] if it does not.
  */
 object ProviderModelListers:
 
@@ -83,10 +82,6 @@ object ProviderModelListers:
           apiKeyRequired = apiKeyRequired,
           httpClient = httpClient
         )
-
-  /** Model lister for the Mistral provider using the OpenAI-compatible models endpoint. */
-  val Mistral: ProviderModelLister =
-    openAICompatible(ProviderId("mistral"), MistralConfig.DEFAULT_BASE_URL, modelsPath = "/v1/models")
 
   private def listOpenAICompatibleModels(
     config: NamedProviderConfig,

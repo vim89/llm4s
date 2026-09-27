@@ -183,6 +183,7 @@ lazy val llm4s = (project in file("."))
     anthropic,
     openai,
     openaiCompatible,
+    voyage,
     samples,
     configPolicy,
     workspaceShared,
@@ -267,8 +268,9 @@ lazy val core = (project in file("modules/core"))
   .settings(
     name := "llm4s-core",
     commonSettings,
-    // Measured 75.32% statement coverage after the `openai-compatible` carve (`sbt coverage
-    // core/test core/coverageReport`); it was 75.57% after `openai`, 75.15% after `anthropic`, 75.27% after `gemini`, 75.86%
+    // Measured 74.65% statement coverage with every provider client gone - Mistral, Cohere and
+    // Voyage were the last (`sbt coverage core/test core/coverageReport`); it was 75.32% after
+    // `openai-compatible`, 75.57% after `openai`, 75.15% after `anthropic`, 75.27% after `gemini`, 75.86%
     // after `ollama`, 74.33% with slice 3 complete, 74.89% after `image`, 74.05% after `mcp`,
     // 73.85% after slice 2 and 72.42% on main @ 5a62e2ac before any of them. A carve moves the
     // number in whichever direction the departing code sat - `speech` (80.68%), `gemini`
@@ -623,12 +625,37 @@ lazy val openaiCompatible = (project in file("modules/openai-compatible"))
   .settings(
     name := "llm4s-openai-compatible",
     commonSettings,
-    // Measured 92.68% statement coverage (`sbt coverage openaiCompatible/test
-    // openaiCompatible/coverageReport`) with the three clients consolidated onto
-    // `OpenAICompatibleClient`, their suites moved from core, and the generic provider's and
-    // dialects' own specs. Floor is the measured value rounded down to the nearest 5. Never lower
-    // it. The `@Cloud` DeepSeek and OpenRouter smoke suites in `modules/it` are not counted here.
+    // Measured 92.92% statement coverage (`sbt coverage openaiCompatible/test
+    // openaiCompatible/coverageReport`) with Mistral and Cohere added as dialects; it was 92.68%
+    // with the first three clients consolidated onto `OpenAICompatibleClient`, their suites moved
+    // from core, and the generic provider's and dialects' own specs. Floor is the measured value
+    // rounded down to the nearest 5. Never lower it. The `@Cloud` DeepSeek, OpenRouter and Cohere
+    // smoke suites in `modules/it` are not counted here.
     coverageFloor(90),
+    Test / fork := true,
+    Compile / mainClass             := None,
+    Compile / discoveredMainClasses := Seq.empty,
+    libraryDependencies ++= Seq(
+      Deps.ujson,
+      Deps.scalatest % Test,
+      Deps.scalamock % Test
+    )
+  )
+
+// Community providers that are not OpenAI-compatible live under `modules/providers/<name>`, one
+// published `llm4s-<name>` artifact each, on the same release train (#1132). Voyage is the first:
+// an embedding provider only, carved as-is from core with its config keys, `reference.conf`
+// block and model dimensions. No dependency beyond core.
+
+lazy val voyage = (project in file("modules/providers/voyage"))
+  .dependsOn(core % "compile->compile;test->test")
+  .settings(
+    name := "llm4s-voyage",
+    commonSettings,
+    // Measured 89.69% statement coverage (`sbt coverage voyage/test voyage/coverageReport`)
+    // on the code as carved out of core. Floor is the measured value rounded down to the nearest
+    // 5. Never lower it.
+    coverageFloor(85),
     Test / fork := true,
     Compile / mainClass             := None,
     Compile / discoveredMainClasses := Seq.empty,
@@ -731,7 +758,7 @@ lazy val workspaceRunner = (project in file("modules/workspace/workspaceRunner")
   .settings(WorkspaceRunnerDocker.settings)
 
 lazy val samples = (project in file("modules//samples"))
-  .dependsOn(core, rag, knowledgegraph, memory, memoryPostgres, mcp, image, speech, ollama, gemini, anthropic, openai, openaiCompatible, knowledgegraphNeo4j)
+  .dependsOn(core, rag, knowledgegraph, memory, memoryPostgres, mcp, image, speech, ollama, gemini, anthropic, openai, openaiCompatible, voyage, knowledgegraphNeo4j)
   .settings(
     name := "llm4s-samples",
     commonSettings,
@@ -811,7 +838,7 @@ lazy val knowledgegraphNeo4j = (project in file("modules/knowledgegraph-neo4j"))
   )
 
 lazy val it = (project in file("modules/it"))
-  .dependsOn(core, rag, knowledgegraph, memory, memoryPostgres, mcp, image, speech, ollama, gemini, anthropic, openai, openaiCompatible, knowledgegraphNeo4j, workspaceClient, traceOpentelemetry)
+  .dependsOn(core, rag, knowledgegraph, memory, memoryPostgres, mcp, image, speech, ollama, gemini, anthropic, openai, openaiCompatible, voyage, knowledgegraphNeo4j, workspaceClient, traceOpentelemetry)
   .settings(
     name := "llm4s-it",
     commonSettings,
@@ -863,7 +890,7 @@ lazy val it = (project in file("modules/it"))
 // A module is listed here if and only if it is published. When a slice adds one, add it in
 // the same commit, or its API silently vanishes from the site.
 lazy val docs = (project in file("modules/docs"))
-  .dependsOn(media, core, rag, knowledgegraph, memory, memoryPostgres, mcp, image, speech, ollama, gemini, anthropic, openai, openaiCompatible, workspaceShared, workspaceClient, traceOpentelemetry, knowledgegraphNeo4j)
+  .dependsOn(media, core, rag, knowledgegraph, memory, memoryPostgres, mcp, image, speech, ollama, gemini, anthropic, openai, openaiCompatible, voyage, workspaceShared, workspaceClient, traceOpentelemetry, knowledgegraphNeo4j)
   .settings(
     name           := "llm4s-docs",
     commonSettings,
@@ -885,6 +912,7 @@ lazy val docs = (project in file("modules/docs"))
         (anthropic / Compile / sources).value ++
         (openai / Compile / sources).value ++
         (openaiCompatible / Compile / sources).value ++
+        (voyage / Compile / sources).value ++
         (workspaceShared / Compile / sources).value ++
         (workspaceClient / Compile / sources).value ++
         (traceOpentelemetry / Compile / sources).value ++
