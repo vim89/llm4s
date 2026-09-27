@@ -117,6 +117,38 @@ See [CLAUDE.md](CLAUDE.md) for detailed guidelines. Key points:
 - **Type safety:** Use newtypes for domain values (`ApiKey`, `ModelName`)
 - **Immutability:** Prefer immutable data structures
 
+### Provider-specific config keys
+
+A provider is a `ProviderDescriptor` in its own module (see [CLAUDE.md](CLAUDE.md), invariant 8).
+When its named section needs a setting the built-in fields do not name - a cloud region, a
+project id, a credentials profile - declare it in the descriptor's `ProviderConfigSpec.extras`.
+Do **not** reuse `endpoint`, `organization` or `baseUrl` for something else: that is the
+workaround [#1215](https://github.com/llm4s/llm4s/issues/1215) removed from Vertex AI.
+
+```scala
+val configSpec = ProviderConfigSpec(
+  extras = Seq(
+    ProviderConfigKey.required("region", "the AWS region hosting the model, e.g. us-east-1"),
+    ProviderConfigKey.optional("profile", "the AWS named profile to authenticate with")
+  )
+)
+
+def buildConfig(providerName: String, section: NamedProviderConfig)(using ContextWindowResolver) =
+  for
+    region <- ProviderDescriptor.requireExtra(providerName, section, "region")
+    config <- BedrockConfig.fromValues(section.model.asString, region, section.extra("profile"))
+  yield config
+```
+
+Validation does the rest before `buildConfig` runs: a missing required key fails with its name,
+the section and your `description`; `default`s are filled in; `deprecatedAliases` let you rename a
+key without breaking configs, with a warning (an alias may be a former extra key or a built-in
+field with a string form, as in `ProviderConfigSpec.BuiltinAliasKeys`); undeclared keys are
+dropped with a warning. Values are strings - parse and reject a malformed one in `buildConfig`.
+Set `env` (or `baseUrlEnv`) to the key's conventional environment variable, if it has one: a
+named section reads no variable by itself, so the missing-key error shows the `key = ${?VAR}`
+binding that would read it, never a bare "set VAR".
+
 ## Testing
 
 See [AGENTS.md](AGENTS.md#testing-guidelines) for details:
