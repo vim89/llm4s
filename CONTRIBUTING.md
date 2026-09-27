@@ -62,11 +62,35 @@ sbt "core/testOnly *PIIDetectorSpec"
 ```
 
 ### 6. How to run a sample
+The samples read `modules/samples/src/main/resources/application.conf`, whose default provider
+is a local Ollama section (`ollama-local`) using the model `llama3:latest`. With Ollama running,
+pull that model once and run a sample:
 ```bash
-export LLM_MODEL=openai/gpt-4o
-export OPENAI_API_KEY=sk-...
+ollama pull llama3
 sbt "samples/runMain org.llm4s.samples.basic.BasicLLMCallingExample"
 ```
+To use a model you already have instead, name it with `OLLAMA_MODEL` (the samples'
+`application.conf` binds it; `ollama list` shows what is installed), e.g.
+`export OLLAMA_MODEL=llama3.2`. `OLLAMA_BASE_URL` points at a server other than
+`http://localhost:11434`.
+To use a cloud provider, add a named section to
+`modules/samples/src/main/resources/application.local.conf` (ignored by git, included by the
+samples' `application.conf`) and select it with `LLM4S_PROVIDER`, which the samples'
+`application.conf` binds:
+```hocon
+llm4s.providers.openai-main {
+  provider = "openai"
+  model    = "gpt-4o-mini"
+  apiKey   = ${?OPENAI_API_KEY}
+}
+```
+```bash
+export OPENAI_API_KEY=sk-...
+export LLM4S_PROVIDER=openai-main
+sbt "samples/runMain org.llm4s.samples.basic.BasicLLMCallingExample"
+```
+llm4s itself reads neither `LLM_MODEL` nor provider API-key variables; see
+[Running the samples](docs/getting-started/configuration.md#running-the-samples).
 
 ### 7. Where to ask for help
 - **Discord:** [Join the community](https://discord.gg/4uvTPn6qww)
