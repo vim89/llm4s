@@ -139,9 +139,9 @@ class DocumentedProviderConfigSpec extends AnyWordSpec with Matchers:
 
   "The documented OpenAI embeddings config" should {
 
-    // OpenAI embeddings read `llm4s.embeddings.openai.apiKey`, falling back to
-    // `llm4s.openai.apiKey`. No reference.conf binds either to OPENAI_API_KEY, so the
-    // docs tell users to bind it themselves.
+    // OpenAI embeddings read `llm4s.embeddings.openai.apiKey`. No reference.conf binds it to
+    // OPENAI_API_KEY - llm4s reads no provider API-key variable on its own - so the docs tell
+    // users to bind it themselves.
     val embeddings =
       """
         |llm4s {

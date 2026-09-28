@@ -19,7 +19,7 @@ object OpenAIConfigKeys {
    *
    * No `reference.conf` binds it: a named section reads it only through its own
    * `apiKey = ${?OPENAI_API_KEY}`, and OpenAI embeddings only through
-   * `llm4s.embeddings.openai.apiKey = ${?OPENAI_API_KEY}` (or `llm4s.openai.apiKey`).
+   * `llm4s.embeddings.openai.apiKey = ${?OPENAI_API_KEY}` in the application's config.
    */
   val OPENAI_API_KEY = "OPENAI_API_KEY"
 

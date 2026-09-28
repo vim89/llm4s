@@ -45,16 +45,19 @@ object OpenAIEmbeddingProvider extends EmbeddingProviderDescriptor {
   val id: ProviderId = ProviderId("openai")
 
   /**
-   * OpenAI's embedding endpoint takes the same key as its chat client, so
-   * `llm4s.embeddings.openai` carries no `apiKey` and users set `OPENAI_API_KEY`
-   * once. `apiKeyPath` is how the descriptor says that, which also makes the
-   * "missing key" error name the place the key is actually set.
+   * The key is `llm4s.embeddings.openai.apiKey`. Nothing binds it: llm4s reads no
+   * provider API-key variable on its own, so the application adds
+   * `llm4s.embeddings.openai.apiKey = ${?OPENAI_API_KEY}` to its `application.conf`.
+   * No `apiKeyEnv` is declared, so the "missing key" error names only the key.
+   *
+   * There is no fallback to `llm4s.openai.apiKey` any more (#1132). That was the
+   * single-provider chat key, and nothing has read or bound it since named
+   * provider sections replaced it (#903), so "sharing the chat client's key"
+   * meant reading a path only this fallback still knew about.
    */
   override val configSpec: EmbeddingConfigSpec = EmbeddingConfigSpec(
     requiresApiKey = true,
     defaultBaseUrl = Some("https://api.openai.com/v1"),
-    apiKeyPath = Some("llm4s.openai.apiKey"),
-    apiKeyEnv = Some("OPENAI_API_KEY"),
     modelEnv = Some("OPENAI_EMBEDDING_MODEL")
   )
 

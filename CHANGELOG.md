@@ -703,6 +703,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   deprecated-alias and unknown-key warnings are logged. Source break: `defaultProviderName()`
   no longer takes a `ProviderRegistry`, since reading a name needs none; drop an explicit
   `(using registry)` argument ([#1132](https://github.com/llm4s/llm4s/issues/1132)).
+- **OpenAI embeddings' missing-key error named `OPENAI_API_KEY` and a key nothing reads.** The
+  key was read from `llm4s.embeddings.openai.apiKey`, falling back to `llm4s.openai.apiKey` - the
+  single-provider chat key nothing has read or bound since
+  [#903](https://github.com/llm4s/llm4s/pull/903) - and the error said "Missing openai
+  embeddings apiKey (llm4s.openai.apiKey / OPENAI_API_KEY)", though llm4s reads no provider
+  API-key variable on its own. The fallback is removed, and the error names only
+  `llm4s.embeddings.openai.apiKey`, which the application binds with
+  `llm4s.embeddings.openai.apiKey = ${?OPENAI_API_KEY}` as before. Behaviour change: a config
+  that set only `llm4s.openai.apiKey` must set `llm4s.embeddings.openai.apiKey` instead
+  ([#1132](https://github.com/llm4s/llm4s/issues/1132)).
+- **The missing-field error pointed at `llm4s.conf`**, a file nothing loads, and at
+  `providers.<name>` rather than the section's real path. A named section missing a required
+  `apiKey`, `baseUrl` or provider-specific key now says `set it in application.conf under
+  llm4s.providers.<name>.<key>` ([#1132](https://github.com/llm4s/llm4s/issues/1132)).
+- **Core's `reference.conf` said OTLP headers could be set with `OTEL_EXPORTER_OTLP_HEADERS`**,
+  which nothing reads. The comment now says what the docs already did: headers are the
+  `llm4s.tracing.opentelemetry.headers` map (or `OpenTelemetryConfig.headers`), bound from a
+  variable of your choosing if you like ([#1132](https://github.com/llm4s/llm4s/issues/1132)).
 - **Every provider-config warning was logged twice** by `Llm4sConfig.defaultProvider`,
   `providerFrom` and the default-provider `listModels`: they read the default provider's name and
   then its section through two separate loads of `llm4s.providers`, and each load validated the

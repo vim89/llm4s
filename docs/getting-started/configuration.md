@@ -115,7 +115,7 @@ val result = for {
 ```
 
 If `OPENAI_API_KEY` is unset, `defaultProvider()` returns a `ConfigurationError` naming the key:
-`apiKey: set it ... under providers.openai-main.apiKey (optionally from an env var, e.g. apiKey = ${?OPENAI_API_KEY})`.
+`apiKey: set it in application.conf under llm4s.providers.openai-main.apiKey (optionally from an env var, e.g. apiKey = ${?OPENAI_API_KEY})`.
 This exact configuration is exercised by `DocumentedProviderConfigSpec` in `modules/openai`.
 
 Other `Llm4sConfig` calls read the same sections:
@@ -286,9 +286,8 @@ EMBEDDING_MODEL=ollama/nomic-embed-text
 ```
 
 OpenAI embeddings need one line of your own. Their key is read from
-`llm4s.embeddings.openai.apiKey` (falling back to `llm4s.openai.apiKey`), and no
-`reference.conf` binds either to `OPENAI_API_KEY` - it is not shared with a chat provider
-section. Bind it in `application.conf`:
+`llm4s.embeddings.openai.apiKey`, and no `reference.conf` binds it to `OPENAI_API_KEY` - it is
+not shared with a chat provider section. Bind it in `application.conf`:
 
 ```hocon
 llm4s.embeddings {
@@ -741,7 +740,7 @@ object ValidateConfig extends App {
 **Symptoms:**
 ```
 ConfigurationError: Provider 'openai-main' (provider = openai) is missing required fields:
-  - apiKey: set it in llm4s.conf under providers.openai-main.apiKey (optionally from an env var, e.g. apiKey = ${?OPENAI_API_KEY})
+  - apiKey: set it in application.conf under llm4s.providers.openai-main.apiKey (optionally from an env var, e.g. apiKey = ${?OPENAI_API_KEY})
 ```
 
 **Root causes:**
