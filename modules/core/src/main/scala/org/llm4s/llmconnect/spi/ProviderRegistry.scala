@@ -346,8 +346,25 @@ object ProviderRegistry:
    *
    * Discovery runs on first use rather than at class-load time, so an
    * application that always passes its own registry never pays for it.
+   *
+   * Discovery itself is I/O - a `ServiceLoader` scan of the classpath - so this
+   * `lazy val` is a cached Action wearing the shape of Data: it reads the
+   * classpath once per JVM and every later call sees that first answer, even if
+   * the classpath could no longer produce it (a test that manipulates the
+   * classpath after `default` has already run, say). That is the right choice
+   * for a running application, where the classpath is fixed for the life of the
+   * process. A caller that instead needs a fresh scan, or a deterministic
+   * registry that does not depend on classpath order or on whichever other test
+   * touched `default` first, should build one explicitly with
+   * [[ProviderRegistry.of]] or [[ProviderRegistry.ofModules]] rather than rely
+   * on this value.
    */
   lazy val default: ProviderRegistry = discover()
 
-  /** Resolves to `default` wherever a `using ProviderRegistry` is needed. */
+  /**
+   * Resolves to `default` wherever a `using ProviderRegistry` is needed. Being
+   * ambient does not change what `default` is: any code that picks this up
+   * implicitly still gets the same cached, first-scan-wins registry, with the
+   * same tradeoff described above.
+   */
   given ProviderRegistry = default
