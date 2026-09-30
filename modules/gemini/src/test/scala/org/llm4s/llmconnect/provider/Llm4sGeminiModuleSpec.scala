@@ -1,6 +1,5 @@
 package org.llm4s.llmconnect.provider
 
-import com.sun.net.httpserver.{ HttpExchange, HttpServer }
 import org.llm4s.config.{ CredentialsRoundTrip, GeminiConfigKeys }
 import org.llm4s.config.ProvidersConfigModel.NamedProviderConfig
 import org.llm4s.http.{ HttpResponse, Llm4sHttpClient, StreamingHttpResponse }
@@ -11,13 +10,13 @@ import org.llm4s.llmconnect.model.{ Conversation, StreamedChunk, UserMessage }
 import org.llm4s.llmconnect.spi.{ ProviderDescriptor, ProviderRegistry }
 import org.llm4s.model.{ ModelRegistryConfig, ModelRegistryService }
 import org.llm4s.testutil.FixtureChatConfig
+import org.llm4s.testutil.LocalProviderTestServer.{ sendSseResponse, withServer }
 import org.llm4s.types.ProviderModelTypes.*
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 import java.io.ByteArrayInputStream
-import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
 import scala.collection.mutable.ListBuffer
 
@@ -35,25 +34,8 @@ class Llm4sGeminiModuleSpec extends AnyWordSpec with Matchers with MockFactory:
   private given ModelRegistryService  = registryService
   private given ContextWindowResolver = ContextWindowResolver(registryService)
 
-  /** A stub server standing in for the Gemini API, one SSE data line. */
-  private def withStreamingServer(test: String => Any): Unit = {
-    val server = HttpServer.create(new InetSocketAddress("localhost", 0), 0)
-    server.createContext(
-      "/",
-      (exchange: HttpExchange) => {
-        val body  = """data: {"candidates":[{"content":{"parts":[{"text":"Hi"}]}}]}""" + "\n\n"
-        val bytes = body.getBytes(StandardCharsets.UTF_8)
-        exchange.getResponseHeaders.add("Content-Type", "text/event-stream")
-        exchange.sendResponseHeaders(200, bytes.length.toLong)
-        val os = exchange.getResponseBody
-        os.write(bytes)
-        os.close()
-      }
-    )
-    server.start()
-    try test(s"http://localhost:${server.getAddress.getPort}")
-    finally server.stop(0)
-  }
+  /** One SSE data line, standing in for the Gemini API's streaming response. */
+  private val geminiSseBody: String = """data: {"candidates":[{"content":{"parts":[{"text":"Hi"}]}}]}""" + "\n\n"
 
   /**
    * A `VertexAIClient` backed by a mock HTTP client. Vertex AI's base URL is derived from
@@ -176,7 +158,7 @@ class Llm4sGeminiModuleSpec extends AnyWordSpec with Matchers with MockFactory:
   "a client built by the gemini descriptor" should {
 
     "actually stream, not silently fall back to complete()" in {
-      withStreamingServer { baseUrl =>
+      withServer("/")(exchange => sendSseResponse(exchange, geminiSseBody)) { baseUrl =>
         val client = GeminiProvider
           .buildConfig("test-instance", section(GeminiProvider).copy(baseUrl = Some(BaseUrl(baseUrl))))
           .flatMap(config => GeminiProvider.buildClient(config, LlmClientOptions.default))
