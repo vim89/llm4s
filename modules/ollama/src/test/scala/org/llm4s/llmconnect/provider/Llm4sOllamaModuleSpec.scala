@@ -1,6 +1,5 @@
 package org.llm4s.llmconnect.provider
 
-import com.sun.net.httpserver.{ HttpExchange, HttpServer }
 import org.llm4s.config.CredentialsRoundTrip
 import org.llm4s.config.ProvidersConfigModel.NamedProviderConfig
 import org.llm4s.llmconnect.LlmClientOptions
@@ -9,12 +8,11 @@ import org.llm4s.llmconnect.model.{ Conversation, StreamedChunk, UserMessage }
 import org.llm4s.llmconnect.spi.ProviderRegistry
 import org.llm4s.model.{ ModelRegistryConfig, ModelRegistryService }
 import org.llm4s.testutil.FixtureChatConfig
+import org.llm4s.testutil.LocalProviderTestServer.{ sendJsonResponse, withServer }
 import org.llm4s.types.ProviderModelTypes.*
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-import java.net.InetSocketAddress
-import java.nio.charset.StandardCharsets
 import scala.collection.mutable.ListBuffer
 
 /**
@@ -40,27 +38,11 @@ class Llm4sOllamaModuleSpec extends AnyWordSpec with Matchers:
     apiVersion = None
   )
 
-  /** A stub server standing in for Ollama's API, one NDJSON chat chunk then a done line. */
-  private def withStreamingServer(test: String => Any): Unit = {
-    val server = HttpServer.create(new InetSocketAddress("localhost", 0), 0)
-    server.createContext(
-      "/",
-      (exchange: HttpExchange) => {
-        val body = Seq(
-          """{"message":{"role":"assistant","content":"Hi"},"done":false}""",
-          """{"message":{"role":"assistant","content":""},"done":true,"prompt_eval_count":1,"eval_count":1}"""
-        ).mkString("", "\n", "\n")
-        val bytes = body.getBytes(StandardCharsets.UTF_8)
-        exchange.sendResponseHeaders(200, bytes.length.toLong)
-        val os = exchange.getResponseBody
-        os.write(bytes)
-        os.close()
-      }
-    )
-    server.start()
-    try test(s"http://localhost:${server.getAddress.getPort}")
-    finally server.stop(0)
-  }
+  /** One NDJSON chat chunk then a done line, standing in for Ollama's API. */
+  private val ndjsonBody: String = Seq(
+    """{"message":{"role":"assistant","content":"Hi"},"done":false}""",
+    """{"message":{"role":"assistant","content":""},"done":true,"prompt_eval_count":1,"eval_count":1}"""
+  ).mkString("", "\n", "\n")
 
   "the llm4s-ollama services entry" should {
 
@@ -121,7 +103,7 @@ class Llm4sOllamaModuleSpec extends AnyWordSpec with Matchers:
   "a client built by the ollama descriptor" should {
 
     "actually stream, not silently fall back to complete()" in {
-      withStreamingServer { baseUrl =>
+      withServer("/")(exchange => sendJsonResponse(exchange, 200, ndjsonBody)) { baseUrl =>
         val client = OllamaProvider
           .buildConfig("test-instance", section.copy(baseUrl = Some(BaseUrl(baseUrl))))
           .flatMap(config => OllamaProvider.buildClient(config, LlmClientOptions.default))
