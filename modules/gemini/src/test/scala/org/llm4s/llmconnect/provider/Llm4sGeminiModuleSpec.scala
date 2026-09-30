@@ -1,15 +1,25 @@
 package org.llm4s.llmconnect.provider
 
+import com.sun.net.httpserver.{ HttpExchange, HttpServer }
 import org.llm4s.config.{ CredentialsRoundTrip, GeminiConfigKeys }
 import org.llm4s.config.ProvidersConfigModel.NamedProviderConfig
+import org.llm4s.http.{ HttpResponse, Llm4sHttpClient, StreamingHttpResponse }
 import org.llm4s.llmconnect.LlmClientOptions
-import org.llm4s.llmconnect.config.ContextWindowResolver
+import org.llm4s.llmconnect.ProviderExchangeLogging
+import org.llm4s.llmconnect.config.{ ContextWindowResolver, VertexAIConfig }
+import org.llm4s.llmconnect.model.{ Conversation, StreamedChunk, UserMessage }
 import org.llm4s.llmconnect.spi.{ ProviderDescriptor, ProviderRegistry }
 import org.llm4s.model.{ ModelRegistryConfig, ModelRegistryService }
 import org.llm4s.testutil.FixtureChatConfig
 import org.llm4s.types.ProviderModelTypes.*
+import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+
+import java.io.ByteArrayInputStream
+import java.net.InetSocketAddress
+import java.nio.charset.StandardCharsets
+import scala.collection.mutable.ListBuffer
 
 /**
  * `llm4s-gemini` registers itself, and what it registers works.
@@ -19,11 +29,50 @@ import org.scalatest.wordspec.AnyWordSpec
  * depending on it is enough - the services entry is found, both descriptors arrive, and
  * the `google` and `vertex` spellings still resolve.
  */
-class Llm4sGeminiModuleSpec extends AnyWordSpec with Matchers:
+class Llm4sGeminiModuleSpec extends AnyWordSpec with Matchers with MockFactory:
 
   private val registryService         = ModelRegistryService.fromConfig(ModelRegistryConfig.default).toOption.get
   private given ModelRegistryService  = registryService
   private given ContextWindowResolver = ContextWindowResolver(registryService)
+
+  /** A stub server standing in for the Gemini API, one SSE data line. */
+  private def withStreamingServer(test: String => Any): Unit = {
+    val server = HttpServer.create(new InetSocketAddress("localhost", 0), 0)
+    server.createContext(
+      "/",
+      (exchange: HttpExchange) => {
+        val body  = """data: {"candidates":[{"content":{"parts":[{"text":"Hi"}]}}]}""" + "\n\n"
+        val bytes = body.getBytes(StandardCharsets.UTF_8)
+        exchange.getResponseHeaders.add("Content-Type", "text/event-stream")
+        exchange.sendResponseHeaders(200, bytes.length.toLong)
+        val os = exchange.getResponseBody
+        os.write(bytes)
+        os.close()
+      }
+    )
+    server.start()
+    try test(s"http://localhost:${server.getAddress.getPort}")
+    finally server.stop(0)
+  }
+
+  /**
+   * A `VertexAIClient` backed by a mock HTTP client. Vertex AI's base URL is derived from
+   * `location`, not configurable, so unlike Gemini it cannot be pointed at a stub server
+   * through the descriptor - the client is built directly, the same way
+   * `VertexAIClientHttpSpec` does, stubbing both the oauth2 token endpoint and the GCE
+   * metadata fallback so the test is environment-agnostic.
+   */
+  private def vertexClientWithStubbedAuth(config: VertexAIConfig): VertexAIClient = {
+    val tokenBody = """{"access_token":"ya29.test-token","expires_in":3600}"""
+    val sseBody   = """data: {"candidates":[{"content":{"parts":[{"text":"Hi"}]}}]}""" + "\n\n"
+    val mockHttp  = stub[Llm4sHttpClient]
+    (mockHttp.post _).when(*, *, *, *).returns(HttpResponse(200, tokenBody, Map.empty))
+    (mockHttp.get _).when(*, *, *, *).returns(HttpResponse(200, tokenBody, Map.empty))
+    (mockHttp.postStream _)
+      .when(*, *, *, *)
+      .returns(StreamingHttpResponse(200, new ByteArrayInputStream(sseBody.getBytes(StandardCharsets.UTF_8))))
+    new VertexAIClient(config, org.llm4s.metrics.MetricsCollector.noop, ProviderExchangeLogging.Disabled, mockHttp)
+  }
 
   /** Descriptor, the config class it builds, and the client class that config produces. */
   private val expectations: Seq[(ProviderDescriptor, String, String)] = Seq(
@@ -118,11 +167,45 @@ class Llm4sGeminiModuleSpec extends AnyWordSpec with Matchers:
       }
     }
 
-    "declare streaming, and a model lister for Gemini only" in {
-      GeminiProvider.features.streaming shouldBe true
-      VertexAIProvider.features.streaming shouldBe true
+    "declare a model lister for Gemini only" in {
       GeminiProvider.modelLister shouldBe defined
       VertexAIProvider.modelLister shouldBe None
+    }
+  }
+
+  "a client built by the gemini descriptor" should {
+
+    "actually stream, not silently fall back to complete()" in {
+      withStreamingServer { baseUrl =>
+        val client = GeminiProvider
+          .buildConfig("test-instance", section(GeminiProvider).copy(baseUrl = Some(BaseUrl(baseUrl))))
+          .flatMap(config => GeminiProvider.buildClient(config, LlmClientOptions.default))
+          .getOrElse(fail("failed to build a client for the streaming proof"))
+
+        val chunks = ListBuffer.empty[StreamedChunk]
+        val result = client.streamComplete(Conversation(Seq(UserMessage("Hello"))), onChunk = chunks += _)
+
+        result.isRight shouldBe true
+        chunks should not be empty
+      }
+    }
+  }
+
+  "a client built by the vertexai descriptor" should {
+
+    "actually stream, not silently fall back to complete()" in {
+      // No apiKey: that field doubles as a credential file path for Vertex, and a
+      // nonexistent one would fail auth before the mocked HTTP client is ever reached.
+      val config = VertexAIProvider.buildConfig("test-instance", section(VertexAIProvider).copy(apiKey = None)) match
+        case Right(c: VertexAIConfig) => c
+        case other                    => fail(s"expected a VertexAIConfig, got $other")
+
+      val client = vertexClientWithStubbedAuth(config)
+      val chunks = ListBuffer.empty[StreamedChunk]
+      val result = client.streamComplete(Conversation(Seq(UserMessage("Hello"))), onChunk = chunks += _)
+
+      result.isRight shouldBe true
+      chunks should not be empty
     }
   }
 
