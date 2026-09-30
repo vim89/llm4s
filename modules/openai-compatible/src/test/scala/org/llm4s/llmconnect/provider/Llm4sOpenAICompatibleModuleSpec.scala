@@ -4,12 +4,16 @@ import org.llm4s.config.{ CredentialsRoundTrip, OpenAICompatibleConfigKeys }
 import org.llm4s.config.ProvidersConfigModel.NamedProviderConfig
 import org.llm4s.llmconnect.LlmClientOptions
 import org.llm4s.llmconnect.config.ContextWindowResolver
+import org.llm4s.llmconnect.model.{ Conversation, StreamedChunk, UserMessage }
 import org.llm4s.llmconnect.spi.{ ProviderDescriptor, ProviderRegistry }
 import org.llm4s.model.{ ModelRegistryConfig, ModelRegistryService }
 import org.llm4s.testutil.FixtureChatConfig
+import org.llm4s.testutil.LocalProviderTestServer.{ openAISseBody, sendSseResponse, withServer }
 import org.llm4s.types.ProviderModelTypes.*
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+
+import scala.collection.mutable.ListBuffer
 
 /**
  * `llm4s-openai-compatible` registers itself, and what it registers works.
@@ -118,10 +122,7 @@ class Llm4sOpenAICompatibleModuleSpec extends AnyWordSpec with Matchers:
       }
     }
 
-    "declare streaming, and a model lister where the provider has one" in {
-      expectations.foreach { (descriptor, _, _) =>
-        withClue(s"${descriptor.id.asString}: ")(descriptor.features.streaming shouldBe true)
-      }
+    "declare a model lister where the provider has one" in {
       OpenAICompatibleProvider.modelLister shouldBe defined
       DeepSeekProvider.modelLister shouldBe defined
       OpenRouterProvider.modelLister shouldBe defined
@@ -129,6 +130,28 @@ class Llm4sOpenAICompatibleModuleSpec extends AnyWordSpec with Matchers:
       // Z.ai and Cohere had no lister in core either.
       ZaiProvider.modelLister shouldBe None
       CohereProvider.modelLister shouldBe None
+    }
+  }
+
+  "a client built by each openai-compatible descriptor" should {
+
+    "actually stream, not silently fall back to complete()" in {
+      expectations.foreach { (descriptor, _, _) =>
+        withClue(s"${descriptor.id.asString}: ") {
+          withServer("/")(exchange => sendSseResponse(exchange, openAISseBody(Seq("Hi")))) { baseUrl =>
+            val client = descriptor
+              .buildConfig("test-instance", section(descriptor).copy(baseUrl = Some(BaseUrl(baseUrl))))
+              .flatMap(config => descriptor.buildClient(config, LlmClientOptions.default))
+              .getOrElse(fail(s"${descriptor.id.asString} failed to build a client for the streaming proof"))
+
+            val chunks = ListBuffer.empty[StreamedChunk]
+            val result = client.streamComplete(Conversation(Seq(UserMessage("Hello"))), onChunk = chunks += _)
+
+            result.isRight shouldBe true
+            chunks should not be empty
+          }
+        }
+      }
     }
   }
 
