@@ -1,15 +1,21 @@
 package org.llm4s.llmconnect.provider
 
+import com.sun.net.httpserver.{ HttpExchange, HttpServer }
 import org.llm4s.config.{ AnthropicConfigKeys, CredentialsRoundTrip }
 import org.llm4s.config.ProvidersConfigModel.NamedProviderConfig
 import org.llm4s.llmconnect.LlmClientOptions
 import org.llm4s.llmconnect.config.{ AnthropicConfig, ContextWindowResolver }
+import org.llm4s.llmconnect.model.{ Conversation, StreamedChunk, UserMessage }
 import org.llm4s.llmconnect.spi.ProviderRegistry
 import org.llm4s.model.{ ModelRegistryConfig, ModelRegistryService }
 import org.llm4s.testutil.FixtureChatConfig
 import org.llm4s.types.ProviderModelTypes.*
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+
+import java.net.InetSocketAddress
+import java.nio.charset.StandardCharsets
+import scala.collection.mutable.ListBuffer
 
 /**
  * `llm4s-anthropic` registers itself, and what it registers works.
@@ -23,6 +29,43 @@ class Llm4sAnthropicModuleSpec extends AnyWordSpec with Matchers:
   private val registryService         = ModelRegistryService.fromConfig(ModelRegistryConfig.default).toOption.get
   private given ModelRegistryService  = registryService
   private given ContextWindowResolver = ContextWindowResolver(registryService)
+
+  /** A stub SSE server standing in for the Anthropic API, one Anthropic-shaped event stream. */
+  private def withStreamingServer(test: String => Any): Unit = {
+    val server = HttpServer.create(new InetSocketAddress("localhost", 0), 0)
+    server.createContext(
+      "/v1/messages",
+      (exchange: HttpExchange) => {
+        val events = Seq(
+          "message_start" -> (
+            """{"type":"message_start","message":{"id":"msg_1","type":"message","role":"assistant",""" +
+              """"content":[],"model":"claude-sonnet-4-5","stop_reason":null,"stop_sequence":null,""" +
+              """"usage":{"input_tokens":8,"output_tokens":0}}}"""
+          ),
+          "content_block_start" ->
+            """{"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}""",
+          "content_block_delta" ->
+            """{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Hi"}}""",
+          "content_block_stop" -> """{"type":"content_block_stop","index":0}""",
+          "message_delta" -> (
+            """{"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},""" +
+              """"usage":{"output_tokens":1}}"""
+          ),
+          "message_stop" -> """{"type":"message_stop"}"""
+        )
+        val body  = events.map { case (event, data) => s"event: $event\ndata: $data\n\n" }.mkString
+        val bytes = body.getBytes(StandardCharsets.UTF_8)
+        exchange.getResponseHeaders.add("Content-Type", "text/event-stream")
+        exchange.sendResponseHeaders(200, bytes.length.toLong)
+        val os = exchange.getResponseBody
+        os.write(bytes)
+        os.close()
+      }
+    )
+    server.start()
+    try test(s"http://localhost:${server.getAddress.getPort}")
+    finally server.stop(0)
+  }
 
   /** A section carrying every field the provider asks for. */
   private val section: NamedProviderConfig =
@@ -91,9 +134,26 @@ class Llm4sAnthropicModuleSpec extends AnyWordSpec with Matchers:
         case Right(client) => fail(s"anthropic accepted a FixtureChatConfig and built $client")
     }
 
-    "declare streaming and a model lister" in {
-      AnthropicProvider.features.streaming shouldBe true
+    "declare a model lister" in {
       AnthropicProvider.modelLister shouldBe defined
+    }
+  }
+
+  "a client built by the anthropic descriptor" should {
+
+    "actually stream, not silently fall back to complete()" in {
+      withStreamingServer { baseUrl =>
+        val client = AnthropicProvider
+          .buildConfig("test-instance", section.copy(baseUrl = Some(BaseUrl(baseUrl))))
+          .flatMap(config => AnthropicProvider.buildClient(config, LlmClientOptions.default))
+          .getOrElse(fail("failed to build a client for the streaming proof"))
+
+        val chunks = ListBuffer.empty[StreamedChunk]
+        val result = client.streamComplete(Conversation(Seq(UserMessage("Hello"))), onChunk = chunks += _)
+
+        result.isRight shouldBe true
+        chunks should not be empty
+      }
     }
   }
 
