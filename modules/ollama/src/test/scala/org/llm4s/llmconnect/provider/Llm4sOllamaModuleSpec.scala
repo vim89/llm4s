@@ -4,12 +4,16 @@ import org.llm4s.config.CredentialsRoundTrip
 import org.llm4s.config.ProvidersConfigModel.NamedProviderConfig
 import org.llm4s.llmconnect.LlmClientOptions
 import org.llm4s.llmconnect.config.ContextWindowResolver
+import org.llm4s.llmconnect.model.{ Conversation, StreamedChunk, UserMessage }
 import org.llm4s.llmconnect.spi.ProviderRegistry
 import org.llm4s.model.{ ModelRegistryConfig, ModelRegistryService }
 import org.llm4s.testutil.FixtureChatConfig
+import org.llm4s.testutil.LocalProviderTestServer.{ sendJsonResponse, withServer }
 import org.llm4s.types.ProviderModelTypes.*
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+
+import scala.collection.mutable.ListBuffer
 
 /**
  * `llm4s-ollama` registers itself, and what it registers works.
@@ -33,6 +37,12 @@ class Llm4sOllamaModuleSpec extends AnyWordSpec with Matchers:
     endpoint = None,
     apiVersion = None
   )
+
+  /** One NDJSON chat chunk then a done line, standing in for Ollama's API. */
+  private val ndjsonBody: String = Seq(
+    """{"message":{"role":"assistant","content":"Hi"},"done":false}""",
+    """{"message":{"role":"assistant","content":""},"done":true,"prompt_eval_count":1,"eval_count":1}"""
+  ).mkString("", "\n", "\n")
 
   "the llm4s-ollama services entry" should {
 
@@ -85,9 +95,26 @@ class Llm4sOllamaModuleSpec extends AnyWordSpec with Matchers:
         case Right(client) => fail(s"ollama accepted a FixtureChatConfig and built $client")
     }
 
-    "declare streaming and a model lister" in {
-      OllamaProvider.features.streaming shouldBe true
+    "declare a model lister" in {
       OllamaProvider.modelLister shouldBe defined
+    }
+  }
+
+  "a client built by the ollama descriptor" should {
+
+    "actually stream, not silently fall back to complete()" in {
+      withServer("/")(exchange => sendJsonResponse(exchange, 200, ndjsonBody)) { baseUrl =>
+        val client = OllamaProvider
+          .buildConfig("test-instance", section.copy(baseUrl = Some(BaseUrl(baseUrl))))
+          .flatMap(config => OllamaProvider.buildClient(config, LlmClientOptions.default))
+          .getOrElse(fail("failed to build a client for the streaming proof"))
+
+        val chunks = ListBuffer.empty[StreamedChunk]
+        val result = client.streamComplete(Conversation(Seq(UserMessage("Hello"))), onChunk = chunks += _)
+
+        result.isRight shouldBe true
+        chunks should not be empty
+      }
     }
   }
 
