@@ -1,15 +1,21 @@
 package org.llm4s.llmconnect.provider
 
+import com.sun.net.httpserver.{ HttpExchange, HttpServer }
 import org.llm4s.config.CredentialsRoundTrip
 import org.llm4s.config.ProvidersConfigModel.NamedProviderConfig
 import org.llm4s.llmconnect.LlmClientOptions
 import org.llm4s.llmconnect.config.ContextWindowResolver
+import org.llm4s.llmconnect.model.{ Conversation, StreamedChunk, UserMessage }
 import org.llm4s.llmconnect.spi.ProviderRegistry
 import org.llm4s.model.{ ModelRegistryConfig, ModelRegistryService }
 import org.llm4s.testutil.FixtureChatConfig
 import org.llm4s.types.ProviderModelTypes.*
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+
+import java.net.InetSocketAddress
+import java.nio.charset.StandardCharsets
+import scala.collection.mutable.ListBuffer
 
 /**
  * `llm4s-ollama` registers itself, and what it registers works.
@@ -33,6 +39,28 @@ class Llm4sOllamaModuleSpec extends AnyWordSpec with Matchers:
     endpoint = None,
     apiVersion = None
   )
+
+  /** A stub server standing in for Ollama's API, one NDJSON chat chunk then a done line. */
+  private def withStreamingServer(test: String => Any): Unit = {
+    val server = HttpServer.create(new InetSocketAddress("localhost", 0), 0)
+    server.createContext(
+      "/",
+      (exchange: HttpExchange) => {
+        val body = Seq(
+          """{"message":{"role":"assistant","content":"Hi"},"done":false}""",
+          """{"message":{"role":"assistant","content":""},"done":true,"prompt_eval_count":1,"eval_count":1}"""
+        ).mkString("", "\n", "\n")
+        val bytes = body.getBytes(StandardCharsets.UTF_8)
+        exchange.sendResponseHeaders(200, bytes.length.toLong)
+        val os = exchange.getResponseBody
+        os.write(bytes)
+        os.close()
+      }
+    )
+    server.start()
+    try test(s"http://localhost:${server.getAddress.getPort}")
+    finally server.stop(0)
+  }
 
   "the llm4s-ollama services entry" should {
 
@@ -85,9 +113,26 @@ class Llm4sOllamaModuleSpec extends AnyWordSpec with Matchers:
         case Right(client) => fail(s"ollama accepted a FixtureChatConfig and built $client")
     }
 
-    "declare streaming and a model lister" in {
-      OllamaProvider.features.streaming shouldBe true
+    "declare a model lister" in {
       OllamaProvider.modelLister shouldBe defined
+    }
+  }
+
+  "a client built by the ollama descriptor" should {
+
+    "actually stream, not silently fall back to complete()" in {
+      withStreamingServer { baseUrl =>
+        val client = OllamaProvider
+          .buildConfig("test-instance", section.copy(baseUrl = Some(BaseUrl(baseUrl))))
+          .flatMap(config => OllamaProvider.buildClient(config, LlmClientOptions.default))
+          .getOrElse(fail("failed to build a client for the streaming proof"))
+
+        val chunks = ListBuffer.empty[StreamedChunk]
+        val result = client.streamComplete(Conversation(Seq(UserMessage("Hello"))), onChunk = chunks += _)
+
+        result.isRight shouldBe true
+        chunks should not be empty
+      }
     }
   }
 
