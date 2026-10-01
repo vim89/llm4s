@@ -21,6 +21,15 @@ trait LLMClientContractBehaviors { this: AnyWordSpec with Matchers =>
   private def validConversation: Conversation =
     Conversation(Seq(UserMessage("Hello")))
 
+  /** Proves streamComplete produces at least one chunk, not a silent fallback to complete(). */
+  def honoursStreaming(createClient: () => LLMClient): Unit =
+    "actually stream, not silently fall back to complete()" in {
+      val chunks = ListBuffer.empty[StreamedChunk]
+      val result = createClient().streamComplete(validConversation, onChunk = chunks += _)
+      result.isRight shouldBe true
+      chunks should not be empty
+    }
+
   def llmClientContract(createClient: () => LLMClient): Unit = {
 
     // -- complete() guarantees ------------------------------------------------

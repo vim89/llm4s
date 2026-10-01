@@ -4,7 +4,9 @@ import org.llm4s.config.CredentialsRoundTrip
 import org.llm4s.config.OpenAIConfigKeys
 import org.llm4s.config.ProvidersConfigModel.NamedProviderConfig
 import org.llm4s.llmconnect.LlmClientOptions
-import org.llm4s.llmconnect.config.{ AzureConfig, ContextWindowResolver }
+import org.llm4s.llmconnect.config.{ AzureConfig, ContextWindowResolver, OpenAIConfig }
+import org.llm4s.llmconnect.contract.LLMClientContractBehaviors
+import org.llm4s.llmconnect.provider.OpenAISdkFixtures.{ chunk, stream, transport }
 import org.llm4s.llmconnect.spi.{ ProviderDescriptor, ProviderRegistry }
 import org.llm4s.model.{ ModelRegistryConfig, ModelRegistryService }
 import org.llm4s.testutil.FixtureChatConfig
@@ -19,7 +21,7 @@ import org.scalatest.wordspec.AnyWordSpec
  * with the providers (#1132), plus the part that only a carved module has to prove: that
  * depending on it is enough - the services entry is found and the descriptors arrive.
  */
-class Llm4sOpenAIModuleSpec extends AnyWordSpec with Matchers:
+class Llm4sOpenAIModuleSpec extends AnyWordSpec with Matchers with LLMClientContractBehaviors:
 
   private val registryService         = ModelRegistryService.fromConfig(ModelRegistryConfig.default).toOption.get
   private given ModelRegistryService  = registryService
@@ -138,13 +140,34 @@ class Llm4sOpenAIModuleSpec extends AnyWordSpec with Matchers:
       }
     }
 
-    "declare streaming, and a model lister where the provider has one" in {
-      expectations.foreach { (descriptor, _, _) =>
-        withClue(s"${descriptor.id.asString}: ")(descriptor.features.streaming shouldBe true)
-      }
+    "declare a model lister where the provider has one" in {
       OpenAIProvider.modelLister shouldBe defined
       RequestyProvider.modelLister shouldBe defined
     }
+  }
+
+  "a client built by any of the three descriptors" should {
+    // OpenAI, Azure and Requesty all build the same OpenAIClient class (see `expectations`
+    // above), so one stub-backed client proves the streaming path all three declare.
+    val contentChunk = chunk(
+      """{"id":"chatcmpl-1","created":0,"choices":[{"index":0,"delta":{"role":"assistant","content":"Hi"}}]}"""
+    )
+    val stopChunk = chunk(
+      """{"id":"chatcmpl-1","created":0,"choices":[{"index":0,"finish_reason":"stop","delta":{"role":"assistant"}}]}"""
+    )
+    val config = OpenAIConfig
+      .fromValues(
+        modelName = "test-model",
+        apiKey = "test-key",
+        organization = None,
+        baseUrl = "https://example.invalid/v1"
+      )
+      .toOption
+      .get
+
+    honoursStreaming(() =>
+      OpenAIClient.forTest("test-model", transport(streaming = _ => stream(contentChunk, stopChunk)), config)
+    )
   }
 
   "the llm4s-openai reference.conf" should {
