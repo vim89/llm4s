@@ -4,7 +4,7 @@ import org.llm4s.error.{ AuthenticationError, RateLimitError, ServiceError }
 import org.llm4s.llmconnect.{ ProviderExchange, ProviderExchangeLogging, ProviderExchangeSink }
 import org.llm4s.llmconnect.config.DeepSeekConfig
 import org.llm4s.llmconnect.model.{ CompletionOptions, Conversation, StreamedChunk, UserMessage }
-import org.llm4s.testutil.LocalProviderTestServer._
+import org.llm4s.testkit.LocalProviderTestServer._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.OptionValues._
@@ -108,6 +108,28 @@ class DeepSeekClientHttpSpec extends AnyFlatSpec with Matchers {
 
       result.isLeft shouldBe true
       result.swap.toOption.get shouldBe a[RateLimitError]
+    }
+
+  it should "carry a 429's Retry-After into the RateLimitError" in
+    withServer("/chat/completions") { exchange =>
+      exchange.getResponseHeaders.add("Retry-After", "5")
+      sendJsonResponse(exchange, 429, """{"error":"Rate limit exceeded"}""")
+    } { baseUrl =>
+      new DeepSeekClient(localConfig(baseUrl)).complete(conversation, CompletionOptions()) match {
+        case Left(err: RateLimitError) => err.retryDelay shouldBe Some(5000L)
+        case other                     => fail(s"Expected RateLimitError, got: $other")
+      }
+    }
+
+  it should "carry a streamed 429's Retry-After into the RateLimitError" in
+    withServer("/chat/completions") { exchange =>
+      exchange.getResponseHeaders.add("retry-after", "7")
+      sendJsonResponse(exchange, 429, """{"error":"Rate limit exceeded"}""")
+    } { baseUrl =>
+      new DeepSeekClient(localConfig(baseUrl)).streamComplete(conversation, CompletionOptions(), _ => ()) match {
+        case Left(err: RateLimitError) => err.retryDelay shouldBe Some(7000L)
+        case other                     => fail(s"Expected RateLimitError, got: $other")
+      }
     }
 
   it should "map HTTP 500 to ServiceError" in

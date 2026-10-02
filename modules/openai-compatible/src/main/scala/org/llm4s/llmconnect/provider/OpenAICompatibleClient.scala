@@ -18,6 +18,7 @@ import java.net.URI
 import java.net.http.{ HttpClient, HttpRequest, HttpResponse }
 import java.nio.charset.StandardCharsets
 import java.time.{ Duration, Instant }
+import scala.jdk.CollectionConverters.*
 import scala.util.{ Try, Using }
 
 /**
@@ -77,7 +78,7 @@ class OpenAICompatibleClient(
           val result =
             if (response.statusCode() >= 200 && response.statusCode() < 300)
               Try(parseCompletion(ujson.read(body))).toResult
-            else HttpErrorMapper.mapHttpError(response.statusCode(), body, providerName)
+            else HttpErrorMapper.mapHttpError(response.statusCode(), body, providerName, headerMap(response))
           recordExchange(startedAt, requestText, Some(body), result)
           result
         }
@@ -94,7 +95,9 @@ class OpenAICompatibleClient(
       val rawStream = new StringBuilder
       val result =
         send(requestText, HttpResponse.BodyHandlers.ofInputStream(), streamTimeout)
-          .flatMap(response => consumeStream(response.statusCode(), response.body(), rawStream, onChunk))
+          .flatMap(response =>
+            consumeStream(response.statusCode(), response.body(), rawStream, onChunk, headerMap(response))
+          )
       recordExchange(startedAt, requestText, Option.when(rawStream.nonEmpty)(rawStream.result()), result)
       result
     }
@@ -110,14 +113,15 @@ class OpenAICompatibleClient(
     statusCode: Int,
     body: InputStream,
     rawStream: StringBuilder,
-    onChunk: StreamedChunk => Unit
+    onChunk: StreamedChunk => Unit,
+    headers: Map[String, Seq[String]] = Map.empty
   ): Result[Completion] =
     if (statusCode != 200) {
       val errorBody =
         Try(Using.resource(body)(in => new String(in.readAllBytes(), StandardCharsets.UTF_8)))
           .getOrElse("<error body unreadable>")
       rawStream.append(errorBody)
-      HttpErrorMapper.mapHttpError(statusCode, errorBody, providerName)
+      HttpErrorMapper.mapHttpError(statusCode, errorBody, providerName, headers)
     } else Try(Using.resource(body)(readStream(_, rawStream, onChunk))).toResult.flatten
 
   /** Reads an SSE body to `[DONE]` or end of stream; the caller closes it. */
@@ -148,7 +152,7 @@ class OpenAICompatibleClient(
               // a fragment that is itself valid JSON, such as `"Paris"`, parses to the bare
               // string and would lose its quotes.
               accumulator.addChunk(
-                chunk.copy(toolCall = chunk.toolCall.map(_.copy(arguments = ujson.Str(rawArguments))))
+                chunk.withToolCall(chunk.toolCall.map(_.copy(arguments = ujson.Str(rawArguments))))
               )
               onChunk(chunk)
             }
@@ -159,12 +163,10 @@ class OpenAICompatibleClient(
     // non-streaming `complete` also reports them as `Completion.toolCalls`, so this does too.
     accumulator.toCompletion.map { c =>
       val finalUsage = usage.orElse(c.usage)
-      c.copy(
-        model = settings.model,
-        toolCalls = c.message.toolCalls.toList,
-        usage = finalUsage,
-        estimatedCost = finalUsage.flatMap(u => CostEstimator.estimate(settings.model, u))
-      )
+      c.withModel(settings.model)
+        .withToolCalls(c.message.toolCalls.toList)
+        .withUsage(finalUsage)
+        .withEstimatedCost(finalUsage.flatMap(u => CostEstimator.estimate(settings.model, u)))
     }
   }
 
@@ -217,6 +219,10 @@ class OpenAICompatibleClient(
     dialect.headers.foreach((name, value) => builder.header(name, value))
     builder.POST(HttpRequest.BodyPublishers.ofString(requestText)).build()
   }
+
+  /** A JDK response's headers as the multi-valued map `HttpErrorMapper` reads. */
+  private def headerMap(response: HttpResponse[?]): Map[String, Seq[String]] =
+    response.headers().map().asScala.map((name, values) => name -> values.asScala.toSeq).toMap
 
   private def send[T](
     requestText: String,

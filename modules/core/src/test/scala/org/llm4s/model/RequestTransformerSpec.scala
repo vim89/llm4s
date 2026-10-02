@@ -1,6 +1,7 @@
 package org.llm4s.model
 
 import org.llm4s.llmconnect.model.{ CompletionOptions, ResponseFormat, SystemMessage, UserMessage }
+import org.llm4s.toolapi.{ Schema, ToolBuilder }
 import org.scalatest.EitherValues
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
@@ -290,7 +291,7 @@ class RequestTransformerSpec extends AnyFunSuite with Matchers with EitherValues
       case Left(error) =>
         fail(error.message)
       case Right(service) =>
-        val disallowed = transformer(service).getDisallowedParams("o1")
+        val disallowed = transformer(service).disallowedParams("o1")
 
         disallowed should contain("top_p")
         disallowed should contain("presence_penalty")
@@ -303,7 +304,7 @@ class RequestTransformerSpec extends AnyFunSuite with Matchers with EitherValues
       case Left(error) =>
         fail(error.message)
       case Right(service) =>
-        val disallowed = transformer(service).getDisallowedParams("gpt-4o")
+        val disallowed = transformer(service).disallowedParams("gpt-4o")
 
         disallowed shouldBe empty
   }
@@ -311,6 +312,42 @@ class RequestTransformerSpec extends AnyFunSuite with Matchers with EitherValues
   // ============================================
   // Response format (structured output) tests
   // ============================================
+
+  // ============================================
+  // Function calling tests
+  // ============================================
+
+  private def withPingTool: Either[String, CompletionOptions] =
+    ToolBuilder[Map[String, Any], String]("ping", "Answers pong", Schema.`object`[Map[String, Any]]("No parameters"))
+      .withHandler(_ => Right("pong"))
+      .buildSafe()
+      .left
+      .map(_.message)
+      .map(tool => CompletionOptions().withTools(Seq(tool)))
+
+  private def noFunctionCalling(service: ModelRegistryService): RequestTransformer =
+    RequestTransformer.withOverrides(
+      Map("test-model" -> ModelCapabilities(supportsFunctionCalling = Some(false))),
+      service
+    )
+
+  test("should reject tools when the model does not support function calling and dropUnsupported=false") {
+    val result = for {
+      service <- ModelRegistryTestSupport.defaultServiceResult().left.map(_.message)
+      options <- withPingTool
+    } yield noFunctionCalling(service).transformOptions("test-model", options, dropUnsupported = false)
+
+    result.value.left.value.message should include("Function calling not supported for test-model")
+  }
+
+  test("should drop tools when the model does not support function calling and dropUnsupported=true") {
+    val result = for {
+      service <- ModelRegistryTestSupport.defaultServiceResult().left.map(_.message)
+      options <- withPingTool
+    } yield noFunctionCalling(service).transformOptions("test-model", options, dropUnsupported = true)
+
+    result.value.value.tools shouldBe empty
+  }
 
   test("should drop Json responseFormat when supportsResponseSchema=false and dropUnsupported=true") {
     org.llm4s.model.ModelRegistryTestSupport.defaultServiceResult() match
@@ -448,8 +485,8 @@ class RequestTransformerSpec extends AnyFunSuite with Matchers with EitherValues
           "o1",
           options,
           messages,
-          dropUnsupported = true,
-          transformer(service)
+          transformer(service),
+          dropUnsupported = true
         )
 
         result.isRight shouldBe true
@@ -474,8 +511,8 @@ class RequestTransformerSpec extends AnyFunSuite with Matchers with EitherValues
           "o1",
           options,
           messages,
-          dropUnsupported = false,
-          transformer(service)
+          transformer(service),
+          dropUnsupported = false
         )
 
         result.isLeft shouldBe true
@@ -508,7 +545,7 @@ class RequestTransformerSpec extends AnyFunSuite with Matchers with EitherValues
           seen = Some(id -> caps)
           caps
         }
-        t.getDisallowedParams("some-model")
+        t.disallowedParams("some-model")
         seen.map(_._1) shouldBe Some("some-model")
   }
 }

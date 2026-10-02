@@ -98,6 +98,7 @@ llm4s/
 │   ├── openai-compatible/     # One SDK-free chat-completions client: DeepSeek, Z.ai, OpenRouter, Mistral, Cohere, generic (published)
 │   ├── providers/             # Community provider modules, one `llm4s-<name>` each (published)
 │   │   └── voyage/            # Voyage AI embedding provider
+│   ├── provider-testkit/      # Checks for a provider module's Llm4s<Name>ModuleSpec, for external authors too (published)
 │   ├── observability/         # Langfuse tracing backend, trace collector/model/store, CostTracker (published)
 │   ├── observability-prometheus/ # Prometheus MetricsCollector + /metrics endpoint + Prometheus client (published)
 │   ├── agent/                 # Agent runtime: Agent, guardrails, handoffs, orchestration, streaming; assistant (published)
@@ -180,8 +181,11 @@ depending on `core % "test->test"`; core's test `application.conf` default is
 (id `fixtureembedding`, alias, API key, default base URL, env-var names, declared dimensions,
 canned vectors), registered the same way; use it wherever a spec needs "some embedding
 provider", as core's embedding config, registry and dimension specs do. A spec that builds its own registry passes
-it to `ProviderRegistry.of`/`.withProvider`, and a provider spec proving it refuses a foreign
-config uses a `FixtureChatConfig`. When a stand-in test checked a real provider's own facts in
+it to `ProviderRegistry.of`/`.withProvider`. A provider module's own `Llm4s<Name>ModuleSpec` uses
+the published `llm4s-provider-testkit` (`org.llm4s.testkit.ProviderModuleChecks`: discovery, sole
+supplier, explicit registration, the config-to-client round trip, `assertRefusesForeignConfig`,
+`assertStreams`, `assertCredentialBindings`), so in-repo providers prove themselves exactly as an
+external one must; `CredentialsRoundTrip` and `LocalProviderTestServer` live there too. When a stand-in test checked a real provider's own facts in
 passing, those move to that provider's spec (`DeepSeekNamedProviderSpec`, now in
 `llm4s-openai-compatible`). Strings that do not reach a client
 (model-registry data, config-policy allow-lists, secret patterns) stay. `llm4s-rag`'s
@@ -259,7 +263,17 @@ into descriptor-declared extras with unchanged HOCON names - `endpoint` (require
 `model`, `baseUrl`, `apiKey`, `headers` and `requiresEndpoint` is gone; and moved
 `ProviderModelListers` to `llm4s-openai-compatible` (`sectionHeaders` derives headers such as
 `OpenAI-Organization` from a section). **A field only some providers read is that provider's
-extra, never a field of `NamedProviderConfig`.**
+extra, never a field of `NamedProviderConfig`.** Pass 5 settled the SPI's API quality. **The
+growth-prone data types** (`CompletionOptions`, `Completion`, `StreamedChunk`, `TokenUsage`,
+`ModelCapabilities`, `ModelMetadata`, `ProviderConfigSpec`, `EmbeddingConfigSpec`,
+`ProviderFeatures`, `NamedProviderConfig`, `ReliabilityConfig`, `CircuitBreakerConfig`,
+`RateLimitConfig`, `ContextConfig`) are `final case class X private (...)` with a public companion
+`apply` carrying the defaults and `with*` setters (an `Option` field's setter takes the value or an
+`Option`); `.copy` is private. **To add a field after the baseline**: add it to the constructor and,
+with a default, to `apply`; keep the previous `apply` as an overload *without* defaults that
+forwards to the new one; add `withX`. Never re-expose `copy`. A type with an upickle `macroRW`
+(`ModelCapabilities`) keeps its constructor defaults too - the reader fills missing keys from them.
+A new frozen data type that may grow follows the same pattern from the start.
 
 `org.llm4s.vectorstore.PostgresVectorHelpers` is the one file in that package still in core:
 it is a pure pgvector text codec shared by `llm4s-rag` and `llm4s-memory-postgres`, which must
@@ -520,7 +534,7 @@ for {
 ```scala
 val options = CompletionOptions()
   .withReasoning(ReasoningEffort.High)  // None, Low, Medium, High
-  .copy(maxTokens = Some(4096))
+  .withMaxTokens(4096)
 
 client.complete(conversation, options)
 ```

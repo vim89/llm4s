@@ -1,5 +1,90 @@
 # Migration Guide
 
+## Pre-baseline API cleanup, pass 5
+
+Not in a release yet; continues pass 4 below. It settles the provider-author SPI's API quality
+before the binary-compatibility baseline.
+
+### Growth-prone data types: construct with named arguments, change with `with*`
+
+A case class cannot gain a field without breaking binary compatibility - its constructor,
+`apply` and `copy` all change - so the types the library will plausibly extend now have a private
+constructor, a public companion `apply` carrying the defaults, and `with*` setters:
+`CompletionOptions`, `Completion`, `StreamedChunk`, `TokenUsage`, `ModelCapabilities`,
+`ModelMetadata`, `ProviderConfigSpec`, `EmbeddingConfigSpec`, `ProviderFeatures`,
+`NamedProviderConfig`, `ReliabilityConfig`, `CircuitBreakerConfig`, `RateLimitConfig`,
+`ContextConfig`.
+
+Construction is unchanged. `.copy(...)` is no longer available outside the type:
+
+```scala
+// before
+val opts = CompletionOptions(temperature = 0.2).copy(maxTokens = Some(500))
+
+// after
+val opts = CompletionOptions(temperature = 0.2).withMaxTokens(500)
+```
+
+Every field has a `withX`. An `Option` field's setter takes either the value or an `Option`
+(`withMaxTokens(500)`, `withMaxTokens(None)`). Match these types by name (`c.usage`), not by
+position: a positional pattern breaks when a field is added.
+
+### `Llm4sHttpClient` returns `Result` and takes `FiniteDuration`
+
+Every request method (`get`, `post`, `postBytes`, `postMultipart`, `put`, `delete`, `postRaw`,
+`postStream`) returns `Result[...]` and never throws for a transport failure: a timeout is a
+`TimeoutError`, a connection or I/O failure a `NetworkError`, an invalid URL, header or timeout a
+`ValidationError`, an interruption an `ExecutionError` (with the interrupt flag restored). A
+non-2xx status is still a `Right`. `getResult` is removed - `get` is now a `Result` itself.
+
+```scala
+// before
+val response = Try(http.post(url, headers, body, timeout = 120000)).toResult
+// after
+import scala.concurrent.duration.*
+val response: Result[HttpResponse] = http.post(url, headers, body, timeout = 120.seconds)
+```
+
+`HttpRawResponse` and `StreamingHttpResponse` carry `headers`, and every response type has a
+case-insensitive `header(name)`. Pass the headers to `HttpErrorMapper.mapHttpError(status, body,
+provider, headers)` so a 429's `Retry-After` (seconds or an HTTP date) becomes the
+`RateLimitError`'s delay; every built-in provider does.
+
+**Test doubles that implement the trait** return `Result[...]` and take `FiniteDuration`; return a
+`Left` to simulate a failure instead of throwing. With ScalaMock, `.returns(resp)` becomes
+`.returns(Right(resp))` and `.throws(e)` becomes `.returns(Left(error))`; type the timeout in
+`onCall`/`where` lambdas as `FiniteDuration` - a lambda typed `_: Int` still compiles but fails at
+runtime.
+
+### `StreamingAccumulator`
+
+| Before | After |
+|---|---|
+| `new StreamingAccumulator()` | `StreamingAccumulator.create()` (the class is `final`) |
+| `getCurrentContent`, `getCurrentThinking`, `getCurrentToolCalls` | `currentContent`, `currentThinking`, `currentToolCalls` |
+| `snapshot()`, `AccumulatorSnapshot` | `toCompletion(created)` |
+| `StreamingAccumulator.withInitialState(...)` | `create()`, then `addChunk` / `updateTokens` |
+
+### `RequestTransformer` and `TransformationResult`
+
+- `TransformationResult.warnings` is removed: nothing ever filled it.
+- `TransformationResult.transform(modelId, options, messages, transformer, dropUnsupported = true)`
+  - the required `transformer` now comes before the defaulted flag.
+- `RequestTransformer#getDisallowedParams` is now `disallowedParams`.
+
+### `llm4s-provider-testkit`
+
+New, Beta. A provider module's spec mixes in `org.llm4s.testkit.ProviderModuleChecks`; see
+[Writing a provider](../guide/writing-a-provider#testing). In this repository,
+`CredentialsRoundTrip` and `LocalProviderTestServer` moved from core's test sources to
+`org.llm4s.testkit`.
+
+### Internal now
+
+`Llm4sConfig.providerFrom(source)` and `apiKeySourcesFrom(source)` took a pureconfig
+`ConfigSource`, which is not part of llm4s's API; they are `private[llm4s]`. Load configuration
+with `Llm4sConfig.provider(name)` / `defaultProvider()` / `apiKeySources()`.
+
 ## Pre-baseline API cleanup, pass 4
 
 Not in a release yet; continues pass 3 below. Vendor fields leave `NamedProviderConfig`.

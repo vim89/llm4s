@@ -103,8 +103,8 @@ class AnthropicClient(
         config.model,
         options,
         conversation.messages,
-        dropUnsupported = true,
-        RequestTransformer.default(registryService)
+        RequestTransformer.default(registryService),
+        dropUnsupported = true
       )
       .flatMap { transformed =>
         val transformedConversation = conversation.copy(messages = transformed.messages)
@@ -191,8 +191,8 @@ curl https://api.anthropic.com/v1/messages \
         config.model,
         options,
         conversation.messages,
-        dropUnsupported = true,
-        RequestTransformer.default(registryService)
+        RequestTransformer.default(registryService),
+        dropUnsupported = true
       )
       .flatMap { transformed =>
         val transformedConversation = conversation.copy(messages = transformed.messages)
@@ -373,7 +373,7 @@ curl https://api.anthropic.com/v1/messages \
         val result = attempt.flatMap(_ =>
           accumulator.toCompletion.map { c =>
             val cost = c.usage.flatMap(u => CostEstimator.estimate(config.model, u))
-            c.copy(model = config.model, estimatedCost = cost)
+            c.withModel(config.model).withEstimatedCost(cost)
           }
         )
 

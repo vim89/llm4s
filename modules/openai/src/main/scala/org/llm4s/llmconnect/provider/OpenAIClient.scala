@@ -165,8 +165,8 @@ class OpenAIClient private[provider] (
         model,
         options,
         conversation.messages,
-        dropUnsupported = true,
-        OpenAIModelRules.transformer(registryService)
+        OpenAIModelRules.transformer(registryService),
+        dropUnsupported = true
       )
       transformedConversation = conversation.copy(messages = transformed.messages)
       params <- buildParams(
@@ -202,8 +202,8 @@ class OpenAIClient private[provider] (
         model,
         options,
         conversation.messages,
-        dropUnsupported = true,
-        OpenAIModelRules.transformer(registryService)
+        OpenAIModelRules.transformer(registryService),
+        dropUnsupported = true
       )
       .flatMap { transformed =>
         val transformedConversation = conversation.copy(messages = transformed.messages)
@@ -287,7 +287,7 @@ class OpenAIClient private[provider] (
         accumulator.toCompletion.map { c =>
           val finalUsage = usage.orElse(c.usage)
           val cost       = finalUsage.flatMap(u => CostEstimator.estimate(model, u))
-          c.copy(model = model, toolCalls = c.message.toolCalls.toList, usage = finalUsage, estimatedCost = cost)
+          c.withModel(model).withToolCalls(c.message.toolCalls.toList).withUsage(finalUsage).withEstimatedCost(cost)
         }
       )
     }(
@@ -381,7 +381,7 @@ class OpenAIClient private[provider] (
     onChunk: StreamedChunk => Unit
   ): Unit = {
     def emit(chunk: StreamedChunk, raw: String): Unit = {
-      accumulator.addChunk(chunk.copy(toolCall = chunk.toolCall.map(_.copy(arguments = ujson.Str(raw)))))
+      accumulator.addChunk(chunk.withToolCall(chunk.toolCall.map(_.copy(arguments = ujson.Str(raw)))))
       onChunk(chunk)
     }
 
@@ -682,18 +682,28 @@ object OpenAIClient {
 
   /**
    * Maps an SDK failure to an [[LLMError]]. An HTTP error from the service keeps its status
-   * code and body, so a 401 becomes an `AuthenticationError`, a 429 a `RateLimitError`, and so
-   * on; an I/O failure is mapped by its cause, so a timeout stays a `NetworkError`.
+   * code, body and headers, so a 401 becomes an `AuthenticationError`, a 429 a `RateLimitError`
+   * carrying its `Retry-After`, and so on; an I/O failure is mapped by its cause, so a timeout
+   * stays a `NetworkError`.
    */
   private[provider] def mapError(e: Throwable, provider: String): LLMError = e match {
     case service: OpenAIServiceException =>
       HttpErrorMapper
-        .mapHttpError(service.statusCode(), Try(service.body().toString).getOrElse(""), provider)
+        .mapHttpError(
+          service.statusCode(),
+          Try(service.body().toString).getOrElse(""),
+          provider,
+          Try(headerMap(service.headers())).getOrElse(Map.empty)
+        )
         .left
         .getOrElse(service.toLLMError)
     case io: OpenAIIoException if io.getCause != null => io.getCause.toLLMError
     case other                                        => other.toLLMError
   }
+
+  /** The SDK's response headers as the multi-valued map `HttpErrorMapper` reads. */
+  private def headerMap(headers: com.openai.core.http.Headers): Map[String, Seq[String]] =
+    headers.names().asScala.map(name => name -> headers.values(name).asScala.toSeq).toMap
 
   /**
    * Whether a streaming request may carry `stream_options.include_usage`, which makes the service
