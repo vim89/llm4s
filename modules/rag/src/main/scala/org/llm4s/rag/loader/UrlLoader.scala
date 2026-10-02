@@ -1,10 +1,13 @@
 package org.llm4s.rag.loader
 
+import org.llm4s.util.DurationRounding
+
 import org.llm4s.core.safety.NetworkSecurity
 import org.llm4s.error.NetworkError
 
 import java.net.{ HttpURLConnection, URI }
 import scala.annotation.tailrec
+import scala.concurrent.duration.*
 import scala.io.Source
 import scala.util.Using
 
@@ -16,14 +19,14 @@ import scala.util.Using
  *
  * @param urls URLs to load
  * @param headers HTTP headers to send with requests
- * @param timeoutMs Connection and read timeout in milliseconds
+ * @param timeout Connection and read timeout
  * @param metadata Additional metadata to attach
  * @param retryCount Number of retry attempts for failed requests
  */
 final case class UrlLoader(
   urls: Seq[String],
   headers: Map[String, String] = Map.empty,
-  timeoutMs: Int = 30000,
+  timeout: FiniteDuration = 30.seconds,
   metadata: Map[String, String] = Map.empty,
   retryCount: Int = 2
 ) extends DocumentLoader {
@@ -91,10 +94,11 @@ final case class UrlLoader(
     maxRedirects: Int
   ): Either[NetworkError, HttpURLConnection] =
     scala.util.Try {
-      val uri  = new URI(url)
-      val conn = uri.toURL.openConnection().asInstanceOf[HttpURLConnection]
-      conn.setConnectTimeout(timeoutMs)
-      conn.setReadTimeout(timeoutMs)
+      val uri           = new URI(url)
+      val conn          = uri.toURL.openConnection().asInstanceOf[HttpURLConnection]
+      val timeoutMillis = DurationRounding.ceilMillisInt(timeout)
+      conn.setConnectTimeout(timeoutMillis)
+      conn.setReadTimeout(timeoutMillis)
       conn.setInstanceFollowRedirects(false)
       conn.setRequestProperty("User-Agent", "LLM4S-RAG/1.0")
       headers.foreach { case (k, v) => conn.setRequestProperty(k, v) }
@@ -153,8 +157,8 @@ final case class UrlLoader(
     copy(headers = headers ++ h)
 
   /** Set timeout */
-  def withTimeout(ms: Int): UrlLoader =
-    copy(timeoutMs = ms)
+  def withTimeout(timeout: FiniteDuration): UrlLoader =
+    copy(timeout = timeout)
 
   /** Set retry count */
   def withRetries(n: Int): UrlLoader =

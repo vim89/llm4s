@@ -1,5 +1,7 @@
 package org.llm4s.toolapi.builtin.http
 
+import org.llm4s.util.DurationRounding
+
 import org.llm4s.core.safety.UsingOps.using
 import org.llm4s.toolapi._
 import org.llm4s.types.Result
@@ -104,7 +106,7 @@ object HTTPTool {
         config.allowedDomains
           .map(d => s"Allowed domains: ${d.mkString(", ")}")
           .getOrElse("All domains allowed (except blocked).") +
-        s" Timeout: ${config.timeoutMs}ms.",
+        s" Timeout: ${config.timeout.toMillis}ms.",
       schema = createSchema
     ).withHandler { extractor =>
       for {
@@ -250,8 +252,9 @@ object HTTPTool {
 
       // Configure connection
       connection.setRequestMethod(method.toUpperCase)
-      connection.setConnectTimeout(config.timeoutMs)
-      connection.setReadTimeout(config.timeoutMs)
+      val timeoutMillis = DurationRounding.ceilMillisInt(config.timeout)
+      connection.setConnectTimeout(timeoutMillis)
+      connection.setReadTimeout(timeoutMillis)
       // Auto-redirects are always disabled; the makeRequest loop handles
       // redirect following with per-hop SSRF validation (Issue #788).
       connection.setInstanceFollowRedirects(false)
