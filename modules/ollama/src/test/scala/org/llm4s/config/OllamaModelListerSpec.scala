@@ -21,9 +21,6 @@ class OllamaModelListerSpec extends AnyFunSuite with Matchers:
       model = ModelName(model),
       baseUrl = baseUrl.map(BaseUrl(_)),
       apiKey = apiKey.map(ApiKey(_)),
-      organization = None,
-      endpoint = None,
-      apiVersion = None
     )
 
   test("Ollama lister discovers models from /api/tags") {
@@ -87,7 +84,7 @@ class OllamaModelListerSpec extends AnyFunSuite with Matchers:
 
     result match
       case Left(err) =>
-        err.message should include("Model discovery is not supported yet")
+        err.message should include("provider section, but it is configured for")
         err.message should include("openai")
       case Right(models) =>
         fail(s"Expected unsupported provider error, got models: $models")

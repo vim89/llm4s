@@ -1,5 +1,103 @@
 # Migration Guide
 
+## Pre-baseline API cleanup, pass 4
+
+Not in a release yet; continues pass 3 below. Vendor fields leave `NamedProviderConfig`.
+
+**Config files: no change.** `organization`, `endpoint`, `apiVersion`, `contextWindow` and
+`reserveCompletion` keep their names in `llm4s.providers.<name>` sections. What changed is who owns
+them: each is now a provider-specific key that only its provider declares.
+
+| Key | Declared by |
+|---|---|
+| `organization` | `openai`, `requesty`, `openrouter` |
+| `endpoint` (required), `apiVersion` (default `V2025_01_01_PREVIEW`) | `azure` |
+| `contextWindow`, `reserveCompletion` | `openai-compatible` |
+
+In a section for any other provider these keys used to be read and silently ignored; they are now
+reported once as unknown keys, with a warning, and dropped - delete them. Vertex AI's deprecated
+`endpoint`/`organization` aliases for `project`/`location` work exactly as before. A non-numeric
+`contextWindow`/`reserveCompletion` is now reported when the section is resolved, naming the key
+(`llm4s.providers.<name>.contextWindow must be a positive whole number, got '...'`), rather than as a
+type error while reading the block.
+
+**Scala callers:**
+
+1. `NamedProviderConfig` no longer has `organization`, `endpoint`, `apiVersion`, `contextWindow` or
+   `reserveCompletion`. Read the validated value from the section's extras:
+   `config.organization` → `config.extra("organization")` (or `OpenAIConfig.OrganizationKey`),
+   `config.endpoint` → `config.extra(AzureProvider.EndpointKey)`,
+   `config.apiVersion` → `config.extra(AzureProvider.ApiVersionKey)`,
+   `config.contextWindow` → `config.extra(OpenAICompatibleProvider.ContextWindowKey).map(_.toInt)`
+   (likewise `ReserveCompletionKey`). Values are strings.
+2. Code constructing `NamedProviderConfig(...)` drops those arguments; pass them in
+   `extras = Map("endpoint" -> ..., ...)` if the descriptor needs them. Positional calls
+   `NamedProviderConfig(id, model, baseUrl, apiKey, org, endpoint, apiVersion)` become
+   `NamedProviderConfig(id, model, baseUrl, apiKey)`.
+3. `ProviderConfigSpec(requiresEndpoint = true, endpointDescription = "...")` →
+   `ProviderConfigSpec(extras = Seq(ProviderConfigKey.required("endpoint", "...")))`.
+   `ProviderConfigSpec.BuiltinKeys` is now `provider, model, baseUrl, apiKey, headers`, and
+   `BuiltinAliasKeys` is `baseUrl, apiKey` - a `deprecatedAliases` entry naming one of the moved keys
+   still works, resolved from the section's extras.
+4. `ProviderModelListers.openAICompatible` is now in `llm4s-openai-compatible` (package
+   `org.llm4s.config` unchanged): a provider module calling it adds that dependency. It no longer
+   sends `OpenAI-Organization` from the section; pass
+   `sectionHeaders = ProviderModelListers.openAIOrganizationHeader` (and declare
+   `OpenAIConfig.OrganizationConfigKey`) to keep it, or any `NamedProviderConfig => Map[String, String]`
+   to derive other headers. `ProviderModelLister` and `DiscoveredModel` stay in `llm4s-core`.
+
+## Pre-baseline API cleanup, pass 3
+
+Not in a release yet; continues pass 2 below.
+
+### `llmconnect.middleware`, `ReliableProviders` and `ReliabilitySyntax` are removed
+
+The middleware package had no users outside its own tests and duplicated `caching` and the
+metrics every provider client already records. `LLMClient` is a trait, so a decorator is a class
+that implements it and delegates. `ReliableProviders.wrap` and `.withReliability(...)` were
+shorthand for one constructor:
+
+```scala
+// before
+val reliable = ReliableProviders.wrap(client, "openai", config)
+val other    = client.withReliability("openai")
+
+// after
+val reliable = new ReliableClient(client, "openai", config)
+val other    = new ReliableClient(client, "openai", ReliabilityConfig.default)
+```
+
+`ReliableClient`'s companion factories (`ReliableClient(client)`, `ReliableClient(client, config)`,
+`ReliableClient(client, config, metrics)`, `ReliableClient.withProviderName`) go too: three of them
+guessed the provider name from the client's class name. Use the constructor. For a client built
+from config, the name is `providerConfig.providerId.asString`.
+
+Behaviour fix: **`ReliableClient` now applies `ReliabilityConfig.rateLimit` itself**, before every
+attempt, retries included. Before, only `ReliableProviders.wrap` honoured it, so a
+`new ReliableClient(...)` with rate limiting enabled was not rate limited.
+
+### OpenAI's model rules leave `RequestTransformer`
+
+`RequestTransformer.default` now applies only the registry's capabilities. The o-series
+constraints (no system message, no native streaming, temperature 1, no sampling penalties) and
+the `max_completion_tokens` rule for o-series and gpt-5 moved into `llm4s-openai`, which is the
+only client that needs them; the Anthropic and Gemini clients no longer apply them to models
+named like OpenAI's.
+
+| Removed | Use instead |
+|---|---|
+| `RequestTransformer#requiresMaxCompletionTokens`, `TransformationResult.requiresMaxCompletionTokens` | none in core; it is an OpenAI wire parameter |
+| `DefaultRequestTransformer` (now package-private) | `RequestTransformer.default(service)` or `withOverrides(...)` |
+| (new) | `RequestTransformer.adjusted(service)((modelId, capabilities) => ...)`, for a provider module's own rules on top of the registry |
+
+### Provider-author SPI
+
+The plumbing provider modules build on is a public, frozen SPI; see
+[Writing a provider](../guide/writing-a-provider). Two OpenAI-format helpers moved to
+`llm4s-openai-compatible`, with unchanged packages: `org.llm4s.llmconnect.model.ResponseFormatMapper`
+and `org.llm4s.llmconnect.serialization.{ToolCallDeserializer, StandardToolCallDeserializer}`.
+`ProviderResultOps` (`tapRight` / `tapLeft`) is now `private[llm4s]`.
+
 ## Pre-baseline API cleanup, pass 2
 
 Not in a release yet; continues pass 1 below.

@@ -151,8 +151,8 @@ tool-call parser - every member defaults to the standard format). The module als
 `OpenAIConfig` - `llm4s-openai` depends on it for that, never the reverse, which would put the
 OpenAI SDK on every OpenAI-compatible user's classpath - and the generic `openai-compatible`
 provider, the standard dialect configured entirely from a named section (`baseUrl`, `model`,
-optional `apiKey`, `contextWindow`, `reserveCompletion`, `headers`; the last three are fields of
-`NamedProviderConfig` that other providers ignore). **A new OpenAI-compatible provider is a
+optional `apiKey`, `contextWindow`, `reserveCompletion`, `headers`; `headers` is a built-in field
+of `NamedProviderConfig`, the other two are the provider's own declared extras). **A new OpenAI-compatible provider is a
 dialect and a descriptor in that module, or just config** - check whether `openai-compatible`
 covers it before writing one; never another copy of the client. Mistral and Cohere followed as
 dialects: Mistral over its OpenAI-format `/v1/chat/completions` (nine-character tool-call ids,
@@ -244,9 +244,22 @@ takes), replaced `CancellationToken`'s exception-throwing members with `whenCanc
 Future[Unit]`, and moved single-consumer utilities to their consumer, keeping packages:
 `SqlIdentifier`, `ChunkingUtils` and `RateLimitedLogger` to `llm4s-rag`, `ManagedResource` to
 `llm4s-speech`, `LiftToResult` to `llm4s-observability`. **A utility with one consuming module
-lives in that module, not core.** The open decisions on #1133: `NamedProviderConfig`'s
-OpenAI/Azure fields, OpenAI rules in `DefaultRequestTransformer` and `ProviderModelLister`, the
-`middleware` package and `ReliableProviders`, and the scope of the provider-author SPI.
+lives in that module, not core.** Pass 3 deleted `llmconnect.middleware`, `ReliableProviders`,
+`ReliabilitySyntax` and `ReliableClient`'s factories (`new ReliableClient(...)` is the one way in,
+and it applies `rateLimit` itself through a private `TokenBucket`); moved OpenAI's o-series and
+`max_completion_tokens` rules out of core's `RequestTransformer` into `llm4s-openai`'s
+`OpenAIModelRules` - **vendor model rules live in the vendor's module**, layered on with
+`RequestTransformer.adjusted`, as Anthropic's temperature rule already did; and settled the
+provider plumbing as a **public, frozen provider-author SPI** (`docs/guide/writing-a-provider.md`),
+with `ResponseFormatMapper` and `ToolCallDeserializer` moved to `llm4s-openai-compatible` and
+`ProviderResultOps` made `private[llm4s]`. Pass 4 moved `NamedProviderConfig`'s vendor fields
+into descriptor-declared extras with unchanged HOCON names - `endpoint` (required) and
+`apiVersion` to Azure, `organization` to OpenAI, Requesty and OpenRouter, `contextWindow` and
+`reserveCompletion` to the generic `openai-compatible` provider - so `BuiltinKeys` is `provider`,
+`model`, `baseUrl`, `apiKey`, `headers` and `requiresEndpoint` is gone; and moved
+`ProviderModelListers` to `llm4s-openai-compatible` (`sectionHeaders` derives headers such as
+`OpenAI-Organization` from a section). **A field only some providers read is that provider's
+extra, never a field of `NamedProviderConfig`.**
 
 `org.llm4s.vectorstore.PostgresVectorHelpers` is the one file in that package still in core:
 it is a pure pgvector text codec shared by `llm4s-rag` and `llm4s-memory-postgres`, which must

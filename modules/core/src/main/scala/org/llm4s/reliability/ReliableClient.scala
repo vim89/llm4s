@@ -8,7 +8,7 @@ import org.llm4s.error._
 import org.llm4s.metrics.{ MetricsCollector, ErrorKind }
 
 import scala.annotation.tailrec
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.{ Duration, MILLISECONDS }
 import java.util.concurrent.atomic.{ AtomicInteger, AtomicLong, AtomicReference }
 
 /**
@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.{ AtomicInteger, AtomicLong, AtomicReference 
  * - Retry with configurable policies (exponential backoff, linear, fixed)
  * - Circuit breaker to fail fast when service is down
  * - Deadline enforcement to prevent hanging operations
+ * - Local token-bucket rate limiting ([[RateLimitConfig]]), checked before every attempt
  * - Metrics tracking for retry attempts and circuit breaker state
  *
  * Thread-safety: Uses AtomicInteger/AtomicReference for circuit breaker state management
@@ -27,23 +28,37 @@ import java.util.concurrent.atomic.{ AtomicInteger, AtomicLong, AtomicReference 
  * @param providerName Explicit provider name for stable metrics labels
  * @param config Reliability configuration
  * @param collector Optional metrics collector for observability
+ * @param clock milliseconds since the epoch, for deadlines and the circuit's recovery timeout;
+ *              injectable for tests
+ * @param sleep how the client waits between attempts; injectable so a test can record the
+ *              delays chosen, or throw `InterruptedException` to simulate an interrupted wait
  */
 final class ReliableClient(
   underlying: LLMClient,
   providerName: String,
   config: ReliabilityConfig,
   collector: Option[MetricsCollector] = None,
-  clock: () => Long = () => System.currentTimeMillis()
+  clock: () => Long = () => System.currentTimeMillis(),
+  sleep: Duration => Unit = delay => Thread.sleep(delay.toMillis)
 ) extends LLMClient {
 
-  /** Binary-compatible auxiliary constructor matching the pre-clock 4-param signature. */
-  def this(
-    underlying: LLMClient,
-    providerName: String,
-    config: ReliabilityConfig,
-    collector: Option[MetricsCollector]
-  ) =
-    this(underlying, providerName, config, collector, () => System.currentTimeMillis())
+  // Local rate limit, consulted on every attempt (retries included) before the call is made
+  private val rateLimiter: Option[TokenBucket] =
+    Option.when(config.rateLimit.enabled)(
+      new TokenBucket(config.rateLimit.requestsPerMinute, config.rateLimit.burstCapacity)
+    )
+
+  private def rateLimited[A](operation: () => Result[A]): () => Result[A] =
+    rateLimiter match {
+      case None => operation
+      case Some(bucket) =>
+        () =>
+          if (bucket.tryAcquire()) operation()
+          else {
+            collector.foreach(_.recordError(ErrorKind.RateLimit, providerName))
+            Left(RateLimitError.local(providerName))
+          }
+    }
 
   // Circuit breaker state (thread-safe via atomic references)
   private val circuitState    = new AtomicReference[CircuitState](CircuitState.Closed)
@@ -61,7 +76,7 @@ final class ReliableClient(
     if (!config.enabled) {
       underlying.complete(conversation, options)
     } else {
-      executeWithReliability(() => underlying.complete(conversation, options))
+      executeWithReliability(rateLimited(() => underlying.complete(conversation, options)))
     }
 
   override def streamComplete(
@@ -72,7 +87,7 @@ final class ReliableClient(
     if (!config.enabled) {
       underlying.streamComplete(conversation, options, onChunk)
     } else {
-      executeWithReliability(() => underlying.streamComplete(conversation, options, onChunk))
+      executeWithReliability(rateLimited(() => underlying.streamComplete(conversation, options, onChunk)))
     }
 
   override def getContextWindow(): Int     = underlying.getContextWindow()
@@ -92,18 +107,34 @@ final class ReliableClient(
       case Right(_) => // Continue
     }
 
+    // Whether any attempt reached the provider and failed. The final result alone cannot say:
+    // a provider failure whose retry is then throttled locally ends as a local throttle.
+    val providerFailed = new java.util.concurrent.atomic.AtomicBoolean(false)
+    val tracked: () => Result[A] = () => {
+      val attempt = operation()
+      attempt match {
+        case Left(e) if !isLocalThrottle(e) => providerFailed.set(true)
+        case _                              => ()
+      }
+      attempt
+    }
+
     // Apply deadline if configured
     val result = config.deadline match {
       case Some(deadline) =>
-        executeWithDeadlineAndRetry(operation, deadline)
+        executeWithDeadlineAndRetry(tracked, deadline)
       case None =>
-        executeWithRetry(operation, attemptNumber = 1)
+        executeWithRetry(tracked, attemptNumber = 1)
     }
 
-    // Update circuit breaker state based on result
+    // Update circuit breaker state based on result. A call that only ever met the local rate
+    // limit says nothing about the provider's health, so it counts as neither; it only hands
+    // back a half-open probe permit.
     result match {
       case Right(_) =>
         onSuccess()
+      case Left(e) if isLocalThrottle(e) && !providerFailed.get() =>
+        onLocallyThrottled()
       case Left(_) =>
         onFailure()
     }
@@ -125,18 +156,7 @@ final class ReliableClient(
 
       // Check if deadline already exceeded
       if (remainingTime <= 0) {
-        collector.foreach(_.recordError(ErrorKind.Timeout, providerName))
-        return Left(
-          TimeoutError(
-            message = lastError match {
-              case Some(err) =>
-                s"Operation exceeded deadline of ${deadline.toSeconds}s after $attemptNumber attempts. Last error: ${err.message}"
-              case None => s"Operation exceeded deadline of ${deadline.toSeconds}s before first attempt"
-            },
-            timeoutDuration = deadline,
-            operation = "reliable-client.complete"
-          )
-        )
+        return deadlineExceeded(attemptNumber, lastError, deadline)
       }
 
       // Execute operation with interruption handling
@@ -145,6 +165,7 @@ final class ReliableClient(
           operation()
         catch {
           case _: InterruptedException =>
+            Thread.currentThread().interrupt()
             Left(
               TimeoutError(
                 message = s"Operation interrupted after $attemptNumber attempts",
@@ -168,28 +189,20 @@ final class ReliableClient(
 
               if (remainingAfterDelay <= 0) {
                 // Not enough time for retry
-                collector.foreach(_.recordError(ErrorKind.Timeout, providerName))
-                Left(
-                  TimeoutError(
-                    message =
-                      s"Operation exceeded deadline of ${deadline.toSeconds}s after $attemptNumber attempts. Last error: ${error.message}",
-                    timeoutDuration = deadline,
-                    operation = "reliable-client.complete"
-                  )
-                )
+                deadlineExceeded(attemptNumber, Some(error), deadline)
               } else {
                 // Sleep and retry
                 try
-                  Thread.sleep(delay.toMillis)
+                  sleep(delay)
                 catch {
                   case _: InterruptedException =>
-                    return Left(
+                    return interruptedDuringRetryDelay(error) {
                       TimeoutError(
                         message = s"Operation interrupted during retry delay after $attemptNumber attempts",
                         timeoutDuration = deadline,
                         operation = "reliable-client.complete"
                       )
-                    )
+                    }
                 }
                 loop(attemptNumber + 1, Some(error))
               }
@@ -221,6 +234,7 @@ final class ReliableClient(
         operation()
       catch {
         case _: InterruptedException =>
+          Thread.currentThread().interrupt()
           Left(
             ExecutionError(
               message = s"Operation interrupted after $attemptNumber attempts",
@@ -240,15 +254,15 @@ final class ReliableClient(
             collector.foreach(_.recordRetryAttempt(providerName, attemptNumber))
 
             try
-              Thread.sleep(delay.toMillis)
+              sleep(delay)
             catch {
               case _: InterruptedException =>
-                return Left(
+                return interruptedDuringRetryDelay(error) {
                   ExecutionError(
                     message = s"Operation interrupted during retry delay after $attemptNumber attempts",
                     operation = "reliable-client.complete"
                   )
-                )
+                }
             }
 
             // Retry
@@ -272,16 +286,66 @@ final class ReliableClient(
    */
   private[reliability] def decideRetry(attemptNumber: Int, error: LLMError): RetryDecision =
     if (attemptNumber < config.retryPolicy.maxAttempts && config.retryPolicy.isRetryable(error))
-      RetryDecision.Retry(config.retryPolicy.delayFor(attemptNumber, error))
+      error match {
+        // Our own bucket knows exactly when the next token arrives; a provider-style backoff
+        // does not. A bucket that never refills is not worth retrying.
+        case e: RateLimitError if isLocalThrottle(e) && rateLimiter.isDefined =>
+          rateLimiter.flatMap(_.nanosUntilNextToken) match {
+            // Rounded up: the retry sleeps whole milliseconds, and waking a fraction early
+            // finds the bucket still empty
+            case Some(nanos) => RetryDecision.Retry(Duration(math.ceil(nanos / 1e6).toLong, MILLISECONDS))
+            case None        => RetryDecision.DoNotRetry
+          }
+        case _ => RetryDecision.Retry(config.retryPolicy.delayFor(attemptNumber, error))
+      }
     else
       RetryDecision.DoNotRetry
+
+  /**
+   * The outcome when the thread is interrupted while waiting to retry `pending`. The interrupt is
+   * restored for the caller. If `pending` is a local throttle, no provider call failed - the
+   * wait was for our own token - so it is returned as itself and stays out of the circuit;
+   * otherwise the interruption is reported as `interrupted`.
+   */
+  private def interruptedDuringRetryDelay[A](pending: LLMError)(interrupted: => LLMError): Result[A] = {
+    Thread.currentThread().interrupt()
+    if (isLocalThrottle(pending)) Left(pending) else Left(interrupted)
+  }
+
+  private def isLocalThrottle(error: LLMError): Boolean = error match {
+    case e: RateLimitError => e.origin == RateLimitOrigin.LocalThrottle
+    case _                 => false
+  }
+
+  /**
+   * The outcome when the deadline leaves no time for another attempt. A local throttle is
+   * returned as itself: no provider call failed, so it must not read as a provider timeout
+   * (which would count against the circuit).
+   */
+  private def deadlineExceeded[A](attemptNumber: Int, lastError: Option[LLMError], deadline: Duration): Result[A] =
+    lastError match {
+      case Some(e) if isLocalThrottle(e) => Left(e)
+      case _ =>
+        collector.foreach(_.recordError(ErrorKind.Timeout, providerName))
+        Left(
+          TimeoutError(
+            message = lastError match {
+              case Some(err) =>
+                s"Operation exceeded deadline of ${deadline.toSeconds}s after $attemptNumber attempts. Last error: ${err.message}"
+              case None => s"Operation exceeded deadline of ${deadline.toSeconds}s before first attempt"
+            },
+            timeoutDuration = deadline,
+            operation = "reliable-client.complete"
+          )
+        )
+    }
 
   /**
    * Record the outcome metric for an attempt that exhausted retries.
    *
    * Skips [[RateLimitError]]s of [[RateLimitOrigin.LocalThrottle]] origin: those were
-   * rejected by a rate-limiting middleware composed inside this retry loop (see
-   * `ReliableProviders.withRateLimiting`), which already recorded its own
+   * rejected by this client's own token bucket inside the retry loop (see `rateLimited`),
+   * which already recorded its own
    * [[ErrorKind.RateLimit]] event at the point of rejection. Recording it again here
    * would double-count the same event. Upstream-provider rate limits (the default
    * origin) are never recorded anywhere else, so they still go through.
@@ -364,6 +428,10 @@ final class ReliableClient(
       // Should not happen
     }
 
+  /** A call the local rate limit rejected never reached the provider: release a half-open probe. */
+  private def onLocallyThrottled(): Unit =
+    if (circuitState.get() == CircuitState.HalfOpen) probePermit.set(false)
+
   /**
    * Handle failed operation.
    */
@@ -409,47 +477,6 @@ final class ReliableClient(
     lastFailureTime.set(0L)
     probePermit.set(false)
   }
-}
-
-object ReliableClient {
-
-  /**
-   * Wrap a client with default reliability configuration.
-   * Provider name derived from client class name (use withProviderName for custom).
-   */
-  def apply(client: LLMClient): ReliableClient = {
-    val providerName = client.getClass.getSimpleName.replace("Client", "").toLowerCase
-    new ReliableClient(client, providerName, ReliabilityConfig.default, None)
-  }
-
-  /**
-   * Wrap a client with custom reliability configuration.
-   * Provider name derived from client class name (use withProviderName for custom).
-   */
-  def apply(client: LLMClient, config: ReliabilityConfig): ReliableClient = {
-    val providerName = client.getClass.getSimpleName.replace("Client", "").toLowerCase
-    new ReliableClient(client, providerName, config, None)
-  }
-
-  /**
-   * Wrap a client with reliability + metrics.
-   * Provider name derived from client class name (use withProviderName for custom).
-   */
-  def apply(client: LLMClient, config: ReliabilityConfig, collector: MetricsCollector): ReliableClient = {
-    val providerName = client.getClass.getSimpleName.replace("Client", "").toLowerCase
-    new ReliableClient(client, providerName, config, Some(collector))
-  }
-
-  /**
-   * Wrap a client with explicit provider name (recommended for production).
-   */
-  def withProviderName(
-    client: LLMClient,
-    providerName: String,
-    config: ReliabilityConfig = ReliabilityConfig.default,
-    collector: Option[MetricsCollector] = None
-  ): ReliableClient =
-    new ReliableClient(client, providerName, config, collector)
 }
 
 /**
