@@ -163,7 +163,7 @@ final class GraphBuilder private (val id: String, val version: String):
           keys = keys.map(k => k.id -> k).toMap,
           output = output,
           maxSupersteps = maxSupersteps,
-          executor = TaskExecutor.sequential
+          executor = TaskExecutor.default
         )
       )
 
@@ -206,10 +206,30 @@ final private[graph] case class NodeDef[I](ref: NodeRef[I], writes: Set[StateKey
       .upgrade(json.version, json.value)
       .flatMap(v => Try(upickle.default.read[I](v)(using ref.codec)).toResult)
 
-/** Runs a superstep's tasks; results come back in task order however the tasks interleave. */
+/**
+ * Runs a superstep's tasks and returns their results in task order, however the tasks interleave.
+ * The default runs them concurrently on virtual threads in an Ox scope, at most
+ * [[TaskExecutor.DefaultLimit]] at a time; if the calling thread is interrupted, Ox interrupts every
+ * task and joins them all before the `InterruptedException` reaches the caller.
+ */
 private[graph] trait TaskExecutor:
   def runAll[R](tasks: Vector[() => R]): Vector[R]
 
 private[graph] object TaskExecutor:
+  /** Superstep concurrency until `RunConfig` makes it configurable (#1271). */
+  val DefaultLimit = 16
+
+  /**
+   * At most `limit` tasks at a time, in an Ox scope. Every task is forked, a lone one included: a
+   * task run inline on the calling thread could catch the caller's interrupt and return normally,
+   * clearing the caller's flag, and the run would carry on as if never cancelled.
+   */
+  def bounded(limit: Int): TaskExecutor = new TaskExecutor:
+    def runAll[R](tasks: Vector[() => R]): Vector[R] =
+      if tasks.isEmpty then Vector.empty
+      else ox.parLimit(limit)(tasks).toVector
+
+  val default: TaskExecutor = bounded(DefaultLimit)
+
   val sequential: TaskExecutor = new TaskExecutor:
     def runAll[R](tasks: Vector[() => R]): Vector[R] = tasks.map(_())

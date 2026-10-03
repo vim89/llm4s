@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Cancellation by interrupt for graph runs and providers** (Experimental, `org.llm4s.agent.graph`,
+  [#1270](https://github.com/llm4s/llm4s/issues/1270)): each superstep runs in a bounded Ox scope on
+  virtual threads (Ox is a new implementation dependency of `llm4s-agent`). Interrupting the thread
+  that called `start`/`recover`/`resume` or `CompiledGraph.run` interrupts and joins every task and
+  returns `Failed(GraphError.Cancelled)` with the interrupt flag set; in a durable run, tasks that
+  finished first keep their results and `recover` continues the run (an in-memory
+  `CompiledGraph.run` keeps nothing from the cancelled superstep); an interrupted task records
+  nothing. The thread claim is always released, and an interrupted Async close still drains its
+  queue first. New `RunEvent.RunCancelled`. The provider testkit gains `assertCancelsWhenInterrupted` and
+  `assertCancelsStreamWhenInterrupted`, and `LocalProviderTestServer.holdOpen`/`streamThenHold`.
+  Design: `docs/design/typed-agent-runtime-design.md` §4.4.
 - **Resumable approval and tool-call barriers for graph runs** (Experimental,
   `org.llm4s.agent.graph`, [#1269](https://github.com/llm4s/llm4s/issues/1269)): nodes can suspend
   with a typed question (`NodeResult.Suspend`, `GraphBuilder.declareResume`, `ResumeRef`). The run
@@ -146,6 +157,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   plus `MediaExtractor` matching on raw MIME prefixes with no type to name the answer.
 
 ### Changed
+- **An interrupted call returns `CancelledError`** ([#1270](https://github.com/llm4s/llm4s/issues/1270)):
+  new `org.llm4s.error.CancelledError` (non-recoverable, never retried) with the interrupt flag kept.
+  A `SocketTimeoutException` on its own stays a timeout. `Llm4sHttpClient` returns it where it
+  returned `ExecutionError` (and `NetworkError` mid-stream); `ReliableClient`, `LLMClientRetry` and
+  `ErrorRecovery` return it instead of `TimeoutError`, `ExecutionError` or `SimpleError` and do not
+  count it against the circuit breaker; every chat client returns it instead of throwing
+  `InterruptedException` or reporting `UnknownError`; `ToolRegistry` returns
+  `ToolCallError.Cancelled`. New `ErrorKind.Cancelled` metric label `cancelled`. Anthropic streams
+  are now closed on every path. `DefaultErrorMapper`, and so `Try(...).toResult`, now returns
+  `CancelledError` for an exception mapped while the thread is interrupted, or one caused by
+  `InterruptedException` or `ClosedByInterruptException`; a bare `InterruptedIOException` (such as
+  OkHttp's call timeout) stays a timeout unless the thread is interrupted. Mapping never sets the
+  interrupt flag. `ReliableClient` returns `CancelledError` (was the local `RateLimitError`) for an
+  interrupt while waiting for a local rate-limit token. A provider call made with the interrupt flag
+  already set returns `CancelledError` without sending the request.
+- **Graph supersteps run concurrently by default**
+  ([#1270](https://github.com/llm4s/llm4s/issues/1270)): a superstep's tasks, which ran one after
+  another, now run concurrently on virtual threads (at most 16 at a time). Node code must be
+  thread-safe; `ThreadLocal`/MDC context is not inherited by a task; and in `Sync` durability,
+  durable events and live progress are delivered on the task threads.
 - **Every client sends through `Llm4sHttpClient`, and a 503's `Retry-After` is honoured**
   ([#1133](https://github.com/llm4s/llm4s/issues/1133)). `CohereReranker`, the OpenAI and Ollama
   embedding providers, the OpenAI and Anthropic vision clients and `OpenAICompatibleClient` called
