@@ -7,10 +7,9 @@ import org.scalatest.{ EitherValues, LoneElement, OptionValues }
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.{ ConcurrentHashMap, CountDownLatch, LinkedBlockingQueue, TimeUnit }
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger }
 import scala.collection.mutable
-import scala.jdk.CollectionConverters.*
 
 class GraphRuntimeSpec extends AnyFlatSpec with Matchers with EitherValues with OptionValues with LoneElement {
 
@@ -50,12 +49,56 @@ class GraphRuntimeSpec extends AnyFlatSpec with Matchers with EitherValues with 
     def callsOf(item: String): Int = Option(calls.get(item)).fold(0)(_.get)
   }
 
-  /** Records what a subscriber receives. */
+  /**
+   * Records what a subscriber receives. Listeners run on the subscription's dispatcher thread, so
+   * the test thread takes events from a queue, waiting up to 5s for each.
+   */
   final private class Recorder {
-    val received                       = new java.util.concurrent.CopyOnWriteArrayList[StreamEvent]()
-    def listener: StreamEvent => Unit  = received.add(_)
-    def durable: Vector[EventRecord]   = received.asScala.toVector.collect { case StreamEvent.Durable(r) => r }
-    def live: Vector[StreamEvent.Live] = received.asScala.toVector.collect { case l: StreamEvent.Live => l }
+    private val queue = new LinkedBlockingQueue[StreamEvent]()
+    private val taken = mutable.ArrayBuffer.empty[StreamEvent]
+
+    /** Durable events delivered so far; readable from any thread. */
+    val delivered = new AtomicInteger()
+
+    def listener: StreamEvent => Unit = { event =>
+      if event.isInstanceOf[StreamEvent.Durable] then delivered.incrementAndGet(): Unit
+      queue.put(event)
+    }
+
+    def next(): StreamEvent = Option(queue.poll(5, TimeUnit.SECONDS)).getOrElse(fail("no event within 5s"))
+
+    /** Takes events until the durable event numbered `seq` has arrived. */
+    def through(seq: Long): Recorder = {
+      while durable.lastOption.forall(_.seq < seq) do taken += next()
+      this
+    }
+
+    /** Takes events until everything `store` holds for the thread has arrived. */
+    def caughtUp(store: Checkpointer): Recorder = through(lastSeq(store))
+
+    /** Nothing more arrives within a short wait. */
+    def quiet(): Unit = Option(queue.poll(200, TimeUnit.MILLISECONDS)) shouldBe None
+
+    /** No further durable event arrives within a short wait; live ones may. */
+    def noMoreDurable(): Unit =
+      Iterator
+        .continually(Option(queue.poll(200, TimeUnit.MILLISECONDS)))
+        .takeWhile(_.isDefined)
+        .flatten
+        .collect { case d: StreamEvent.Durable => d }
+        .toVector shouldBe empty
+
+    def durable: Vector[EventRecord]   = taken.toVector.collect { case StreamEvent.Durable(r) => r }
+    def live: Vector[StreamEvent.Live] = taken.toVector.collect { case l: StreamEvent.Live => l }
+  }
+
+  /** The thread's last committed `seq`, read from the earliest event the store still holds. */
+  private def lastSeq(store: Checkpointer): Long = {
+    val events = store.eventsAfter(thread, 0L, 1000) match {
+      case Left(GraphError.ReplayUnavailable(_, earliest)) => store.eventsAfter(thread, earliest - 1, 1000)
+      case other                                           => other
+    }
+    events.value.lastOption.fold(0L)(_.seq)
   }
 
   /** A store whose commits can be slowed down, or made to fail as if the process had died. */
@@ -85,10 +128,15 @@ class GraphRuntimeSpec extends AnyFlatSpec with Matchers with EitherValues with 
     val recorder = Recorder()
     runtime.subscribe(thread)(recorder.listener).value
 
-    runtime.start(thread, f.graph, Vector("a", "b"), RunId("run-1")).value.completed._2 shouldBe Vector("A", "B")
+    runtime
+      .start(thread, f.graph, Vector("a", "b"), RunConfig().withRunId(RunId("run-1")))
+      .awaited
+      .value
+      .completed
+      ._2 shouldBe Vector("A", "B")
 
     store.latest(thread).value.map(_.checkpoint.status) shouldBe Some(CheckpointStatus.Completed)
-    val events = recorder.durable
+    val events = recorder.caughtUp(store).durable
     contiguous(events)
     kinds(events) shouldBe Vector(
       "RunStarted",
@@ -113,8 +161,14 @@ class GraphRuntimeSpec extends AnyFlatSpec with Matchers with EitherValues with 
   it should "apply a new input to a completed thread's state" in {
     val f       = Fixture()
     val runtime = GraphRuntime(InMemoryCheckpointer())
-    runtime.start(thread, f.graph, Vector("a"), RunId("run-1")).value.completed._2 shouldBe Vector("A")
-    val (state, output) = runtime.start(thread, f.graph, Vector("b", "c"), RunId("run-2")).value.completed
+    runtime
+      .start(thread, f.graph, Vector("a"), RunConfig().withRunId(RunId("run-1")))
+      .awaited
+      .value
+      .completed
+      ._2 shouldBe Vector("A")
+    val (state, output) =
+      runtime.start(thread, f.graph, Vector("b", "c"), RunConfig().withRunId(RunId("run-2"))).awaited.value.completed
     output shouldBe Vector("A", "B", "C")
     state.get(f.log).value shouldBe Vector("summary(1)", "summary(3)")
   }
@@ -123,16 +177,18 @@ class GraphRuntimeSpec extends AnyFlatSpec with Matchers with EitherValues with 
     val f       = Fixture()
     val store   = InMemoryCheckpointer()
     val runtime = GraphRuntime(store)
-    runtime.recover(f.graph, thread, RunId("r0")).left.value shouldBe GraphError.NothingToRecover(thread.value)
+    runtime.recover(thread, f.graph, RunConfig().withRunId(RunId("r0"))).awaited.left.value shouldBe GraphError
+      .NothingToRecover(thread.value)
 
     f.failOnce.add("b")
-    runtime.start(thread, f.graph, Vector("a", "b"), RunId("run-1")).value.failed
+    runtime.start(thread, f.graph, Vector("a", "b"), RunConfig().withRunId(RunId("run-1"))).awaited.value.failed
     val incomplete = store.latest(thread).value.get.checkpoint.id
-    runtime.start(thread, f.graph, Vector("c"), RunId("run-2")).left.value shouldBe
+    runtime.start(thread, f.graph, Vector("c"), RunConfig().withRunId(RunId("run-2"))).awaited.left.value shouldBe
       GraphError.IncompleteRun(thread.value, incomplete)
 
-    runtime.recover(f.graph, thread, RunId("run-3")).value.completed
-    runtime.recover(f.graph, thread, RunId("run-4")).left.value shouldBe GraphError.NothingToRecover(thread.value)
+    runtime.recover(thread, f.graph, RunConfig().withRunId(RunId("run-3"))).awaited.value.completed
+    runtime.recover(thread, f.graph, RunConfig().withRunId(RunId("run-4"))).awaited.left.value shouldBe GraphError
+      .NothingToRecover(thread.value)
   }
 
   it should "refuse every call on a thread whose run is still executing, rather than recover it" in {
@@ -142,19 +198,25 @@ class GraphRuntimeSpec extends AnyFlatSpec with Matchers with EitherValues with 
     val during  = mutable.ArrayBuffer.empty[(Option[String], Vector[Result[RunResult[Vector[String]]]])]
     f.onWorker = _ =>
       during += store.latest(thread).value.map(_.checkpoint.id) -> Vector(
-        runtime.recover(f.graph, thread, RunId("thief")),
-        runtime.start(thread, f.graph, Vector("x"), RunId("thief")),
-        runtime.resume(f.graph, thread, Map.empty, RunId("thief"))
+        runtime.recover(thread, f.graph, RunConfig().withRunId(RunId("thief"))).awaited,
+        runtime.start(thread, f.graph, Vector("x"), RunConfig().withRunId(RunId("thief"))).awaited,
+        runtime.resume(thread, f.graph, Map.empty, RunConfig().withRunId(RunId("thief"))).awaited
       )
 
-    runtime.start(thread, f.graph, Vector("a"), RunId("run-1")).value.completed._2 shouldBe Vector("A")
+    runtime
+      .start(thread, f.graph, Vector("a"), RunConfig().withRunId(RunId("run-1")))
+      .awaited
+      .value
+      .completed
+      ._2 shouldBe Vector("A")
 
     val (latest, results) = during.loneElement
     latest.value should startWith("run-1/")
     results.map(_.left.value) shouldBe Vector.fill(3)(GraphError.ThreadBusy(thread.value, latest))
     f.callsOf("a") shouldBe 1
     f.callsOf("x") shouldBe 0
-    runtime.recover(f.graph, thread, RunId("run-2")).left.value shouldBe GraphError.NothingToRecover(thread.value)
+    runtime.recover(thread, f.graph, RunConfig().withRunId(RunId("run-2"))).awaited.left.value shouldBe GraphError
+      .NothingToRecover(thread.value)
   }
 
   it should "recover without re-running siblings whose results were committed" in {
@@ -170,14 +232,20 @@ class GraphRuntimeSpec extends AnyFlatSpec with Matchers with EitherValues with 
       val runtime = GraphRuntime(store)
       f.failOnce.add("b")
 
-      val (_, error) = runtime.start(thread, graph, Vector("a", "b", "c"), RunId("run-1")).value.failed
+      val (_, error) =
+        runtime.start(thread, graph, Vector("a", "b", "c"), RunConfig().withRunId(RunId("run-1"))).awaited.value.failed
       error shouldBe a[GraphError.NodeFailed]
       store.latest(thread).value.get.pendingWrites.map(_.nodeId) shouldBe Vector("worker", "worker")
 
       val recorder = Recorder()
       runtime.subscribe(thread, afterSeq = store.eventsAfter(thread, 0L, 1000).value.size.toLong)(recorder.listener)
-      runtime.recover(graph, thread, RunId("run-2")).value.completed._2 shouldBe Vector("A", "B", "C")
+      runtime.recover(thread, graph, RunConfig().withRunId(RunId("run-2"))).awaited.value.completed._2 shouldBe Vector(
+        "A",
+        "B",
+        "C"
+      )
       (f.callsOf("a"), f.callsOf("b"), f.callsOf("c")) shouldBe ((1, 2, 1))
+      recorder.caughtUp(store)
       kinds(recorder.durable).take(3) shouldBe Vector("RunRecovered", "TaskCompleted@worker", "Custom@worker")
       recorder.durable.map(_.runId).distinct shouldBe Vector("run-2")
       contiguous(store.eventsAfter(thread, 0L, 1000).value)
@@ -188,7 +256,7 @@ class GraphRuntimeSpec extends AnyFlatSpec with Matchers with EitherValues with 
     val f     = Fixture()
     val store = InMemoryCheckpointer()
     f.failOnce.add("a")
-    GraphRuntime(store).start(thread, f.graph, Vector("a"), RunId("run-1")).value.failed
+    GraphRuntime(store).start(thread, f.graph, Vector("a"), RunConfig().withRunId(RunId("run-1"))).awaited.value.failed
     kinds(store.eventsAfter(thread, 0L, 100).value) shouldBe Vector(
       "RunStarted",
       "TaskCompleted@plan",
@@ -200,47 +268,62 @@ class GraphRuntimeSpec extends AnyFlatSpec with Matchers with EitherValues with 
 
   it should "replay from a sequence, then continue live without gaps or duplicates" in {
     val f       = Fixture()
-    val runtime = GraphRuntime(InMemoryCheckpointer())
+    val store   = InMemoryCheckpointer()
+    val runtime = GraphRuntime(store)
     val late    = Recorder()
     // subscribe from inside a worker, while the run is committing
     f.onWorker = item => if item == "b" then runtime.subscribe(thread)(late.listener).value
     val early = Recorder()
     runtime.subscribe(thread)(early.listener).value
-    runtime.start(thread, f.graph, Vector("a", "b", "c"), RunId("run-1")).value.completed
-    contiguous(late.durable)
-    late.durable shouldBe early.durable
+    runtime.start(thread, f.graph, Vector("a", "b", "c"), RunConfig().withRunId(RunId("run-1"))).awaited.value.completed
+    contiguous(late.caughtUp(store).durable)
+    late.durable shouldBe early.caughtUp(store).durable
 
     val tail = Recorder()
     runtime.subscribe(thread, afterSeq = 5L)(tail.listener).value
-    tail.durable shouldBe early.durable.drop(5)
+    tail.caughtUp(store).durable shouldBe early.durable.drop(5)
   }
 
   it should "stop delivering to a cancelled subscription" in {
     val f        = Fixture()
-    val runtime  = GraphRuntime(InMemoryCheckpointer())
+    val store    = InMemoryCheckpointer()
+    val runtime  = GraphRuntime(store)
     val recorder = Recorder()
     runtime.subscribe(thread)(recorder.listener).value.cancel()
-    runtime.start(thread, f.graph, Vector("a"), RunId("run-1")).value.completed
-    recorder.received.isEmpty shouldBe true
+    runtime.start(thread, f.graph, Vector("a"), RunConfig().withRunId(RunId("run-1"))).awaited.value.completed
+    val witness = Recorder()
+    runtime.subscribe(thread)(witness.listener).value
+    witness.caughtUp(store)
+    recorder.quiet()
   }
 
   it should "report the replay floor after compaction" in {
     val f       = Fixture()
     val store   = InMemoryCheckpointer()
     val runtime = GraphRuntime(store)
-    runtime.start(thread, f.graph, Vector("a"), RunId("run-1")).value.completed
+    runtime.start(thread, f.graph, Vector("a"), RunConfig().withRunId(RunId("run-1"))).awaited.value.completed
     store.compactEvents(thread, 5L).value
-    runtime.subscribe(thread)(_ => ()).left.value shouldBe GraphError.ReplayUnavailable(thread.value, 5L)
+    val refused = Recorder()
+    runtime.subscribe(thread)(refused.listener).value
+    refused.next() shouldBe StreamEvent.Disconnected(
+      0L,
+      DisconnectReason.ReplayFailed(GraphError.ReplayUnavailable(thread.value, 5L))
+    )
     val recorder = Recorder()
     runtime.subscribe(thread, afterSeq = 4L)(recorder.listener).value
-    recorder.durable.head.seq shouldBe 5L
+    recorder.caughtUp(store).durable.head.seq shouldBe 5L
   }
 
   it should "reject a completed thread's checkpoint written by a different graph" in {
     val runtime = GraphRuntime(InMemoryCheckpointer())
-    runtime.start(thread, Fixture("v1").graph, Vector("a"), RunId("run-1")).value.completed
     runtime
-      .start(thread, Fixture("v2").graph, Vector("b"), RunId("run-2"))
+      .start(thread, Fixture("v1").graph, Vector("a"), RunConfig().withRunId(RunId("run-1")))
+      .awaited
+      .value
+      .completed
+    runtime
+      .start(thread, Fixture("v2").graph, Vector("b"), RunConfig().withRunId(RunId("run-2")))
+      .awaited
       .left
       .value shouldBe a[GraphError.RestoreRejected]
   }
@@ -249,7 +332,12 @@ class GraphRuntimeSpec extends AnyFlatSpec with Matchers with EitherValues with 
     val f     = Fixture()
     val store = ControlledCheckpointer()
     f.onWorker = _ => store.crashed.set(true)
-    val (_, error) = GraphRuntime(store).start(thread, f.graph, Vector("a"), RunId("run-1")).value.failed
+    val (_, error) =
+      GraphRuntime(store)
+        .start(thread, f.graph, Vector("a"), RunConfig().withRunId(RunId("run-1")))
+        .awaited
+        .value
+        .failed
     error shouldBe a[GraphError.CheckpointWriteFailed]
     store.underlying.latest(thread).value.get.checkpoint.snapshot.superstep shouldBe 1
   }
@@ -258,7 +346,11 @@ class GraphRuntimeSpec extends AnyFlatSpec with Matchers with EitherValues with 
     val f     = Fixture()
     val store = InMemoryCheckpointer()
     f.failOnce.add("b")
-    GraphRuntime(store).start(thread, f.graph, Vector("a", "b"), RunId("run-1")).value.failed
+    GraphRuntime(store)
+      .start(thread, f.graph, Vector("a", "b"), RunConfig().withRunId(RunId("run-1")))
+      .awaited
+      .value
+      .failed
 
     def tampered(change: PendingWrite => PendingWrite): Checkpointer = new Checkpointer {
       def commit(threadId: ThreadId, commit: Commit) = store.commit(threadId, commit)
@@ -268,35 +360,48 @@ class GraphRuntimeSpec extends AnyFlatSpec with Matchers with EitherValues with 
       def compactEvents(threadId: ThreadId, beforeSeq: Long)          = store.compactEvents(threadId, beforeSeq)
     }
     GraphRuntime(tampered(_.copy(nodeId = "summarize")))
-      .recover(f.graph, thread, RunId("run-2"))
+      .recover(thread, f.graph, RunConfig().withRunId(RunId("run-2")))
+      .awaited
       .left
       .value
       .message should
       include("names node 'summarize', not 'worker'")
     val logWrite = EncodedOperation.Update("log", VersionedJson(1, ujson.Str("forged")))
     GraphRuntime(tampered(w => w.copy(operations = w.operations :+ logWrite)))
-      .recover(f.graph, thread, RunId("run-3"))
+      .recover(thread, f.graph, RunConfig().withRunId(RunId("run-3")))
+      .awaited
       .left
       .value shouldBe a[GraphError.UndeclaredWrite]
     // the genuine writes still recover
-    GraphRuntime(store).recover(f.graph, thread, RunId("run-4")).value.completed._2 shouldBe Vector("A", "B")
+    GraphRuntime(store)
+      .recover(thread, f.graph, RunConfig().withRunId(RunId("run-4")))
+      .awaited
+      .value
+      .completed
+      ._2 shouldBe Vector("A", "B")
   }
 
   it should "keep durable events detached from what subscribers and readers are handed" in {
-    val f       = Fixture()
-    val store   = InMemoryCheckpointer()
-    val runtime = GraphRuntime(store)
+    val f        = Fixture()
+    val store    = InMemoryCheckpointer()
+    val runtime  = GraphRuntime(store)
+    val tamperer = Recorder()
     runtime
-      .subscribe(thread) {
-        case StreamEvent.Durable(record) =>
-          record.event match {
-            case RunEvent.Custom(_, _, payload) => payload("item") = "tampered"
-            case _                              => ()
-          }
-        case _ => ()
+      .subscribe(thread) { event =>
+        event match {
+          case StreamEvent.Durable(record) =>
+            record.event match {
+              case RunEvent.Custom(_, _, payload) => payload("item") = "tampered"
+              case _                              => ()
+            }
+          case _ => ()
+        }
+        tamperer.listener(event)
       }
       .value
-    runtime.start(thread, f.graph, Vector("a"), RunId("run-1")).value.completed
+    runtime.start(thread, f.graph, Vector("a"), RunConfig().withRunId(RunId("run-1"))).awaited.value.completed
+    // the listener has tampered with everything it was handed
+    tamperer.caughtUp(store)
     def customs =
       store.eventsAfter(thread, 0L, 100).value.collect { case EventRecord(_, _, _, _, _, _, _, c: RunEvent.Custom) =>
         c.payload
@@ -312,7 +417,11 @@ class GraphRuntimeSpec extends AnyFlatSpec with Matchers with EitherValues with 
       val store = ControlledCheckpointer()
       f.failOnce.add("a")
       f.onWorker = _ => store.crashed.set(true)
-      val (_, error) = GraphRuntime(store).start(thread, f.graph, Vector("a"), RunId("run-1"), durability).value.failed
+      val (_, error) = GraphRuntime(store)
+        .start(thread, f.graph, Vector("a"), RunConfig().withRunId(RunId("run-1")), durability)
+        .awaited
+        .value
+        .failed
       error match {
         case GraphError.CheckpointWriteFailed(_, cause, Some(runError)) =>
           cause.message should include("simulated crash")
@@ -345,16 +454,22 @@ class GraphRuntimeSpec extends AnyFlatSpec with Matchers with EitherValues with 
     val committedSuperstep  = mutable.ArrayBuffer.empty[Int]
     f.onWorker = _ =>
       synchronized {
-        durableSeenByWorker += recorder.durable.size
+        durableSeenByWorker += recorder.delivered.get
         committedSuperstep += store.underlying.latest(thread).value.fold(-1)(_.checkpoint.snapshot.superstep)
       }
 
-    runtime.start(thread, f.graph, Vector("a", "b"), RunId("run-1"), Durability.Async).value.completed._2 shouldBe
+    runtime
+      .start(thread, f.graph, Vector("a", "b"), RunConfig().withRunId(RunId("run-1")), Durability.Async)
+      .awaited
+      .value
+      .completed
+      ._2 shouldBe
       Vector("A", "B")
 
     // workers run in superstep 1 while the superstep-1 checkpoint is still queued
     committedSuperstep.forall(_ < 1) shouldBe true
     durableSeenByWorker.forall(_ < 3) shouldBe true
+    recorder.caughtUp(store.underlying)
     deliveredBeforeCommit.get shouldBe 0
     // live progress is not held back behind commits
     recorder.live.size shouldBe 2
@@ -382,19 +497,29 @@ class GraphRuntimeSpec extends AnyFlatSpec with Matchers with EitherValues with 
     first.subscribe(thread)(before.listener).value
 
     val (_, error) =
-      first.start(thread, graph, Vector("a", "b", "c", "d"), RunId("run-1"), Durability.Async).value.failed
+      first
+        .start(thread, graph, Vector("a", "b", "c", "d"), RunConfig().withRunId(RunId("run-1")), Durability.Async)
+        .awaited
+        .value
+        .failed
     error shouldBe a[GraphError.CheckpointWriteFailed]
     val durable = store.underlying.eventsAfter(thread, 0L, 1000).value
-    before.durable shouldBe durable
+    before.caughtUp(store.underlying).durable shouldBe durable
+    before.noMoreDurable()
 
     // a new process over the same store
     store.crashed.set(false)
     val second = GraphRuntime(store)
-    second.recover(graph, thread, RunId("run-2"), Durability.Async).value.completed._2 shouldBe
+    second
+      .recover(thread, graph, RunConfig().withRunId(RunId("run-2")), Durability.Async)
+      .awaited
+      .value
+      .completed
+      ._2 shouldBe
       Vector("A", "B", "C", "D")
     val after = Recorder()
     second.subscribe(thread)(after.listener).value
-    contiguous(after.durable)
+    contiguous(after.caughtUp(store.underlying).durable)
     after.durable.take(durable.size) shouldBe durable
     after.durable.drop(durable.size).map(_.runId).distinct shouldBe Vector("run-2")
     // results durable before the crash are not recomputed
@@ -402,19 +527,33 @@ class GraphRuntimeSpec extends AnyFlatSpec with Matchers with EitherValues with 
   }
 
   "OnExit durability" should "write only its claim until the run ends, then commit the rest at once" in {
-    val f          = Fixture()
-    val store      = InMemoryCheckpointer()
-    val runtime    = GraphRuntime(store)
-    val recorder   = Recorder()
-    val seenMidRun = mutable.ArrayBuffer.empty[(Option[StoredCheckpoint], Int)]
-    runtime.subscribe(thread)(recorder.listener).value
-    f.onWorker = _ => synchronized(seenMidRun += (store.latest(thread).value -> recorder.durable.size))
+    val f              = Fixture()
+    val store          = InMemoryCheckpointer()
+    val runtime        = GraphRuntime(store)
+    val recorder       = Recorder()
+    val seenMidRun     = mutable.ArrayBuffer.empty[(Option[StoredCheckpoint], Int)]
+    val claimDelivered = new CountDownLatch(1)
+    runtime
+      .subscribe(thread) { event =>
+        recorder.listener(event)
+        claimDelivered.countDown()
+      }
+      .value
+    // delivery is asynchronous: wait for the claim's RunStarted, then see that nothing follows it
+    f.onWorker = _ => {
+      claimDelivered.await(5, TimeUnit.SECONDS): Unit
+      synchronized(seenMidRun += (store.latest(thread).value -> recorder.delivered.get))
+    }
 
-    runtime.start(thread, f.graph, Vector("a", "b"), RunId("run-1"), Durability.OnExit).value.completed
+    runtime
+      .start(thread, f.graph, Vector("a", "b"), RunConfig().withRunId(RunId("run-1")), Durability.OnExit)
+      .awaited
+      .value
+      .completed
     // mid-run the store holds just the claim - the starting checkpoint - and its RunStarted
     seenMidRun.toVector.map((stored, seen) => stored.map(_.checkpoint.id) -> seen) shouldBe
       Vector(Some("run-1/1") -> 1, Some("run-1/1") -> 1)
-    recorder.live.size shouldBe 2
+    recorder.caughtUp(store).live.size shouldBe 2
     contiguous(recorder.durable)
     kinds(recorder.durable).last shouldBe "RunCompleted"
     store.latest(thread).value.map(s => s.checkpoint.status -> s.checkpoint.parent) shouldBe
@@ -425,18 +564,31 @@ class GraphRuntimeSpec extends AnyFlatSpec with Matchers with EitherValues with 
     val f       = Fixture()
     val store   = InMemoryCheckpointer()
     val runtime = GraphRuntime(store)
-    runtime.start(thread, f.graph, Vector("x"), RunId("run-0"), Durability.OnExit).value.completed
+    runtime
+      .start(thread, f.graph, Vector("x"), RunConfig().withRunId(RunId("run-0")), Durability.OnExit)
+      .awaited
+      .value
+      .completed
     val previous = store.latest(thread).value.get.checkpoint.id
 
     f.failOnce.add("b")
-    runtime.start(thread, f.graph, Vector("a", "b"), RunId("run-1"), Durability.OnExit).value.failed
+    runtime
+      .start(thread, f.graph, Vector("a", "b"), RunConfig().withRunId(RunId("run-1")), Durability.OnExit)
+      .awaited
+      .value
+      .failed
     val stored = store.latest(thread).value.get
     // the exit commit sits on the run's claim, which sits on the previous run's completion
     stored.checkpoint.parent shouldBe Some("run-1/1")
     previous shouldBe "run-0/5"
     stored.pendingWrites.map(_.taskId) shouldBe Vector(s"${stored.checkpoint.snapshot.superstep}.0")
 
-    runtime.recover(f.graph, thread, RunId("run-2"), Durability.OnExit).value.completed._2 shouldBe Vector(
+    runtime
+      .recover(thread, f.graph, RunConfig().withRunId(RunId("run-2")), Durability.OnExit)
+      .awaited
+      .value
+      .completed
+      ._2 shouldBe Vector(
       "X",
       "A",
       "B"
