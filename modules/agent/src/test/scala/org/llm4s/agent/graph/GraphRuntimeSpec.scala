@@ -3,7 +3,7 @@ package org.llm4s.agent.graph
 import org.llm4s.agent.graph.GraphTestSupport.*
 import org.llm4s.error.ValidationError
 import org.llm4s.types.Result
-import org.scalatest.EitherValues
+import org.scalatest.{ EitherValues, LoneElement, OptionValues }
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger }
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 
-class GraphRuntimeSpec extends AnyFlatSpec with Matchers with EitherValues {
+class GraphRuntimeSpec extends AnyFlatSpec with Matchers with EitherValues with OptionValues with LoneElement {
 
   private val thread = ThreadId("thread-1")
 
@@ -131,6 +131,28 @@ class GraphRuntimeSpec extends AnyFlatSpec with Matchers with EitherValues {
 
     runtime.recover(f.graph, thread, RunId("run-3")).value.completed
     runtime.recover(f.graph, thread, RunId("run-4")).left.value shouldBe GraphError.NothingToRecover(thread.value)
+  }
+
+  it should "refuse every call on a thread whose run is still executing, rather than recover it" in {
+    val f       = Fixture()
+    val store   = InMemoryCheckpointer()
+    val runtime = GraphRuntime(store)
+    val during  = mutable.ArrayBuffer.empty[(Option[String], Vector[Result[RunResult[Vector[String]]]])]
+    f.onWorker = _ =>
+      during += store.latest(thread).value.map(_.checkpoint.id) -> Vector(
+        runtime.recover(f.graph, thread, RunId("thief")),
+        runtime.start(thread, f.graph, Vector("x"), RunId("thief")),
+        runtime.resume(f.graph, thread, Map.empty, RunId("thief"))
+      )
+
+    runtime.start(thread, f.graph, Vector("a"), RunId("run-1")).value.completed._2 shouldBe Vector("A")
+
+    val (latest, results) = during.loneElement
+    latest.value should startWith("run-1/")
+    results.map(_.left.value) shouldBe Vector.fill(3)(GraphError.ThreadBusy(thread.value, latest))
+    f.callsOf("a") shouldBe 1
+    f.callsOf("x") shouldBe 0
+    runtime.recover(f.graph, thread, RunId("run-2")).left.value shouldBe GraphError.NothingToRecover(thread.value)
   }
 
   it should "recover without re-running siblings whose results were committed" in {
@@ -374,7 +396,7 @@ class GraphRuntimeSpec extends AnyFlatSpec with Matchers with EitherValues {
     Seq("a", "b", "c", "d").map(f.callsOf) shouldBe Seq(1, 1, 2, 2)
   }
 
-  "OnExit durability" should "write nothing until the run ends, then commit it all at once" in {
+  "OnExit durability" should "write only its claim until the run ends, then commit the rest at once" in {
     val f          = Fixture()
     val store      = InMemoryCheckpointer()
     val runtime    = GraphRuntime(store)
@@ -384,12 +406,14 @@ class GraphRuntimeSpec extends AnyFlatSpec with Matchers with EitherValues {
     f.onWorker = _ => synchronized(seenMidRun += (store.latest(thread).value -> recorder.durable.size))
 
     runtime.start(thread, f.graph, Vector("a", "b"), RunId("run-1"), Durability.OnExit).value.completed
-    seenMidRun.toVector shouldBe Vector(None -> 0, None -> 0)
+    // mid-run the store holds just the claim - the starting checkpoint - and its RunStarted
+    seenMidRun.toVector.map((stored, seen) => stored.map(_.checkpoint.id) -> seen) shouldBe
+      Vector(Some("run-1/1") -> 1, Some("run-1/1") -> 1)
     recorder.live.size shouldBe 2
     contiguous(recorder.durable)
     kinds(recorder.durable).last shouldBe "RunCompleted"
     store.latest(thread).value.map(s => s.checkpoint.status -> s.checkpoint.parent) shouldBe
-      Some(CheckpointStatus.Completed -> None)
+      Some(CheckpointStatus.Completed -> Some("run-1/1"))
   }
 
   it should "persist a failed run's completed siblings at exit so recovery skips them" in {
@@ -402,7 +426,9 @@ class GraphRuntimeSpec extends AnyFlatSpec with Matchers with EitherValues {
     f.failOnce.add("b")
     runtime.start(thread, f.graph, Vector("a", "b"), RunId("run-1"), Durability.OnExit).value.failed
     val stored = store.latest(thread).value.get
-    stored.checkpoint.parent shouldBe Some(previous)
+    // the exit commit sits on the run's claim, which sits on the previous run's completion
+    stored.checkpoint.parent shouldBe Some("run-1/1")
+    previous shouldBe "run-0/5"
     stored.pendingWrites.map(_.taskId) shouldBe Vector(s"${stored.checkpoint.snapshot.superstep}.0")
 
     runtime.recover(f.graph, thread, RunId("run-2"), Durability.OnExit).value.completed._2 shouldBe Vector(
