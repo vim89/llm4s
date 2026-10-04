@@ -48,6 +48,17 @@ class RobustnessSpec extends AnyFlatSpec with Matchers {
     (ex should be).theSameInstanceAs(boom)
   }
 
+  it should "invoke the function exactly once per call" in {
+    val calls = new AtomicInteger
+    LlmResult
+      .success(1)
+      .map[Int] { n =>
+        calls.incrementAndGet(); n
+      }
+      .get() shouldBe 1
+    calls.get shouldBe 1
+  }
+
   it should "not invoke the function on a failure" in {
     var called = false
     val r = LlmResult.failure[Int](error).map[Int] { n =>
@@ -222,6 +233,17 @@ class RobustnessSpec extends AnyFlatSpec with Matchers {
     intercept[NullPointerException](ConversationBuilder.create().system(null)).getMessage should include("system")
     intercept[NullPointerException](ConversationBuilder.create().assistant(null)).getMessage should include(
       "assistant"
+    )
+  }
+
+  it should "keep every message, in call order, whichever role method is called last" in {
+    val conv = ConversationBuilder.create().user("u1").system("s").assistant("a").user("u2").system("s2").build()
+    conv.messages.map(m => m.role.name -> m.content) shouldBe Seq(
+      "user"      -> "u1",
+      "system"    -> "s",
+      "assistant" -> "a",
+      "user"      -> "u2",
+      "system"    -> "s2"
     )
   }
 

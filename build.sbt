@@ -1358,7 +1358,7 @@ lazy val javaApi = (project in file("modules/java-api"))
   .settings(
     name := "llm4s-java-api",
     commonSettings,
-    // Measured 95.93% statement coverage (`sbt coverage javaApi/test javaApi/coverageReport`);
+    // Measured 98.08% statement coverage (`sbt coverage javaApi/test javaApi/coverageReport`);
     // floor is the measured value rounded down to the nearest 5.
     coverageFloor(95),
     libraryDependencies ++= Seq(
