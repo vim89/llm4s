@@ -728,7 +728,7 @@ lazy val openaiCompatible = (project in file("modules/openai-compatible"))
     // from core, and the generic provider's and dialects' own specs. Floor is the measured value
     // rounded down to the nearest 5. Never lower it. The `@Cloud` DeepSeek, OpenRouter and Cohere
     // smoke suites in `modules/it` are not counted here.
-    coverageFloor(100),
+    coverageFloor(90),
     Test / fork                     := true,
     Compile / mainClass             := None,
     Compile / discoveredMainClasses := Seq.empty,
@@ -850,7 +850,7 @@ lazy val providerTestkit = (project in file("modules/provider-testkit"))
     // Measured 92.10% statement coverage (`sbt coverage providerTestkit/test
     // providerTestkit/coverageReport`). Floor is the measured value rounded down to the nearest
     // 5. Never lower it.
-    coverageFloor(100),
+    coverageFloor(90),
     Test / fork                     := true,
     Compile / mainClass             := None,
     Compile / discoveredMainClasses := Seq.empty,
@@ -1056,7 +1056,7 @@ lazy val observability = (project in file("modules/observability"))
     // Measured 94.52% statement coverage (`sbt coverage observability/test
     // observability/coverageReport`) on the code as carved out of core. Floor is the measured
     // value rounded down to the nearest 5. Never lower it.
-    coverageFloor(100),
+    coverageFloor(90),
     Test / fork                     := true,
     Compile / mainClass             := None,
     Compile / discoveredMainClasses := Seq.empty
