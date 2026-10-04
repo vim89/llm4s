@@ -1,4 +1,4 @@
-package org.llm4s.java
+package org.llm4s.javaapi
 
 import org.llm4s.llmconnect.LLMClient
 import org.llm4s.llmconnect.model.{ CompletionOptions, Conversation, UserMessage }
@@ -18,7 +18,7 @@ import org.llm4s.llmconnect.model.{ CompletionOptions, Conversation, UserMessage
  * r.ifSuccess(System.out::println).ifFailure(e -> System.err.println(e.getMessage()));
  * }}}
  */
-final class JLlmClient private[java] (private[java] val underlying: LLMClient) extends AutoCloseable {
+final class JLlmClient private[javaapi] (private[javaapi] val underlying: LLMClient) extends AutoCloseable {
 
   /** Sends a single user query and returns the assistant's text response. */
   def complete(query: String): LlmResult[String] = {

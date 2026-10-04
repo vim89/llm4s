@@ -1,4 +1,4 @@
-package org.llm4s.java
+package org.llm4s.javaapi
 
 import org.llm4s.agent.AgentStatus
 import org.llm4s.error.{ APIError, LLMError }

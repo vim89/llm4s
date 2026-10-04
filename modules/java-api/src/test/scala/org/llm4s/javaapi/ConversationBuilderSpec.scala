@@ -1,4 +1,4 @@
-package org.llm4s.java
+package org.llm4s.javaapi
 
 import org.llm4s.llmconnect.model.{ AssistantMessage, SystemMessage, UserMessage }
 import org.scalatest.flatspec.AnyFlatSpec

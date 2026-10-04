@@ -1,4 +1,4 @@
-package org.llm4s.java
+package org.llm4s.javaapi
 
 import org.llm4s.agent.{ Agent, AgentState }
 import org.llm4s.toolapi.ToolRegistry
@@ -19,7 +19,7 @@ import org.llm4s.toolapi.ToolRegistry
  *       .ifFailure(e -> System.err.println(e.getMessage()));
  * }}}
  */
-final class JAgent private[java] (private val underlying: Agent) {
+final class JAgent private[javaapi] (private val underlying: Agent) {
 
   /** Runs the agent with an empty tool registry. */
   def run(query: String): LlmResult[AgentState] =

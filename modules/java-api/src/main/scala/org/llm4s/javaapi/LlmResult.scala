@@ -1,4 +1,4 @@
-package org.llm4s.java
+package org.llm4s.javaapi
 
 import org.llm4s.error.LLMError
 import org.llm4s.types.Result
@@ -89,5 +89,5 @@ object LlmResult {
   def success[A](value: A): LlmResult[A]        = new LlmResult(Right(value))
   def failure[A](error: LLMError): LlmResult[A] = new LlmResult(Left(error))
 
-  private[java] def from[A](result: Result[A]): LlmResult[A] = new LlmResult(result)
+  private[javaapi] def from[A](result: Result[A]): LlmResult[A] = new LlmResult(result)
 }
