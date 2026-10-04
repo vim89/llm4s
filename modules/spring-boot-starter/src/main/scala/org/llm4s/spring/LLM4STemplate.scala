@@ -1,6 +1,6 @@
 package org.llm4s.spring
 
-import org.llm4s.java.{ JLlmClient, LlmResult }
+import org.llm4s.javaapi.{ JLlmClient, LlmResult }
 import org.llm4s.llmconnect.model.{ CompletionOptions, Conversation }
 
 import java.util.concurrent.CompletableFuture

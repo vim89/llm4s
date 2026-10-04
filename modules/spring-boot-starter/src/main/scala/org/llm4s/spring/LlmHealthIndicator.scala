@@ -1,6 +1,6 @@
 package org.llm4s.spring
 
-import org.llm4s.java.JLlmClient
+import org.llm4s.javaapi.JLlmClient
 import org.springframework.boot.actuate.health.{ Health, HealthIndicator }
 
 final class LlmHealthIndicator(private val client: JLlmClient) extends HealthIndicator {

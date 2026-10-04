@@ -1,7 +1,7 @@
 package org.llm4s.spring
 
 import org.llm4s.error.APIError
-import org.llm4s.java.{ ConversationBuilder, JLlmClientTestFactory, LlmException }
+import org.llm4s.javaapi.{ ConversationBuilder, JLlmClientTestFactory, LlmException }
 import org.llm4s.llmconnect.LLMClient
 import org.llm4s.llmconnect.model._
 import org.llm4s.types.Result

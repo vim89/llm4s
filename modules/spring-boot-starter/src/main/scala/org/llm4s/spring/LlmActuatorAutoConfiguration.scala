@@ -1,6 +1,6 @@
 package org.llm4s.spring
 
-import org.llm4s.java.JLlmClient
+import org.llm4s.javaapi.JLlmClient
 import org.springframework.boot.autoconfigure.AutoConfiguration
 import org.springframework.boot.autoconfigure.condition.{ ConditionalOnClass, ConditionalOnMissingBean }
 import org.springframework.context.annotation.{ Bean, Configuration }

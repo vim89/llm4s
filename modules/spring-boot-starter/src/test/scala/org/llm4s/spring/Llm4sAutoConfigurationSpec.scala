@@ -1,6 +1,6 @@
 package org.llm4s.spring
 
-import org.llm4s.java.{ JLlmClient, JLlmClientTestFactory }
+import org.llm4s.javaapi.{ JLlmClient, JLlmClientTestFactory }
 import org.llm4s.llmconnect.LLMClient
 import org.llm4s.llmconnect.model._
 import org.llm4s.types.Result

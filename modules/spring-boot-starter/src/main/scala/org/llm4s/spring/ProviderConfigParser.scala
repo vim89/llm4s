@@ -1,7 +1,7 @@
 package org.llm4s.spring
 
 import org.llm4s.error.ConfigurationError
-import org.llm4s.java.LlmResult
+import org.llm4s.javaapi.LlmResult
 import org.llm4s.llmconnect.config._
 
 object ProviderConfigParser {

@@ -68,7 +68,7 @@ package object types {
   }
 
   object AgentId {
-    def generate(): AgentId = AgentId(_root_.java.util.UUID.randomUUID().toString)
+    def generate(): AgentId = AgentId(java.util.UUID.randomUUID().toString)
   }
 
   final case class PlanId(value: String) extends AnyVal {
@@ -76,7 +76,7 @@ package object types {
   }
 
   object PlanId {
-    def generate(): PlanId = PlanId(_root_.java.util.UUID.randomUUID().toString)
+    def generate(): PlanId = PlanId(java.util.UUID.randomUUID().toString)
   }
 
   // Context Management Types (for conversation context handling)
@@ -94,10 +94,10 @@ package object types {
 
   object ArtifactKey {
     def generate(): ArtifactKey =
-      ArtifactKey(_root_.java.util.UUID.randomUUID().toString)
+      ArtifactKey(java.util.UUID.randomUUID().toString)
 
     def fromContent(content: String): ArtifactKey = {
-      val hash = _root_.java.security.MessageDigest
+      val hash = java.security.MessageDigest
         .getInstance("SHA-256")
         .digest(content.getBytes("UTF-8"))
         .map("%02x".format(_))
@@ -116,7 +116,7 @@ package object types {
 
   object SemanticBlockId {
     def generate(): SemanticBlockId =
-      SemanticBlockId(_root_.java.util.UUID.randomUUID().toString.take(8))
+      SemanticBlockId(java.util.UUID.randomUUID().toString.take(8))
   }
 
   /** Type alias for context window size in semantic blocks */
