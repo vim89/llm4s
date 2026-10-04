@@ -32,7 +32,14 @@ final class LlmResult[A] private (private val underlying: Result[A]) {
     case Left(e)  => throw new LlmException(e)
   }
 
-  /** Returns the value on success, or `null` on failure. */
+  /**
+   * Returns the value on success, or `null` on failure.
+   *
+   * Intended for reference types only (`String`, `Completion`, ...), which is
+   * what every Java-facing API here returns. If `A` were ever a primitive
+   * mapping (`int`, `boolean`), the failure case would yield `0`/`false`
+   * instead of `null`, so prefer [[toOptional]] or [[isSuccess]] there.
+   */
   def getOrNull(): A = underlying.getOrElse(null.asInstanceOf[A])
 
   /** Returns the [[LlmException]] on failure, or `null` on success. */

@@ -33,17 +33,15 @@ class Llm4sSpec extends AnyFlatSpec with Matchers {
     result.isSuccess shouldBe true
   }
 
-  "createDefaultClient" should "return a failure result when no LLM provider is configured" in {
-    // No LLM_MODEL or API keys in the test environment, so config loading fails.
-    // The key assertion is that a failed config surfaces as LlmResult.isFailure
-    // (not a thrown exception), keeping the Java API exception-free.
+  "createDefaultClient" should "not throw, and surface any config failure as a failed LlmResult" in {
+    // Whether credentials exist depends on the environment, so assert the invariant that holds
+    // either way: the call never throws and the result is exactly one of success or failure.
+    noException should be thrownBy Llm4s.createDefaultClient()
     val result = Llm4s.createDefaultClient()
-    result shouldBe a[LlmResult[?]]
-    // We cannot assert isSuccess without real API credentials, but we can assert
-    // that the call itself does not throw regardless of config state.
+    result.isSuccess should not be result.isFailure
   }
 
-  "createClient" should "return a failure result without throwing when given any ProviderConfig" in {
+  "createClient" should "return a successful result for a valid OpenAI config" in {
     import org.llm4s.llmconnect.config.OpenAIConfig
 
     val config = OpenAIConfig(
@@ -55,7 +53,7 @@ class Llm4sSpec extends AnyFlatSpec with Matchers {
       reserveCompletion = 4096
     )
     val result = Llm4s.createClient(config)
-    // Result is always an LlmResult — never throws
-    result shouldBe a[LlmResult[?]]
+    result.isSuccess shouldBe true
+    result.get() shouldBe a[JLlmClient]
   }
 }
