@@ -20,13 +20,13 @@ class LLM4STemplateSpec extends AnyFlatSpec with Matchers {
     override def getReserveCompletion(): Int = 512
   }
 
-  private def successTemplate(text: String) = new LLM4STemplate(
+  private def successTemplate(text: String) = StarterTestSupport.template(
     JLlmClientTestFactory.create(
       stubClient(Right(Completion("id", 0L, text, "m", AssistantMessage(text))))
     )
   )
 
-  private val failingTemplate = new LLM4STemplate(
+  private val failingTemplate = StarterTestSupport.template(
     JLlmClientTestFactory.create(
       stubClient(Left(APIError("openai", "service unavailable")))
     )

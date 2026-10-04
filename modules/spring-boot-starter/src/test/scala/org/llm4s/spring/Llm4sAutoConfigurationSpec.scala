@@ -30,7 +30,7 @@ object Llm4sAutoConfigurationSpec {
   @Configuration
   class CustomTemplateConfig {
     @Bean
-    def llm4sTemplate(client: JLlmClient): LLM4STemplate = new LLM4STemplate(client)
+    def llm4sTemplate(client: JLlmClient): LLM4STemplate = StarterTestSupport.template(client)
   }
 }
 

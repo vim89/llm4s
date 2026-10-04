@@ -4,6 +4,18 @@
       "name": "llm4s",
       "type": "org.llm4s.spring.Llm4sProperties",
       "description": "LLM4S Spring Boot starter settings."
+    },
+    {
+      "name": "llm4s.async",
+      "type": "org.llm4s.spring.AsyncProperties",
+      "sourceType": "org.llm4s.spring.Llm4sProperties",
+      "description": "Executor behind LLM4STemplate.completeAsync."
+    },
+    {
+      "name": "llm4s.health",
+      "type": "org.llm4s.spring.HealthProperties",
+      "sourceType": "org.llm4s.spring.Llm4sProperties",
+      "description": "Health indicator settings."
     }
   ],
   "properties": [
@@ -49,6 +61,36 @@
       "type": "java.lang.Integer",
       "description": "Tokens held back from the prompt for the completion. Must be non-negative and smaller than llm4s.context-window.",
       "defaultValue": 4096
+    },
+    {
+      "name": "llm4s.async.max-threads",
+      "type": "java.lang.Integer",
+      "description": "Maximum worker threads of the default llm4sTaskExecutor bean (idle threads time out). Define your own bean named llm4sTaskExecutor to replace the executor. Must be at least 1.",
+      "defaultValue": 16
+    },
+    {
+      "name": "llm4s.async.queue-capacity",
+      "type": "java.lang.Integer",
+      "description": "Queued completeAsync calls the default executor accepts before rejecting new ones (the returned future then fails). Must be at least 1.",
+      "defaultValue": 1000
+    },
+    {
+      "name": "llm4s.health.probe",
+      "type": "java.lang.Boolean",
+      "description": "Make the health indicator send a one-token completion to the provider. Off by default because it is a billed call; when off the indicator reports probe=disabled and only that the client is configured.",
+      "defaultValue": false
+    },
+    {
+      "name": "llm4s.health.probe-ttl",
+      "type": "java.time.Duration",
+      "description": "How long a probe result is reused, so frequent health polling does not call the provider each time. Must not be negative.",
+      "defaultValue": "60s"
+    },
+    {
+      "name": "llm4s.health.probe-timeout",
+      "type": "java.time.Duration",
+      "description": "A probe taking longer than this is cancelled (interrupting the provider call) and reports DOWN. Must be positive.",
+      "defaultValue": "10s"
     }
   ]
 }

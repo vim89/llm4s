@@ -41,8 +41,8 @@ object StarterContractSpec {
     @Bean def myOwnClient(): JLlmClient = JLlmClientTestFactory.create(client { () =>
       closes.incrementAndGet(); ()
     })
-    @Bean def myOwnTemplate(c: JLlmClient): LLM4STemplate       = new LLM4STemplate(c)
-    @Bean def myOwnIndicator(c: JLlmClient): LlmHealthIndicator = new LlmHealthIndicator(c)
+    @Bean def myOwnTemplate(c: JLlmClient): LLM4STemplate       = StarterTestSupport.template(c)
+    @Bean def myOwnIndicator(c: JLlmClient): LlmHealthIndicator = StarterTestSupport.indicator(c)
   }
 }
 
@@ -164,11 +164,17 @@ class StarterContractSpec extends AnyFlatSpec with Matchers {
       json("properties").arr.map(p => p("name").str -> p).toMap
 
     def kebab(s: String) = s.replaceAll("([A-Z])", "-$1").toLowerCase
-    val bound = java.beans.Introspector
-      .getBeanInfo(classOf[Llm4sProperties], classOf[Object])
-      .getPropertyDescriptors
-      .map(d => s"llm4s.${kebab(d.getName)}")
-      .toSet
+    // Leaf properties of the bean, descending into nested property classes (llm4s.async.*, llm4s.health.*).
+    def leaves(cls: Class[?], prefix: String): Set[String] =
+      java.beans.Introspector
+        .getBeanInfo(cls, classOf[Object])
+        .getPropertyDescriptors
+        .toSet
+        .flatMap { d =>
+          val name = s"$prefix.${kebab(d.getName)}"
+          if (d.getPropertyType.getName.startsWith("org.llm4s.spring")) leaves(d.getPropertyType, name) else Set(name)
+        }
+    val bound = leaves(classOf[Llm4sProperties], "llm4s")
 
     documented.keySet shouldBe bound + "llm4s.enabled"
     documented.values.foreach(p => p("description").str should not be empty)
@@ -273,7 +279,7 @@ class StarterContractSpec extends AnyFlatSpec with Matchers {
       override def getContextWindow(): Int     = 4096
       override def getReserveCompletion(): Int = 512
     }
-    val template = new LLM4STemplate(JLlmClientTestFactory.create(echo))
+    val template = StarterTestSupport.template(JLlmClientTestFactory.create(echo))
     val threads  = 16
     val each     = 200
     val pool     = java.util.concurrent.Executors.newFixedThreadPool(threads)
@@ -306,7 +312,7 @@ class StarterContractSpec extends AnyFlatSpec with Matchers {
       override def getContextWindow(): Int     = 4096
       override def getReserveCompletion(): Int = 512
     }
-    val template = new LLM4STemplate(JLlmClientTestFactory.create(capturing))
+    val template = StarterTestSupport.template(JLlmClientTestFactory.create(capturing))
     val conv     = Conversation(Seq(UserMessage("hi")))
     val opts     = CompletionOptions().withTemperature(0.123)
     template.complete(conv, opts) shouldBe "r"

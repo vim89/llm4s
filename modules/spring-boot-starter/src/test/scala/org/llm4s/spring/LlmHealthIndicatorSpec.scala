@@ -19,18 +19,13 @@ class LlmHealthIndicatorSpec extends AnyFlatSpec with Matchers {
     override def getReserveCompletion(): Int = 512
   }
 
-  "LlmHealthIndicator.health()" should "report UP when the client is non-null" in {
+  "LlmHealthIndicator.health()" should "report UP and say it did not probe" in {
     val client    = JLlmClientTestFactory.create(stubLlmClient)
-    val indicator = new LlmHealthIndicator(client)
+    val indicator = StarterTestSupport.indicator(client)
     val health    = indicator.health()
     health.getStatus shouldBe Status.UP
-    health.getDetails.containsKey("provider") shouldBe true
-  }
-
-  it should "report DOWN when the client is null" in {
-    val indicator = new LlmHealthIndicator(null)
-    val health    = indicator.health()
-    health.getStatus shouldBe Status.DOWN
-    health.getDetails.containsKey("reason") shouldBe true
+    health.getDetails.get("probe") shouldBe "disabled"
+    health.getDetails.get("provider") shouldBe "openai"
+    health.getDetails.get("model") shouldBe "gpt-4o"
   }
 }

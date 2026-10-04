@@ -31,7 +31,7 @@ object LlmActuatorAutoConfigurationSpec {
   class CustomIndicatorConfig {
     @Bean
     def llmHealthIndicator(client: JLlmClient): LlmHealthIndicator =
-      new LlmHealthIndicator(client)
+      StarterTestSupport.indicator(client)
   }
 }
 
@@ -39,7 +39,7 @@ class LlmActuatorAutoConfigurationSpec extends AnyFlatSpec with Matchers {
   import LlmActuatorAutoConfigurationSpec._
 
   private val runner = new ApplicationContextRunner()
-    .withConfiguration(AutoConfigurations.of(classOf[LlmActuatorAutoConfiguration]))
+    .withConfiguration(AutoConfigurations.of(classOf[Llm4sAutoConfiguration], classOf[LlmActuatorAutoConfiguration]))
 
   "LlmActuatorAutoConfiguration" should "register LlmHealthIndicator when actuator is on the classpath" in {
     runner
