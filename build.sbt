@@ -1310,12 +1310,15 @@ lazy val docs = (project in file("modules/docs"))
     knowledgegraphNeo4j,
     llm4sEffect,
     llm4sZio,
-    javaApi
+    javaApi,
+    springBootStarter
   )
   .settings(
     name := "llm4s-docs",
     commonSettings,
     publish / skip := true,
+    // Provided-scope in spring-boot-starter, so not on the classpath it exports.
+    libraryDependencies += Deps.springBootActuator,
     // Not measured: no sources of its own - it exists only to host the aggregate `doc` task.
     coverageDisabled,
     Compile / sources := {
@@ -1348,7 +1351,8 @@ lazy val docs = (project in file("modules/docs"))
         (knowledgegraphNeo4j / Compile / sources).value ++
         (llm4sEffect / Compile / sources).value ++
         (llm4sZio / Compile / sources).value ++
-        (javaApi / Compile / sources).value
+        (javaApi / Compile / sources).value ++
+        (springBootStarter / Compile / sources).value
     },
     Compile / mainClass             := None,
     Compile / discoveredMainClasses := Seq.empty
@@ -1370,17 +1374,19 @@ lazy val javaApi = (project in file("modules/java-api"))
 lazy val springBootStarter = (project in file("modules/spring-boot-starter"))
   .dependsOn(javaApi)
   .settings(
-    name           := "spring-boot-starter",
+    name := "spring-boot-starter",
     commonSettings,
-    coverageMinimumStmtTotal := 80,
-    coverageFailOnMinimum    := true,
+    // Measured 94.59% statement coverage (`sbt coverage springBootStarter/test
+    // springBootStarter/coverageReport`); floor is the measured value rounded down to the
+    // nearest 5.
+    coverageFloor(90),
     libraryDependencies ++= Seq(
       Deps.springBootAutoConfigure,
-      Deps.springBootActuator % Provided,
-      Deps.scalatest              % Test,
-      Deps.springBootStarterTest  % Test,
+      Deps.springBootActuator          % Provided,
+      Deps.scalatest                   % Test,
+      Deps.springBootStarterTest       % Test,
       Deps.springBootTestAutoConfigure % Test,
-      Deps.springBootActuator     % Test
+      Deps.springBootActuator          % Test
     )
   )
 
