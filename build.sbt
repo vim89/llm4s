@@ -212,6 +212,8 @@ lazy val llm4s = (project in file("."))
     openaiCompatible,
     voyage,
     providerTestkit,
+    llm4sEffect,
+    llm4sZio,
     samples,
     configPolicy,
     workspaceShared,
@@ -295,6 +297,40 @@ lazy val media = (project in file("modules/media"))
     libraryDependencies ++= Seq(
       Deps.scalatest % Test
     )
+  )
+
+lazy val llm4sEffect = (project in file("modules/llm4s-effect"))
+  .dependsOn(core, agent)
+  .settings(
+    name := "llm4s-effect",
+    commonSettings,
+    // Measured 65.22% statement coverage (`sbt coverage llm4sEffect/test llm4sEffect/coverageReport`).
+    // The uncovered rest is `LLMClientIO.resource`, which loads provider config from the environment.
+    // Floor is the measured value rounded down to the nearest 5. Never lower it.
+    coverageFloor(65),
+    libraryDependencies ++= Seq(
+      Deps.catsEffect,
+      Deps.fs2,
+      Deps.scalatest % Test
+    )
+  )
+
+lazy val llm4sZio = (project in file("modules/llm4s-zio"))
+  .dependsOn(core, agent)
+  .settings(
+    name := "llm4s-zio",
+    commonSettings,
+    // Measured 65.91% statement coverage (`sbt coverage llm4sZio/test llm4sZio/coverageReport`).
+    // The uncovered rest is `LLMClientZ.layer`, which loads provider config from the environment.
+    // Floor is the measured value rounded down to the nearest 5. Never lower it.
+    coverageFloor(65),
+    libraryDependencies ++= Seq(
+      Deps.zio,
+      Deps.zioStreams,
+      Deps.zioTest    % Test,
+      Deps.zioTestSbt % Test
+    ),
+    testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
   )
 
 lazy val core = (project in file("modules/core"))
@@ -866,7 +902,9 @@ lazy val samples = (project in file("modules//samples"))
     observability,
     observabilityPrometheus,
     agent,
-    agentTools
+    agentTools,
+    llm4sEffect,
+    llm4sZio
   )
   .settings(
     name := "llm4s-samples",
@@ -1184,7 +1222,9 @@ lazy val docs = (project in file("modules/docs"))
     traceOpentelemetry,
     agent,
     agentTools,
-    knowledgegraphNeo4j
+    knowledgegraphNeo4j,
+    llm4sEffect,
+    llm4sZio
   )
   .settings(
     name := "llm4s-docs",
@@ -1216,7 +1256,9 @@ lazy val docs = (project in file("modules/docs"))
         (traceOpentelemetry / Compile / sources).value ++
         (agent / Compile / sources).value ++
         (agentTools / Compile / sources).value ++
-        (knowledgegraphNeo4j / Compile / sources).value
+        (knowledgegraphNeo4j / Compile / sources).value ++
+        (llm4sEffect / Compile / sources).value ++
+        (llm4sZio / Compile / sources).value
     },
     Compile / mainClass             := None,
     Compile / discoveredMainClasses := Seq.empty
