@@ -30,9 +30,10 @@ Slice order — each is an issue with its own scope and gotchas:
 | 2 ✅ | [#1129](https://github.com/llm4s/llm4s/issues/1129) | `llm4s-memory`, `llm4s-memory-postgres` |
 | 3 ✅ | [#1130](https://github.com/llm4s/llm4s/issues/1130) | `llm4s-mcp`, `llm4s-media`, `llm4s-image`, `llm4s-speech` |
 | 4 ✅ | [#1131](https://github.com/llm4s/llm4s/issues/1131) | provider registration SPI |
-| 5 🚧 | [#1132](https://github.com/llm4s/llm4s/issues/1132) | provider modules - `llm4s-ollama`, `llm4s-gemini`, `llm4s-anthropic`, `llm4s-openai`, `llm4s-openai-compatible` (incl. Mistral, Cohere), `llm4s-voyage`; core holds no client |
-| 6 🚧 | [#1133](https://github.com/llm4s/llm4s/issues/1133) | `TracingBackend` SPI; `llm4s-observability` (Langfuse, trace collector/model/store, `CostTracker`); `llm4s-observability-prometheus`; pre-baseline API cleanup; then 0.5.0 + MiMa |
+| 5 ✅ | [#1132](https://github.com/llm4s/llm4s/issues/1132) | provider modules - `llm4s-ollama`, `llm4s-gemini`, `llm4s-anthropic`, `llm4s-openai`, `llm4s-openai-compatible` (incl. Mistral, Cohere), `llm4s-voyage`; core holds no client |
+| 6 ✅ | [#1133](https://github.com/llm4s/llm4s/issues/1133) | `TracingBackend` SPI; `llm4s-observability` (Langfuse, trace collector/model/store, `CostTracker`); `llm4s-observability-prometheus`; pre-baseline API cleanup (passes 1-8) |
 | 7 ✅ | [#1242](https://github.com/llm4s/llm4s/issues/1242) | `llm4s-agent-tools` (built-in tools + their config); `llm4s-agent` (`agent`, `assistant`); spine re-audit (core 20.7k lines) |
+| 8 ⏳ | [#1281](https://github.com/llm4s/llm4s/issues/1281) | release, not a carve: publish 0.5.0, MiMa baseline on the frozen modules, `@Stable` / `@Experimental`, compatibility policy, g8 template; then 1.0 |
 
 **Invariants for every carve:**
 
@@ -122,14 +123,14 @@ see below), `chunking`, `reranker`, `eval`, `knowledgegraph`, `agent/memory`, `m
 `imagegeneration`, `imageprocessing` or `speech`, nor any Tika/POI/PDFBox/jsoup/AWS, HikariCP,
 Postgres, SQLite, Java-WebSocket, Vosk or JNA dependency. Slices 4 to 7 then took the
 provider clients, the observability integrations, the built-in tools and the agent runtime, so core
-is now the ~20k-line spine (see below).
+is now the ~19k-line spine (see below).
 Those three JDBC dependencies also left `commonSettings`, which used to put them on every
 module's classpath - declare them per-module if you add database code. The build now has **no
 third-party resolvers at all**: the "Vosk Repository" at alphacephei.com was the last one, and
 it went with the speech carve because Vosk publishes to Maven Central and it had never resolved
 anything. Think hard before adding one back.
 
-Slice 5 has begun: `modules/ollama` carries the Ollama chat client, embedding provider,
+Slice 5 is done. `modules/ollama` carries the Ollama chat client, embedding provider,
 `OllamaConfig`, model lister and its `llm4s.embeddings.ollama` block, so core's tests cannot
 use Ollama as a convenient no-key provider any more - use a fixture descriptor, as
 `EmbeddingProviderSpiSpec` and `ModelDimensionRegistrySpec` do. `modules/gemini` followed,
@@ -192,7 +193,7 @@ passing, those move to that provider's spec (`DeepSeekNamedProviderSpec`, now in
 `RAGConfig.default` embeds with `openai`, so `rag` has a **test-only** dependency on `openai`;
 never make it a compile one - that would put the OpenAI SDK on every RAG user's classpath.
 
-Slice 6 has begun. #1233 added the tracing extension point: `Tracing.create` builds `Console`
+Slice 6 is done. #1233 added the tracing extension point: `Tracing.create` builds `Console`
 and `NoOp` itself and dispatches every other mode to an `org.llm4s.trace.spi.TracingBackend`
 declared in `META-INF/services/org.llm4s.trace.spi.TracingBackend` (a `class`, never an `object`),
 selected by `TracingMode.Named(name)`. `modules/observability` (`llm4s-observability`, no
@@ -232,12 +233,12 @@ with fansi. **Nothing in core may import either package** - the tracing contract
 build that event directly and `AgentRunTracingSpec` in the agent module covers `toTraceEvent`.
 `workspaceClient` depends on `llm4s-agent` for `codegen`; `observability` only in Test scope.
 
-With slice 7, `llm4s-core` is the spine: 20.7k lines at the re-audit, 19.5k after cleanup pass 1 (`types`, `error`, `config`, `model`,
+With slice 7, `llm4s-core` is the spine: 20.7k lines at the re-audit, 19.1k after the cleanup passes (`types`, `error`, `config`, `model`,
 `toolapi`, `context`, `llmconnect`, the `trace`/`metrics` contracts, `util`, `http`, `reliability`,
 `core/safety`, `security`, `resource`, `syntax`, `identity`), on cats, upickle, slf4j-api, Typesafe
 Config, pureconfig and jtokkit only ([re-audit](https://github.com/llm4s/llm4s/issues/1133#issuecomment-5935792540)).
-Before 0.5.0 freezes it under MiMa, **pre-baseline cleanup passes** remove what should not be
-frozen. Pass 1 removed the unused `org.llm4s.types` vocabulary (it keeps `Result`, its syntax and
+Before slice 8 ([#1281](https://github.com/llm4s/llm4s/issues/1281)) publishes 0.5.0 and sets the
+MiMa baseline, **pre-baseline cleanup passes** (slice 6, done) removed what should not be frozen. Pass 1 removed the unused `org.llm4s.types` vocabulary (it keeps `Result`, its syntax and
 the newtypes the library takes), every `@deprecated` member of core and `Agent`, `ContextConfig`'s
 legacy field, `ClientStatus`, `StreamingOptions`, `RuntimeId`/`ModelId`, and cats `Show`/`Validated`
 on the API. Do not add them back: **a frozen module gains no speculative public types and no
@@ -281,7 +282,13 @@ units and keys: convert at the boundary (`.toMillis` into a JSON field; `Duratio
 `WireDurations` for a `macroRW`, with `@upickle.implicits.key` pinning a renamed field), and round
 up with `DurationRounding` when a whole-unit API reads `0` as "no timeout" or "now". A
 `FiniteDuration` interpolated as `s"${d}ms"` compiles and prints `150 millisecondsms` - use
-`d.toMillis`.
+`d.toMillis`. Pass 8 kept third-party types out of `llm4s-agent`'s API: the console UI
+(`ConsoleInterface`, `ConsoleConfig`, `StyleConfig`, `MessageType`), whose fansi `Attrs` and cats
+`Show` would have frozen both libraries into it, and `SessionState.localDateTimeRW`, a public
+implicit codec any `import SessionState._` picked up, are `private[assistant]`, and
+`AssistantAgent` lost its `consoleConfig` parameter; `SimilarityUtils` is `private[llm4s]`. **A
+frozen module's public signatures expose no third-party type** (fansi, cats type classes) and no
+implicit a wildcard import would pull in.
 
 `org.llm4s.vectorstore.PostgresVectorHelpers` is the one file in that package still in core:
 it is a pure pgvector text codec shared by `llm4s-rag` and `llm4s-memory-postgres`, which must
