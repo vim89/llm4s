@@ -70,9 +70,12 @@ final class LlmResult[A] private (private val underlying: Result[A]) {
   def map[B](f: JFunction[A, B]): LlmResult[B] =
     new LlmResult(underlying.map(a => f.apply(a)))
 
-  /** Returns `Optional.of(value)` on success, `Optional.empty()` on failure. */
+  /**
+   * Returns `Optional.of(value)` on success, `Optional.empty()` on failure, and also
+   * `Optional.empty()` when the success value is `null` (never throws).
+   */
   def toOptional: Optional[A] =
-    underlying.fold(_ => Optional.empty[A](), v => Optional.of(v))
+    underlying.fold(_ => Optional.empty[A](), v => Optional.ofNullable(v))
 
   /** Returns an already-completed `CompletableFuture` wrapping the result. */
   def toCompletableFuture: CompletableFuture[A] = {

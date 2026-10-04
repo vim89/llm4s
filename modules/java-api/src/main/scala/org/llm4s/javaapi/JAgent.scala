@@ -1,6 +1,8 @@
 package org.llm4s.javaapi
 
 import org.llm4s.agent.{ Agent, AgentState }
+import org.llm4s.core.safety.Safety
+import org.llm4s.error.ValidationError
 import org.llm4s.toolapi.ToolRegistry
 
 /**
@@ -21,11 +23,13 @@ import org.llm4s.toolapi.ToolRegistry
  */
 final class JAgent private[javaapi] (private val underlying: Agent) {
 
-  /** Runs the agent with an empty tool registry. */
+  /** Runs the agent with an empty tool registry. A `null` query yields a failed result. */
   def run(query: String): LlmResult[AgentState] =
-    LlmResult.from(underlying.run(query, ToolRegistry.empty))
+    run(query, ToolRegistry.empty)
 
   /** Runs the agent with an explicit [[ToolRegistry]]. */
   def run(query: String, tools: ToolRegistry): LlmResult[AgentState] =
-    LlmResult.from(underlying.run(query, tools))
+    if (query == null) LlmResult.failure(ValidationError.required("query"))
+    else if (tools == null) LlmResult.failure(ValidationError.required("tools"))
+    else LlmResult.from(Safety.safely(underlying.run(query, tools)).flatMap(identity))
 }

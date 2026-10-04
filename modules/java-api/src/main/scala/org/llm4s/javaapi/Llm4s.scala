@@ -2,8 +2,11 @@ package org.llm4s.javaapi
 
 import org.llm4s.agent.Agent
 import org.llm4s.config.Llm4sConfig
+import org.llm4s.error.ValidationError
 import org.llm4s.llmconnect.LLMConnect
 import org.llm4s.llmconnect.config.ProviderConfig
+
+import java.util.Objects
 
 /**
  * Entry-point factory for Java callers.
@@ -41,7 +44,11 @@ object Llm4s {
    * when the caller constructs the config programmatically rather than relying
    * on environment variables.
    */
-  def createClient(config: ProviderConfig): LlmResult[JLlmClient] = {
+  def createClient(config: ProviderConfig): LlmResult[JLlmClient] =
+    if (config == null) LlmResult.failure(ValidationError.required("config"))
+    else createClientFrom(config)
+
+  private def createClientFrom(config: ProviderConfig): LlmResult[JLlmClient] = {
     val result = for {
       registry <- Llm4sConfig.modelRegistryService()
       client   <- LLMConnect.getClient(config)(using registry)
@@ -53,6 +60,8 @@ object Llm4s {
    * Wraps a [[JLlmClient]] in a [[JAgent]] ready to accept natural-language
    * queries and call tools.
    */
-  def createAgent(client: JLlmClient): JAgent =
+  def createAgent(client: JLlmClient): JAgent = {
+    Objects.requireNonNull(client, "client must not be null")
     new JAgent(new Agent(client.underlying))
+  }
 }
