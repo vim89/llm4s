@@ -226,6 +226,7 @@ lazy val llm4s = (project in file("."))
     agent,
     agentTools,
     knowledgegraphNeo4j,
+    gradleDemo,
     benchmarks,
     // Aggregated so `it` is compiled, formatted and linted with everything else - it was
     // outside the aggregate entirely, so its suites could stop compiling unnoticed. Only the
@@ -1281,6 +1282,20 @@ lazy val benchmarks = (project in file("modules/benchmarks"))
     libraryDependencies ++= Seq(
       Deps.scalatest % Test
     )
+  )
+
+lazy val gradleDemo = (project in file("modules/gradle-demo"))
+  .dependsOn(core)
+  .settings(
+    name := "gradle-demo",
+    commonSettings,
+    publish / skip := true,
+    libraryDependencies ++= Seq(
+      Deps.scalatest % Test
+    ),
+    // Measured 100.00% statement coverage (`sbt coverage gradleDemo/test
+    // gradleDemo/coverageReport`); floor is the measured value rounded down to the nearest 5.
+    coverageFloor(100)
   )
 
 // ---- relocation stubs for the 0.4.0 artifact rename ----
