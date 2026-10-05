@@ -76,7 +76,7 @@ Every top-level package under `modules/core/src/main/scala/org/llm4s/`, its targ
 | `llmconnect/provider` — Voyage AI embeddings — **carved** | `llm4s-voyage` (`modules/providers/voyage`) | Beta |
 | `llmconnect/provider` — AWS Bedrock (Converse, ConverseStream) — **new** | `llm4s-bedrock` (`modules/providers/bedrock`) | Beta |
 | `llmconnect/provider` — Jina AI embeddings — **new** | `llm4s-jina` (`modules/providers/jina`) | Beta |
-| `llmconnect/provider` — IBM watsonx.ai, on the text-generation endpoints IBM has deprecated (never run against the live service; migration to the chat API is [#1314](https://github.com/llm4s/llm4s/issues/1314)) — **new** | `llm4s-watsonx` (`modules/watsonx`) | Beta |
+| `llmconnect/provider` — IBM watsonx.ai, on the text-generation endpoints IBM has deprecated (never run against the live service; migration to the chat API is [#1314](https://github.com/llm4s/llm4s/issues/1314)) — **new** | `llm4s-watsonx` (`modules/providers/watsonx`) | Beta |
 | `llmconnect/provider` — other community providers | `llm4s-openai-compatible` dialects, or `modules/providers/<name>` | Beta |
 | `testkit` — the checks a provider module's `Llm4s<Name>ModuleSpec` makes (`ProviderModuleChecks`, `ProviderTestConfig`, `CredentialsRoundTrip`, `LocalProviderTestServer`), formerly unpublished helpers in core's test sources — **new** | `llm4s-provider-testkit` (`modules/provider-testkit`), a test-scope dependency | Beta |
 | `rag`, `vectorstore`, `chunking`, `reranker`, `eval` — **carved** | `llm4s-rag` | Beta |
@@ -88,6 +88,11 @@ Every top-level package under `modules/core/src/main/scala/org/llm4s/`, its targ
 | `speech` - **carved** | `llm4s-speech` | Experimental |
 | `imagegeneration`, `imageprocessing` - **carved** | `llm4s-image` | Experimental |
 | `knowledgegraph` — **carved** (`knowledgegraph/graphrag` ships in `llm4s-rag`) | `llm4s-knowledgegraph` | Experimental |
+| `javaapi` — the Java facade (`Llm4s`, `JLlmClient`, `JAgent`, `ConversationBuilder`, `LlmResult`, `LlmException`) — **new** | `llm4s-java-api` (`modules/java-api`) | Beta |
+| `spring` — Spring Boot auto-configuration (`Llm4sAutoConfiguration`, `Llm4sProperties`, `LLM4STemplate`, `LlmHealthIndicator`) — **new** | `llm4s-spring-boot-starter` (`modules/spring-boot-starter`) | Beta |
+| `effect.cats` — `LLMClientIO`, `AgentIO` (cats-effect 3, fs2) — **new** | `llm4s-effect` (`modules/llm4s-effect`) | Beta |
+| `zio` — `LLMClientZ`, `AgentZ` (ZIO 2, ZIO Streams) — **new** | `llm4s-zio` (`modules/llm4s-zio`) | Beta |
+| `kotlin` — coroutine API (`LLMClientKt`, `AgentKt`); a separate Gradle build, not part of sbt or the MiMa baseline, not yet published — **new** | `modules/kotlin-api` | Experimental |
 
 Notes:
 
