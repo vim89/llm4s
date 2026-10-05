@@ -37,6 +37,7 @@ LLM4S supports these LLM providers, plus any endpoint that speaks the OpenAI cha
 | **Mistral** | Cloud | Mistral and Magistral models | Easy |
 | **Cohere** | Cloud | Command models, RAG | Easy |
 | **Ollama** | Local | Private, no API key, offline | Easy |
+| **IBM watsonx.ai** | Cloud Enterprise | Granite, Llama and Mistral models under IBM governance | Medium |
 
 Missing a vendor? See [Writing a Provider](writing-a-provider.md) to publish your own provider module.
 
@@ -416,6 +417,61 @@ rather than silently doing nothing. `organization`, `endpoint`, `apiVersion`, `c
 `reserveCompletion` were built-in fields that every section carried until
 [#1133](https://github.com/llm4s/llm4s/issues/1133); the HOCON for the providers that use them is
 unchanged.
+
+---
+
+## IBM watsonx.ai
+
+> **Beta, built on deprecated endpoints.** `llm4s-watsonx` uses the watsonx.ai "Infer text" and
+> "Infer text event stream" endpoints (`/ml/v1/text/generation` and `/generation_stream`), which IBM
+> deprecated in its [February 2026 release notes](https://www.ibm.com/docs/en/software-hub/5.3.x?topic=new-watsonxai)
+> and will remove in the future; IBM points to the chat API. The module has never been run against
+> the live service (there is no watsonx account to test with), it is Beta and its API is not frozen,
+> and tools are unsupported because of this API. Migration to the chat API is tracked in
+> [#1314](https://github.com/llm4s/llm4s/issues/1314).
+
+IBM's enterprise AI platform, serving Granite, Llama and Mistral models. It lives in its own module,
+`llm4s-watsonx`; adding the dependency registers the `watsonx` provider.
+
+```scala
+libraryDependencies += "org.llm4s" %% "llm4s-watsonx" % llm4sVersion
+```
+
+```hocon
+llm4s.providers.watsonx-main {
+  provider  = "watsonx"
+  model     = "ibm/granite-13b-instruct-v2"   # or meta-llama/llama-3-8b-instruct, mistralai/mistral-large
+  projectId = ${?WATSONX_PROJECT_ID}          # or spaceId for a deployment space
+  # baseUrl = "https://eu-de.ml.cloud.ibm.com" # default https://us-south.ml.cloud.ibm.com
+}
+```
+
+`WATSONX_API_KEY` supplies the IBM Cloud API key, which the client exchanges for an IAM bearer token
+and refreshes before it expires. The text-generation API takes one prompt string, so the
+conversation is flattened with `[SYSTEM]:`/`[USER]:`/`[ASSISTANT]:` prefixes.
+
+Behaviour to know about:
+
+- **Tools are rejected.** text-generation has no tool calling, so `complete` and `streamComplete`
+  return a `Left(ValidationError("tools", ...))` when `CompletionOptions.tools` is non-empty, before
+  any HTTP call.
+- **Ignored options.** `presencePenalty`, `frequencyPenalty`, `responseFormat`, `reasoning` and
+  `budgetTokens` have no equivalent and are dropped without error. Only `temperature`, `maxTokens`
+  and `topP` (when not 1.0) are sent.
+- **Forgeable markers.** Content is not escaped, so user content can contain `[SYSTEM]:` or
+  `[USER]:` lines that look like real turns to the model. Do not rely on the system prompt as a
+  security boundary against untrusted input. Requests send `stop_sequences` for `\n[USER]:`,
+  `\n[SYSTEM]:` and `\n[TOOL_RESULT:`, so a model cannot write the following turn itself.
+- **Abnormal stream endings.** A stream that ends without a terminal event, or whose `stop_reason`
+  is `error`, `cancelled` or `time_limit`, returns `Left(ServiceError)` naming the reason, not the
+  partial text (chunks already passed to `onChunk` were delivered). `eos_token`, `stop_sequence`,
+  `max_tokens`, `token_limit` and unknown reasons are normal stops. `complete` applies the same
+  rule to `results[0].stop_reason`.
+- **URLs and ids.** `baseUrl` and `iamUrl` must be `https` (plain `http` only for `localhost`,
+  `127.0.0.1` and `::1`), because the IAM request carries the API key. The API key is trimmed. Set
+  `projectId` or `spaceId`, not both.
+- **Environment variables.** Only `WATSONX_API_KEY` is bound automatically. `WATSONX_PROJECT_ID` and
+  the other variables in the example are just `${?VAR}` substitutions you write in your own config.
 
 ---
 
