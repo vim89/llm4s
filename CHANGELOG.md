@@ -178,6 +178,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Tier.require`. TTS output is asserted on structure (24 kHz 16-bit mono PCM, plausible duration,
   audible samples, a WAV header that matches the data), STT on a known spoken phrase. The no-network
   counterpart is `CloudSpeechProviderIntegrationSpec` in `llm4s-speech`.
+- **`sbt publishedArtifactsCheck`: every published artifact has a tier and an install line**
+  ([#1281](https://github.com/llm4s/llm4s/issues/1281)): a CI quick check that fails when a published
+  `llm4s-*` artifact (a project that does not set `publish / skip`) is not named in `docs/reference/v1-scope.md`
+  or `docs/getting-started/installation.md`. `sbt ci-release` publishes the root aggregate as tagged and a Maven
+  Central release cannot be amended, yet nothing connected what the build publishes to the docs that name it:
+  four published artifacts were in neither place. They now are: `llm4s-knowledgegraph-neo4j` and the workspace
+  modules (`llm4s-workspace-client`, `llm4s-workspace-shared`) are **Experimental** in 1.0 Scope, and the
+  installation guide has lines for `llm4s-knowledgegraph-neo4j`, `llm4s-provider-testkit` and
+  `llm4s-workspace-shared`.
 - **Cloud speech providers** (`llm4s-speech`, [#1010](https://github.com/llm4s/llm4s/issues/1010)):
   `OpenAITTSClient`, `ElevenLabsTTSClient`, `AzureTTSClient` (text-to-speech) and `OpenAISTTClient`,
   `AzureSTTClient` (speech-to-text), selected through `SpeechProviderSelector.tts()` / `.stt()` by a
