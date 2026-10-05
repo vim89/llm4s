@@ -1359,13 +1359,13 @@ lazy val docs = (project in file("modules/docs"))
   )
 
 lazy val javaApi = (project in file("modules/java-api"))
-  .dependsOn(core, agent, openai, anthropic, ollama, gemini, openaiCompatible)
+  .dependsOn(core % "compile->compile;test->test", agent, openai, anthropic, ollama, gemini, openaiCompatible)
   .settings(
     name := "llm4s-java-api",
     commonSettings,
-    // Measured 98.08% statement coverage (`sbt coverage javaApi/test javaApi/coverageReport`);
+    // Measured 100.00% statement coverage (with the integration spec) (`sbt coverage javaApi/test javaApi/coverageReport`);
     // floor is the measured value rounded down to the nearest 5.
-    coverageFloor(95),
+    coverageFloor(100),
     libraryDependencies ++= Seq(
       Deps.scalatest % Test
     )
