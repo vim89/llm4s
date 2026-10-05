@@ -217,6 +217,7 @@ lazy val llm4s = (project in file("."))
     providerTestkit,
     llm4sEffect,
     llm4sZio,
+    javaApi,
     samples,
     configPolicy,
     workspaceShared,
@@ -1307,7 +1308,8 @@ lazy val docs = (project in file("modules/docs"))
     agentTools,
     knowledgegraphNeo4j,
     llm4sEffect,
-    llm4sZio
+    llm4sZio,
+    javaApi
   )
   .settings(
     name := "llm4s-docs",
@@ -1344,10 +1346,24 @@ lazy val docs = (project in file("modules/docs"))
         (agentTools / Compile / sources).value ++
         (knowledgegraphNeo4j / Compile / sources).value ++
         (llm4sEffect / Compile / sources).value ++
-        (llm4sZio / Compile / sources).value
+        (llm4sZio / Compile / sources).value ++
+        (javaApi / Compile / sources).value
     },
     Compile / mainClass             := None,
     Compile / discoveredMainClasses := Seq.empty
+  )
+
+lazy val javaApi = (project in file("modules/java-api"))
+  .dependsOn(core, agent, openai, anthropic, ollama, gemini, openaiCompatible)
+  .settings(
+    name := "llm4s-java-api",
+    commonSettings,
+    // Measured 98.08% statement coverage (`sbt coverage javaApi/test javaApi/coverageReport`);
+    // floor is the measured value rounded down to the nearest 5.
+    coverageFloor(95),
+    libraryDependencies ++= Seq(
+      Deps.scalatest % Test
+    )
   )
 
 lazy val benchmarks = (project in file("modules/benchmarks"))
