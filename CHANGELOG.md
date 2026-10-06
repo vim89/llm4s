@@ -312,6 +312,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   case is still a `NonRecoverableError` except `DeadlineExceeded`, which is a `RecoverableError`;
   new `GraphError` and `RunEvent` cases break exhaustive matches. Design:
   `docs/design/typed-agent-runtime-design.md` §4.6, with the Stage 0 carry-forward in §4.8.
+- **CI verifies the documented support matrix** ([#967](https://github.com/llm4s/llm4s/issues/967)):
+  `scripts/check-doc-support.sh`, in the `quick-checks` job, fails when the docs say something the build does not
+  do. The build's side comes from sbt itself: a new `dumpBuildModel <file>` command (`project/BuildModel.scala`)
+  writes the loaded build as JSON - projects, base directories, aggregates, configurations and every defined key,
+  commands, aliases with their bodies and Scala versions. The script checks that `Scala N` in the docs agrees with
+  the build's `scalaVersion` (a version named only to say it is unsupported or deferred is allowed), that no doc
+  claims cross-building the build does not do, that every `JDK N` is one `ci.yml` runs and a documented floor
+  (`JDK N+`, `JDK N or newer`, `requires JDK N`) is the oldest of them, that the modules in CLAUDE.md's
+  repository-structure block and the projects' base directories match in both directions, and it replays every
+  `sbt` command quoted in the docs (and every alias body) against the model - `project X` switches persist and
+  keys resolve through configuration, `ThisBuild`/`Global` delegation and aggregation. Prose is matched with
+  simple patterns; the script header lists what is deliberately not checked (version lists, ranges and
+  ceilings, sbt behind wrappers or in YAML block scalars, `set`/`eval` expressions). A line can opt out with
+  `doc-support: ignore`. `scripts/test-check-doc-support.sh` runs each check against a fixture model, with no
+  sbt. Three stale claims it found are fixed: `sbt dependencyCheck` (no such task) in the review guidelines,
+  `sbt run "Explain ..."` in the g8 guide (sbt reads the quoted text as a second command; it is now
+  `sbt "run Explain ..."`), and `modules/gradle-demo`, which CLAUDE.md did not name.
 - **Error handling guide** ([#960](https://github.com/llm4s/llm4s/issues/960)):
   `docs/guide/error-handling.md` teaches `Result[A]` and `LLMError` in practice: the basic pattern,
   for-comprehensions, a table of the error types in `org.llm4s.error` with whether each is recoverable and
