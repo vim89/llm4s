@@ -312,6 +312,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   case is still a `NonRecoverableError` except `DeadlineExceeded`, which is a `RecoverableError`;
   new `GraphError` and `RunEvent` cases break exhaustive matches. Design:
   `docs/design/typed-agent-runtime-design.md` §4.6, with the Stage 0 carry-forward in §4.8.
+- **Error handling guide** ([#960](https://github.com/llm4s/llm4s/issues/960)):
+  `docs/guide/error-handling.md` teaches `Result[A]` and `LLMError` in practice: the basic pattern,
+  for-comprehensions, a table of the error types in `org.llm4s.error` with whether each is recoverable and
+  when it is raised, the errors other modules define that carry no recoverability marker (`EmbeddingError`, `RerankError`, ..., on which
+  `LLMError.isRecoverable` throws a `MatchError`, so the guide matches on `RecoverableError`), matching
+  specific errors, converting to and from exceptions, combining results, retry and circuit breaking, and
+  testing. Its snippets after the first section are compiled and run by `ErrorHandlingGuideSpec`. The Basic Usage
+  guide listed error types that do not exist (`ProviderConnectionError`, `InvalidApiKeyError`, ...) and
+  called `LLMError` sealed; it now shows the real ones and links to the guide.
 - **Cancellation by interrupt for graph runs and providers** (Experimental, `org.llm4s.agent.graph`,
   [#1270](https://github.com/llm4s/llm4s/issues/1270)): each superstep runs in a bounded Ox scope on
   virtual threads (Ox is a new implementation dependency of `llm4s-agent`). Interrupting the thread
@@ -593,6 +602,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `llm4s-java-api`: `JAgent.run(query)` returns `LlmResult<AgentResult>`; tools are given to
     `Llm4s.createAgent(client, tools)` (`run(query, tools)` is removed); `continueConversation` and
     `forget` are new. The Kotlin `AgentKt` follows (`run`, `continueConversation`, `forget`).
+- **`Result.traverse` short-circuits** ([#960](https://github.com/llm4s/llm4s/issues/960)): it
+  stops calling the function at the first `Left`, where it used to call it on every element and
+  then return the first failure. **Behaviour change:** side effects in the function no longer run
+  for the elements after a failure. `Result.sequence` returns the same results as before.
+- **`ErrorRecovery.recoverWithBackoff` returns a non-retried error unchanged on every attempt**
+  ([#960](https://github.com/llm4s/llm4s/issues/960)): an error it does not retry, such as a
+  `ValidationError`, came back wrapped in an `ExecutionError` when it happened on the last attempt
+  (always, with `maxAttempts = 1`), losing its type. Only `RateLimitError`, `TimeoutError` and a
+  `ServiceError` that exhaust the attempts are wrapped now. **Behaviour change:** a `ServiceError` is
+  retried only when `isRecoverableStatus` (5xx, 429, 408), as `ReliableClient`'s `RetryPolicy` already
+  did; a 404 or other permanent status comes back unchanged at once. The Scaladoc no longer calls the
+  schedule exponential and describes each type's delay.
 - **Approval resumes through the middleware chain; `ToolLoop` gains a `finish` node**
   ([#1279](https://github.com/llm4s/llm4s/issues/1279)): `Approve` now runs the whole middleware
   chain again with `ToolContext.approved = true`, where it skipped the policy; a deny rule that
