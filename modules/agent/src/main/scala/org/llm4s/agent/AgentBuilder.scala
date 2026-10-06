@@ -35,7 +35,8 @@ final class AgentBuilder private (
   private val handoffs: Vector[Handoff],
   maxSteps: Int,
   runtime: Option[GraphRuntime],
-  tracing: Option[Tracing]
+  tracing: Option[Tracing],
+  streaming: Boolean
 ):
 
   private def copy(
@@ -47,7 +48,8 @@ final class AgentBuilder private (
     handoffs: Vector[Handoff] = handoffs,
     maxSteps: Int = maxSteps,
     runtime: Option[GraphRuntime] = runtime,
-    tracing: Option[Tracing] = tracing
+    tracing: Option[Tracing] = tracing,
+    streaming: Boolean = streaming
   ): AgentBuilder =
     new AgentBuilder(
       id,
@@ -60,7 +62,8 @@ final class AgentBuilder private (
       handoffs,
       maxSteps,
       runtime,
-      tracing
+      tracing,
+      streaming
     )
 
   /** The agent's tools, replacing any set before, checked with the set's validator. */
@@ -103,8 +106,19 @@ final class AgentBuilder private (
    */
   def withRuntime(runtime: GraphRuntime): AgentBuilder = copy(runtime = Some(runtime))
 
-  /** Traces each run's events, as `graph.*` custom events, to `tracing`. */
+  /**
+   * Traces each run to `tracing`: its events as `graph.*` and `agent.*` custom events, each model
+   * call's usage as `TokenUsageRecorded`, and its end as one `AgentRunEnded`.
+   */
   def withTracing(tracing: Tracing): AgentBuilder = copy(tracing = Some(tracing))
+
+  /**
+   * Streams the model's answer: each model call uses `streamComplete`, and its text and thinking
+   * reach subscribers as live `AgentEvents.TextDelta` and `ThinkingDelta` events. Off by default.
+   * It changes nothing stored, so it is not part of the graph's version: a thread runs on with
+   * streaming switched on or off.
+   */
+  def withStreaming(): AgentBuilder = copy(streaming = true)
 
   /**
    * Compiles this agent and every agent reachable through handoffs into one graph. Refuses an
@@ -137,7 +151,7 @@ final class AgentBuilder private (
       loopHandoffs <- handoffs.foldLeft[Result[Vector[LoopHandoff]]](Right(Vector.empty)) { (acc, h) =>
         acc.flatMap(done => loopHandoff(h).map(done :+ _))
       }
-    yield LoopAgent(agentId, ModelStep.fromClient(client, options), toolSet)
+    yield LoopAgent(agentId, ModelStep.fromClient(client, options, streaming), toolSet)
       .withSystemPrompt(systemPrompt)
       .withMaxSteps(maxSteps)
       .withMiddleware(middleware)
@@ -198,7 +212,8 @@ object AgentBuilder:
       Vector.empty,
       Agent.DefaultMaxSteps,
       None,
-      None
+      None,
+      streaming = false
     )
 
   /**
@@ -246,7 +261,7 @@ object AgentBuilder:
    * agent's id, system prompt and max steps, its tools' names and definitions sorted by name, its
    * middleware ids in registration order with each middleware's contributed tools' names and
    * definitions, and its handoff targets with `preserveContext`. Completion
-   * options and the model client are not part of it: they are rebound when a thread is restored.
+   * options, streaming and the model client are not part of it: they are rebound when a thread is restored.
    */
   private[agent] def fingerprint(family: Vector[AgentBuilder]): String =
     val canonical = ujson.Arr.from(family.sortBy(_.id).map(_.canonical)).render()

@@ -1,8 +1,16 @@
 package org.llm4s.agent.graph.toolloop
 
 import org.llm4s.agent.AgentId
+import org.llm4s.agent.events
+import org.llm4s.agent.events.{ AgentEvents, GuardrailBlock, GuardrailPhase, ToolExecutionOutcome }
 import org.llm4s.agent.graph.*
-import org.llm4s.agent.graph.middleware.{ MiddlewareId, MiddlewareStack, ModelRequest, ToolCallRequest }
+import org.llm4s.agent.graph.middleware.{
+  GuardrailBlocked,
+  MiddlewareId,
+  MiddlewareStack,
+  ModelRequest,
+  ToolCallRequest
+}
 import org.llm4s.agent.graph.tool.{ AgentTool, ToolContext, ToolOutcome, ToolQuestion, ToolSet }
 import org.llm4s.error.{ CancelledError, LLMError, ValidationError }
 import org.llm4s.llmconnect.LLMClient
@@ -10,7 +18,8 @@ import org.llm4s.llmconnect.model.*
 import org.llm4s.types.{ Result, TryOps }
 import upickle.default.ReadWriter
 
-import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.{ AtomicInteger, AtomicReference }
+import scala.concurrent.duration.{ Duration, DurationLong, FiniteDuration }
 import scala.util.{ Failure, Success, Try }
 
 /** Who asked for an approval: the tool itself, or a middleware's tool wrapper. All resume at the same approval node. */
@@ -49,18 +58,40 @@ final case class ToolQuestionRequest(
 final case class ToolResult(assistantMessageId: String, toolCallId: String, content: String, isError: Boolean)
     derives ReadWriter
 
+/** One invocation of an agent's model: the task's [[RunContext]], the agent, and this attempt's number (from 1). */
+final class ModelCall private[toolloop] (val context: RunContext, val agent: AgentId, val attempt: Int):
+  def textDelta(text: String): Unit = AgentEvents.TextDelta.progress(context, events.TextDelta(attempt, text))
+  def thinkingDelta(text: String): Unit =
+    AgentEvents.ThinkingDelta.progress(context, events.ThinkingDelta(attempt, text))
+
 /** The model call: the conversation so far, and the tools on offer, to the model's completion. */
 trait ModelStep:
-  def next(messages: Vector[Message], tools: ToolSet): Result[Completion]
+  def next(messages: Vector[Message], tools: ToolSet, call: ModelCall): Result[Completion]
 
 object ModelStep:
 
   /**
    * Calls `client` with `options`, its `tools` replaced by the loop's
-   * [[org.llm4s.agent.graph.tool.ToolSet.toolFunctions]].
+   * [[org.llm4s.agent.graph.tool.ToolSet.toolFunctions]]. With `streaming`, it calls
+   * `streamComplete`, sending each chunk's text as a `TextDelta` and its thinking as a
+   * `ThinkingDelta`, and returns the accumulated completion; otherwise `complete`.
    */
-  def fromClient(client: LLMClient, options: CompletionOptions = CompletionOptions()): ModelStep =
-    (messages, tools) => client.complete(Conversation(messages), options.withTools(tools.toolFunctions))
+  def fromClient(
+    client: LLMClient,
+    options: CompletionOptions = CompletionOptions(),
+    streaming: Boolean = false
+  ): ModelStep =
+    (messages, tools, call) =>
+      val withTools = options.withTools(tools.toolFunctions)
+      if !streaming then client.complete(Conversation(messages), withTools)
+      else
+        client.streamComplete(
+          Conversation(messages),
+          withTools,
+          chunk =>
+            chunk.thinkingDelta.filter(_.nonEmpty).foreach(call.thinkingDelta)
+            chunk.content.filter(_.nonEmpty).foreach(call.textDelta)
+        )
 
 /**
  * The model/tool loop of an agent family as one graph - the Stage 0 proof of runtime-owned tool
@@ -174,6 +205,9 @@ final class ToolLoop private (
       }
 
 object ToolLoop:
+
+  /** The tool a durable `ToolExecuted` names for a call to a tool the agent does not have. */
+  val UnknownTool: String = "<unknown>"
 
   /** A pending question, decoded as the asking tool's question type `Q`. */
   def question[Q: ReadWriter](request: ToolQuestionRequest): Result[Q] =
@@ -344,10 +378,15 @@ object ToolLoop:
           // the root's boundary hooks guard the whole family; the active agent's own run inside them
           val stacks = if agentId == root then Vector(nodes.stack) else Vector(agents(root).stack, nodes.stack)
           stacks.foldLeft[Result[String]](Right(in.query))((acc, s) => acc.flatMap(s.beforeAgent(_, context))) match
-            case Left(error)                                    => boundary(error, seeded.update)
+            case Left(error) => boundary(error, seeded.update, context, GuardrailPhase.Input)
             case Right(transformed) if transformed.trim.isEmpty =>
               // stored, a blank query would fail every model call and every recover after it
-              boundary(ValidationError("query", "beforeAgent returned a blank query"), seeded.update)
+              boundary(
+                ValidationError("query", "beforeAgent returned a blank query"),
+                seeded.update,
+                context,
+                GuardrailPhase.Input
+              )
             case Right(transformed) =>
               NodeResult.Continue(
                 seeded
@@ -403,13 +442,13 @@ object ToolLoop:
     val agent    = nodes.agent
     val tools    = nodes.tools
     val stack    = nodes.stack
-    val pipeline = Pipeline(tools, stack, nodes.approval, nodes.askRefs)
+    val pipeline = Pipeline(agent.id, tools, stack, nodes.approval, nodes.askRefs)
     // the call-tool, approval and ask nodes may write any tool's keys; each call is checked against its own tool's
     val callWrites: Set[StateKey[?, ?]] = tools.tools.flatMap(_.writes).toSet ++ stack.writes ++ Set(results, messages)
 
     b.implement(nodes.callTool, writes = callWrites) { (task, state, context) =>
       tools.get(task.call.name) match
-        case None       => pipeline.error(task, s"Unknown tool '${task.call.name}'")
+        case None       => pipeline.error(task, s"Unknown tool '${task.call.name}'", context)
         case Some(tool) => pipeline.admit(tool, task, state, context)
     }
 
@@ -418,7 +457,7 @@ object ToolLoop:
       val task    = ToolTask(request.assistantMessageId, request.call)
       resumed.answer match
         case ApprovalDecision.Approve        => pipeline.approved(task, request.call, state, context)
-        case ApprovalDecision.Reject(reason) => pipeline.error(task, s"Rejected: $reason")
+        case ApprovalDecision.Reject(reason) => pipeline.rejected(task, reason, context)
         case ApprovalDecision.Edit(arguments) =>
           val edit = StateUpdate.update(
             messages,
@@ -455,17 +494,31 @@ object ToolLoop:
             _        <- Message.validateConversation(history.map(_.message).toList)
             transfer <- state.get(LoopKeys.transfer)
             view     <- sent(agent.id, history, transfer, root, preserves)
-            request = ModelRequest(prompt ++ view, nodes.offered)
-            completion <- stack.wrapModelCall(request, context)(callModel(agent.model))
+            request  = ModelRequest(prompt ++ view, nodes.offered)
+            attempts = AtomicInteger(0)
+            completion <- stack.wrapModelCall(request, context)(callModel(agent.model, agent.id, context, attempts))
             assistant = completion.message
             // a blank answer without tool calls is refused before it is stored, so the history stays valid
             // and recover asks the model again
             _ <- assistant.validate
           yield
+            // every successful call, whatever it routes to; counts and usage only, never content
+            AgentEvents.ModelCallCompleted.emit(
+              context,
+              events.ModelCallCompleted(
+                agent.id.value,
+                completion.model,
+                attempts.get,
+                assistant.toolCalls.size,
+                completion.usage.map(events.CallUsage.fromTokenUsage),
+                completion.estimatedCost
+              )
+            )
             val taskId = context.position.taskId.value
             val stored = StoredMessage(s"$taskId/assistant", assistant)
             val call = UsageSummary()
               .add(completion.model, completion.usage.getOrElse(TokenUsage(0, 0, 0)), completion.estimatedCost)
+            // AgentTracing builds a run's usage from its ModelCallCompleted events the same way
             val appended = Command.empty
               .update(messages, MessageUpdate.Append(stored))
               .update(LoopKeys.usage, call)
@@ -479,6 +532,7 @@ object ToolLoop:
                 else appended.fanOut(nodes.batch, nodes.callTool, calls.map(ToolTask(stored.id, _)))
               case Vector(transfer) if calls.size == 1 =>
                 val target = handoffs(transfer.name)
+                AgentEvents.HandedOff.emit(context, events.HandedOff(agent.id.value, target.agent.id.value))
                 appended
                   .update(messages, toolMessage(transfer, HandoffTools.transferred(target.agent.id)))
                   .update(LoopKeys.activeAgent, target.agent.id)
@@ -487,6 +541,7 @@ object ToolLoop:
               case _ =>
                 // a handoff with other calls, or several: nothing runs, every call gets the rule as its error
                 val error = ujson.Obj("error" -> HandoffTools.MixedBatch).render()
+                calls.filterNot(c => handoffs.contains(c.name)).foreach(pipeline.refusedInBatch(_, error, context))
                 calls
                   .foldLeft(appended)((command, c) => command.update(messages, toolMessage(c, error)))
                   .goto(nodes.model)
@@ -523,9 +578,14 @@ object ToolLoop:
           boundaryStacks.foldLeft[Result[String]](Right(assistant.content))((acc, s) =>
             acc.flatMap(s.afterAgent(_, context))
           ) match
-            case Left(error) => boundary(error, rollback)
+            case Left(error) => boundary(error, rollback, context, GuardrailPhase.Output)
             case Right(changed) if changed.trim.isEmpty =>
-              boundary(ValidationError("tool loop", "afterAgent returned a blank answer"), rollback)
+              boundary(
+                ValidationError("tool loop", "afterAgent returned a blank answer"),
+                rollback,
+                context,
+                GuardrailPhase.Output
+              )
             case Right(changed) if changed == assistant.content => NodeResult.Continue(completed)
             case Right(changed) =>
               val replaced = StoredMessage(answerId, assistant.copy(contentOpt = Some(changed)))
@@ -601,24 +661,36 @@ object ToolLoop:
   /**
    * A run-boundary failure (a `beforeAgent` or `afterAgent` `Left`): a guardrail's Block, which ends the run as a
    * finished failure and commits `update` first (design 4.13). A cancellation is not a Block: it fails the run
-   * as before, leaving the checkpoint `Running` for `recover`.
+   * as before, leaving the checkpoint `Running` for `recover`. A guardrail's block is reported as a durable
+   * `GuardrailBlocked` naming the guardrail and `phase`, never its reason; the Block commits it with the task.
    */
-  private def boundary(error: LLMError, update: StateUpdate): NodeResult = error match
-    case cancelled: CancelledError => NodeResult.Fail(cancelled)
-    case other                     => NodeResult.Block(update, other)
+  private def boundary(error: LLMError, update: StateUpdate, context: RunContext, phase: GuardrailPhase): NodeResult =
+    error match
+      case cancelled: CancelledError => NodeResult.Fail(cancelled)
+      case other =>
+        other match
+          case blocked: GuardrailBlocked =>
+            AgentEvents.GuardrailBlocked.emit(context, GuardrailBlock(blocked.guardrail, phase))
+          case _ => ()
+        NodeResult.Block(update, other)
 
   /**
    * The model wrappers' innermost function: `model.next`, guarded, since the stack guards only its
-   * hooks. It refuses to call the model while the thread is interrupted, returning
-   * `Left(CancelledError)`, so a wrapper that retries never calls a cancelled model again. A
-   * NonFatal throw is `Left`; a thrown cancellation - a bare `InterruptedException` too - restores
-   * the interrupt flag and is `Left(CancelledError)`. Either way it is the model's failure, not a
-   * wrapper's.
+   * hooks. Each invocation is an attempt, numbered from 1 by `attempts` (one counter per model task)
+   * and announced live with `ModelCallStarted`. It refuses to call the model while the thread is
+   * interrupted, returning `Left(CancelledError)`, so a wrapper that retries never calls a cancelled
+   * model again. A NonFatal throw is `Left`; a thrown cancellation - a bare `InterruptedException`
+   * too - restores the interrupt flag and is `Left(CancelledError)`. Either way it is the model's
+   * failure, not a wrapper's.
    */
-  private def callModel(model: ModelStep)(request: ModelRequest): Result[Completion] =
+  private def callModel(model: ModelStep, agent: AgentId, context: RunContext, attempts: AtomicInteger)(
+    request: ModelRequest
+  ): Result[Completion] =
     if Thread.currentThread().isInterrupted then Left(CancelledError("model"))
     else
-      attempt(model.next(request.messages, request.tools)) match
+      val n = attempts.incrementAndGet()
+      AgentEvents.ModelCallStarted.progress(context, events.ModelCallStarted(agent.value, n))
+      attempt(model.next(request.messages, request.tools, ModelCall(context, agent, n))) match
         case Right(result) => result
         case Left(thrown) =>
           CancelledError.fromThrowable(thrown, "model") match
@@ -639,30 +711,101 @@ object ToolLoop:
 
   /** The call pipeline (design #1278, "The call pipeline"; #1279): one call's checks, chain, tool and outcome. */
   final private class Pipeline(
+    agent: AgentId,
     tools: ToolSet,
     stack: MiddlewareStack,
     approval: ResumeRef[ApprovalRequest, ApprovalDecision],
     askRefs: Map[String, ResumeRef[ToolQuestionRequest, ujson.Value]]
   ):
 
-    def error(task: ToolTask, message: String): NodeResult = record(task, message, isError = true)
+    /** An error result, refused before the middleware chain ran, so of zero duration. */
+    def error(task: ToolTask, message: String, context: RunContext): NodeResult =
+      record(task, message, isError = true, context, outcomeOfError(message), Duration.Zero)
+
+    /** A reviewer's rejection at approval: the model sees `Rejected: <reason>`. */
+    def rejected(task: ToolTask, reason: String, context: RunContext): NodeResult =
+      record(task, s"Rejected: $reason", isError = true, context, ToolExecutionOutcome.Rejected, Duration.Zero)
+
+    private def outcomeOfError(message: String): ToolExecutionOutcome =
+      if message.startsWith("Denied:") then ToolExecutionOutcome.Denied else ToolExecutionOutcome.Errored
 
     /** Restores the interrupt flag, so the runtime cancels the task and it records nothing. */
     private def cancelled(error: CancelledError): NodeResult =
       Thread.currentThread().interrupt()
       NodeResult.Fail(error)
 
-    private def record(task: ToolTask, content: String, isError: Boolean): NodeResult =
+    /**
+     * Records the call's result, announcing it with [[announce]]. Every result the loop records
+     * passes through here, bar a `Success`, which keeps the tool's update (see [[outcome]]); the
+     * errors a mixed handoff batch gives its calls are announced by [[refusedInBatch]].
+     */
+    private def record(
+      task: ToolTask,
+      content: String,
+      isError: Boolean,
+      context: RunContext,
+      outcome: ToolExecutionOutcome,
+      duration: FiniteDuration
+    ): NodeResult =
+      announce(task.call, content, isError, context, outcome, duration)
       NodeResult.Continue(
         Command.empty.update(results, ToolResult(task.assistantMessageId, task.call.id, content, isError))
       )
+
+    /**
+     * Sends a call's result live as `ToolCallResult` - with the call's own name and content - and its
+     * outcome durably as `ToolExecuted`.
+     */
+    private def announce(
+      call: ToolCall,
+      content: String,
+      isError: Boolean,
+      context: RunContext,
+      outcome: ToolExecutionOutcome,
+      duration: FiniteDuration
+    ): Unit =
+      AgentEvents.ToolCallResult.progress(context, events.ToolCallResult(call.id, content, isError))
+      executed(call, context, outcome, duration)
+
+    /**
+     * A call of a mixed handoff batch, which runs nothing and gives every call `error` as its result:
+     * announced as an `Errored` call of zero duration, as an unknown tool is.
+     */
+    def refusedInBatch(call: ToolCall, error: String, context: RunContext): Unit =
+      announce(call, error, isError = true, context, ToolExecutionOutcome.Errored, Duration.Zero)
+
+    /**
+     * The call's outcome, content-free: committed with the task, so stored once per committed call.
+     * The tool is named only when the agent has it - a name the model invented is content, and is
+     * recorded as [[ToolLoop.UnknownTool]].
+     */
+    private def executed(
+      call: ToolCall,
+      context: RunContext,
+      outcome: ToolExecutionOutcome,
+      duration: FiniteDuration
+    ): Unit =
+      val tool = if tools.get(call.name).isDefined then call.name else ToolLoop.UnknownTool
+      AgentEvents.ToolExecuted.emit(context, events.ToolExecuted(agent.value, call.id, tool, duration, outcome))
+
+    /** Announces the call live, runs the middleware chain around `innermost`, and times it. */
+    private def timed(
+      tool: AgentTool[?],
+      call: ToolCall,
+      toolContext: ToolContext,
+      context: RunContext
+    )(innermost: () => ToolOutcome): (MiddlewareStack.ToolChainResult, FiniteDuration) =
+      AgentEvents.ToolCallStarted.progress(context, events.ToolCallStarted(call.id, tool.spec.name, call.arguments))
+      val started = System.nanoTime()
+      val chain   = stack.wrapToolCall(ToolCallRequest(tool.spec, call), toolContext)(innermost)
+      (chain, (System.nanoTime() - started).nanos)
 
     private def suspend(task: ToolTask, call: ToolCall, reason: String, source: ApprovalSource): NodeResult =
       NodeResult.Suspend(StateUpdate.empty, ApprovalRequest(task.assistantMessageId, call, reason, source), approval)
 
     /** A new call: steps 2-4, then the middleware chain around the tool. */
     def admit[A](tool: AgentTool[A], task: ToolTask, state: ThreadState, context: RunContext): NodeResult =
-      checked(tool, task, task.call) match
+      checked(tool, task, task.call, context) match
         case Left(refused) => refused
         case Right(args)   => execute(tool, task, task.call, args, state, context)
 
@@ -672,9 +815,9 @@ object ToolLoop:
      */
     def approved(task: ToolTask, call: ToolCall, state: ThreadState, context: RunContext): NodeResult =
       tools.get(call.name) match
-        case None => error(task, s"Unknown tool '${call.name}'")
+        case None => error(task, s"Unknown tool '${call.name}'", context)
         case Some(tool) =>
-          checked(tool, task, call) match
+          checked(tool, task, call, context) match
             case Left(refused) => refused
             case Right(args)   => execute(tool, task, call, args, state, context, approved = true)
 
@@ -697,22 +840,27 @@ object ToolLoop:
             reply <- read(answer)(using declared.answerCodec).left.map(m => s"Invalid answer for '$name': $m")
           yield (args, question, reply)
           decoded match
-            case Left(message) => error(task, message)
+            case Left(message) => error(task, message, context)
             case Right((args, question, reply)) =>
               val toolContext = ToolContext(context, ToolCallId(request.call.id), state, request.approved)
-              val chain = stack.wrapToolCall(ToolCallRequest(tool.spec, request.call), toolContext)(
+              val (chain, took) = timed(tool, request.call, toolContext, context)(
                 innermost(name)(AgentTool.resumeWith(tool, args, question, reply, toolContext))
               )
-              outcome(tool, task, request.call, request.approved, chain, resumed = true)
-        case _ => error(task, s"Tool '$name' does not take answers")
+              outcome(tool, task, request.call, request.approved, chain, context, took, resumed = true)
+        case _ => error(task, s"Tool '$name' does not take answers", context)
 
     /**
      * Steps 2-4: validate the raw arguments, decode them, run the tool's own check. `Left` is the
      * task's result instead: an error result, or a cancellation.
      */
-    private def checked[A](tool: AgentTool[A], task: ToolTask, call: ToolCall): Either[NodeResult, A] =
+    private def checked[A](
+      tool: AgentTool[A],
+      task: ToolTask,
+      call: ToolCall,
+      context: RunContext
+    ): Either[NodeResult, A] =
       val name                                 = tool.spec.name
-      def refused(message: String): NodeResult = error(task, s"Invalid arguments for '$name': $message")
+      def refused(message: String): NodeResult = error(task, s"Invalid arguments for '$name': $message", context)
       // the validator and the check are caller code: a throw refuses the call rather than failing the
       // run, unless it is a cancellation, which cancels the task as a throwing tool's does
       def guarded[T](run: => T): Either[NodeResult, T] =
@@ -766,10 +914,9 @@ object ToolLoop:
       approved: Boolean = false
     ): NodeResult =
       val toolContext = ToolContext(context, ToolCallId(call.id), state, approved)
-      val chain = stack.wrapToolCall(ToolCallRequest(tool.spec, call), toolContext)(
-        innermost(tool.spec.name)(tool.execute(args, toolContext))
-      )
-      outcome(tool, task, call, approved, chain)
+      val (chain, took) =
+        timed(tool, call, toolContext, context)(innermost(tool.spec.name)(tool.execute(args, toolContext)))
+      outcome(tool, task, call, approved, chain, context, took)
 
     /**
      * The chain's innermost function, for one chain invocation: the tool's `execute` or `resume`,
@@ -819,6 +966,8 @@ object ToolLoop:
       call: ToolCall,
       approved: Boolean,
       chain: MiddlewareStack.ToolChainResult,
+      context: RunContext,
+      took: FiniteDuration,
       resumed: Boolean = false
     ): NodeResult =
       val name = tool.spec.name
@@ -830,9 +979,12 @@ object ToolLoop:
           val undeclared =
             update.operations.map(_.key.id).filterNot(k => allowed.exists(_.id == k)).map(_.value).distinct
           if undeclared.isEmpty then
+            val result = rendered(content)
+            AgentEvents.ToolCallResult.progress(context, events.ToolCallResult(call.id, result, isError = false))
+            executed(task.call, context, ToolExecutionOutcome.Succeeded, took)
             NodeResult.Continue(
               Command(update, Nil)
-                .update(results, ToolResult(task.assistantMessageId, call.id, rendered(content), isError = false))
+                .update(results, ToolResult(task.assistantMessageId, call.id, result, isError = false))
             )
           else
             failRun(
@@ -841,21 +993,28 @@ object ToolLoop:
                 s"tool '$name' updated ${undeclared.map(k => s"'$k'").mkString(", ")}, which neither it nor any middleware declares"
               )
             )
-        case ToolOutcome.Error(message) => error(task, message)
+        case ToolOutcome.Error(message) =>
+          record(task, message, isError = true, context, outcomeOfError(message), took)
         case ToolOutcome.NeedsApproval(reason) =>
           val (asker, source) = chain.raisedBy match
             case None     => (s"Tool '$name'", ApprovalSource.Tool)
             case Some(id) => (s"Middleware '${id.value}'", ApprovalSource.Middleware(id))
           // approving would run `execute` again and lose the answer
-          if resumed then error(task, s"$asker asked for approval after a question: $reason")
-          else if approved then error(task, s"$asker asked for approval again: $reason")
-          else suspend(task, call, reason, source)
+          def errored(message: String) =
+            record(task, message, isError = true, context, ToolExecutionOutcome.Errored, took)
+          if resumed then errored(s"$asker asked for approval after a question: $reason")
+          else if approved then errored(s"$asker asked for approval again: $reason")
+          else
+            // a suspending task commits its events with its pending write
+            executed(task.call, context, ToolExecutionOutcome.NeedsApproval, took)
+            suspend(task, call, reason, source)
         case ToolOutcome.Ask(question) =>
           (tool.spec.question, askRefs.get(name)) match
             case (Some(declared: ToolQuestion[q, ?]), Some(ref)) =>
               // a question of another type than the declared one fails to encode: a tool bug, like an undeclared one
               Try(upickle.default.writeJs(question.asInstanceOf[q])(using declared.questionCodec)).toResult match
                 case Right(json) =>
+                  executed(task.call, context, ToolExecutionOutcome.Asked, took)
                   NodeResult.Suspend(
                     StateUpdate.empty,
                     ToolQuestionRequest(task.assistantMessageId, call, json, approved),

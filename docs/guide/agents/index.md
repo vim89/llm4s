@@ -28,7 +28,7 @@ The LLM4S Agent Framework provides a production-ready foundation for building LL
 - **Guardrails** - Input/output validation for safety and quality
 - **Memory** - Short and long-term context with semantic search
 - **Handoffs** - Agent-to-agent delegation for specialist routing
-- **Streaming** - Real-time events for responsive UIs (the agent event stream returns in [#1329](https://github.com/llm4s/llm4s/issues/1329))
+- **Streaming** - Real-time events for responsive UIs (`agent.stream`, [streaming guide](streaming))
 - **Orchestration** - Multi-agent workflows with DAG execution
 
 ## Quick Start
@@ -256,9 +256,11 @@ val agent = Agent.builder("triage", client)
 
 ### [Streaming Events](streaming)
 
-The agent event stream (`runWithEvents`, `AgentEvent`) was removed with the move to the graph
-runtime; its replacement - subscription to a run's events and token streaming - is
-[#1329](https://github.com/llm4s/llm4s/issues/1329).
+`Agent.builder(...).withStreaming()` streams the model's answer, and
+`agent.stream(threadId, query)(listener)` delivers every event of the turn - text deltas, tool
+calls, model calls, handoffs, guardrail blocks - as a `StreamEvent`, matched with `AgentEvents`.
+Durable events carry no message content; content is live-only. `AgentIO.stream` and `AgentZ.stream`
+give the same events as fs2 and ZIO streams.
 
 [Learn more about streaming →](streaming)
 

@@ -97,7 +97,7 @@ final class Agent private[agent] (
 
   /** [[recover]], returning at once with the running turn - to cancel it, or to await its result. */
   def startRecover(threadId: ThreadId, config: RunConfig = RunConfig()): Result[AgentRun] =
-    runtime.recover(threadId, loop.graph, config).map(agentRun)
+    runtime.recover(threadId, loop.graph, config).map(agentRun(_, None, drain = false))
 
   /**
    * Answers some of `threadId`'s pending approvals and questions - built with
@@ -117,7 +117,7 @@ final class Agent private[agent] (
     answers: Map[InterruptId, ujson.Value],
     config: RunConfig = RunConfig()
   ): Result[AgentRun] =
-    runtime.resume(threadId, loop.graph, answers, config).map(agentRun)
+    runtime.resume(threadId, loop.graph, answers, config).map(agentRun(_, None, drain = false))
 
   /**
    * Starts a turn on `threadId` as [[run]] does, returning at once with the running turn - to
@@ -129,11 +129,101 @@ final class Agent private[agent] (
     config: RunConfig = RunConfig(),
     history: Seq[Message] = Nil
   ): Result[AgentRun] =
-    val input = AgentInput(query, history.toVector)
+    startWith(threadId, query, config, history, None)
+
+  /**
+   * [[start]], with `listener` subscribed before the turn begins, so it receives every event of the
+   * turn - live text deltas included - until the turn's terminal event, or a `Disconnected` if it
+   * fell behind or threw; the subscription then ends itself. A turn that ends without a terminal
+   * event (a crash, or a failed commit) ends it once it has delivered what it had. A refused start
+   * (a blank query, a busy thread, ...) is `Left`, and the listener hears nothing. The run's
+   * [[AgentRun.await]] returns only once `listener` has returned from the turn's last event.
+   */
+  def stream(threadId: ThreadId, query: String, config: RunConfig = RunConfig(), history: Seq[Message] = Nil)(
+    listener: StreamEvent => Unit
+  ): Result[AgentRun] =
+    startWith(threadId, query, config, history, Some(Listening(listener, NoEnd, drain = true)))
+
+  /** [[startResume]] with `listener` subscribed first; see [[stream]]. */
+  def streamResume(threadId: ThreadId, answers: Map[InterruptId, ujson.Value], config: RunConfig = RunConfig())(
+    listener: StreamEvent => Unit
+  ): Result[AgentRun] =
+    resumeWith(threadId, answers, config, Listening(listener, NoEnd, drain = true))
+
+  /** [[startRecover]] with `listener` subscribed first; see [[stream]]. */
+  def streamRecover(threadId: ThreadId, config: RunConfig = RunConfig())(
+    listener: StreamEvent => Unit
+  ): Result[AgentRun] =
+    recoverWith(threadId, config, Listening(listener, NoEnd, drain = true))
+
+  /**
+   * [[stream]], calling `onEnd` once when the subscription ends - after the terminal event or a
+   * `Disconnected` has been passed to `listener`, or, for a turn that ends without a terminal event,
+   * once the subscription has delivered what it had. For bridges (the fs2 and ZIO streams) that must
+   * end without a terminal event too. Not called for a refused start. Unlike [[stream]]'s, the run's
+   * `await` does not wait for `listener`: a bridge's release cancels and awaits the run while its
+   * own listener may still be delivering.
+   */
+  private[llm4s] def streamEnding(
+    threadId: ThreadId,
+    query: String,
+    config: RunConfig,
+    history: Seq[Message],
+    onEnd: () => Unit
+  )(listener: StreamEvent => Unit): Result[AgentRun] =
+    startWith(threadId, query, config, history, Some(Listening(listener, onEnd, drain = false)))
+
+  /** [[streamResume]] with `onEnd`; see [[streamEnding]]. */
+  private[llm4s] def streamResumeEnding(
+    threadId: ThreadId,
+    answers: Map[InterruptId, ujson.Value],
+    config: RunConfig,
+    onEnd: () => Unit
+  )(listener: StreamEvent => Unit): Result[AgentRun] =
+    resumeWith(threadId, answers, config, Listening(listener, onEnd, drain = false))
+
+  /** [[streamRecover]] with `onEnd`; see [[streamEnding]]. */
+  private[llm4s] def streamRecoverEnding(threadId: ThreadId, config: RunConfig, onEnd: () => Unit)(
+    listener: StreamEvent => Unit
+  ): Result[AgentRun] =
+    recoverWith(threadId, config, Listening(listener, onEnd, drain = false))
+
+  private val NoEnd: () => Unit = () => ()
+
+  /** A run's listener, the scope end's callback, and whether the run's `await` waits for the listener. */
+  final private case class Listening(listener: StreamEvent => Unit, onEnd: () => Unit, drain: Boolean)
+
+  private def resumeWith(
+    threadId: ThreadId,
+    answers: Map[InterruptId, ujson.Value],
+    config: RunConfig,
+    listening: Listening
+  ): Result[AgentRun] =
+    val (observer, scope) = observed(config, listening)
+    runtime
+      .resume(threadId, loop.graph, answers, config, observer = Some(observer))
+      .map(agentRun(_, Some(scope), listening.drain))
+
+  private def recoverWith(threadId: ThreadId, config: RunConfig, listening: Listening): Result[AgentRun] =
+    val (observer, scope) = observed(config, listening)
+    runtime
+      .recover(threadId, loop.graph, config, observer = Some(observer))
+      .map(agentRun(_, Some(scope), listening.drain))
+
+  private def startWith(
+    threadId: ThreadId,
+    query: String,
+    config: RunConfig,
+    history: Seq[Message],
+    listening: Option[Listening]
+  ): Result[AgentRun] =
+    val input    = AgentInput(query, history.toVector)
+    val watching = listening.map(observed(config, _))
+    val observer = watching.map(_._1)
     val started =
       // refused before any thread is claimed: stored, a blank query would fail every model call after it
       if query.trim.isEmpty then Left(ValidationError("query", "the query is blank"))
-      else if history.isEmpty then runtime.start(threadId, loop.graph, input, config)
+      else if history.isEmpty then runtime.start(threadId, loop.graph, input, config, observer = observer)
       else
         importable(history).flatMap(_ =>
           runtime.startNew(
@@ -141,10 +231,16 @@ final class Agent private[agent] (
             loop.graph,
             input,
             config,
-            ValidationError("history", "history is imported only into a new thread")
+            ValidationError("history", "history is imported only into a new thread"),
+            observer
           )
         )
-    started.map(agentRun)
+    started.map(agentRun(_, watching.map(_._2), listening.exists(_.drain)))
+
+  /** An observer whose listener is `listening`'s scoped to the run `config` starts, calling its `onEnd` at the scope's end. */
+  private def observed(config: RunConfig, listening: Listening): (Observer, RunScope) =
+    val scope = RunScope(config.runId, listening.listener, listening.onEnd)
+    (Observer(Agent.StreamCapacity, scope), scope)
 
   /** History must be a valid conversation without system messages; checked before any thread is claimed. */
   private def importable(history: Seq[Message]): Result[Unit] =
@@ -152,12 +248,16 @@ final class Agent private[agent] (
       Left(ValidationError("history", "system messages are not imported; prompts belong to agents"))
     else Message.validateConversation(history.toList)
 
-  private def agentRun(handle: RunHandle[TurnOutput]): AgentRun = AgentRun(handle, loop, id, runtime, tracing)
+  private def agentRun(handle: RunHandle[TurnOutput], scope: Option[RunScope], drain: Boolean): AgentRun =
+    AgentRun(handle, loop, id, runtime, tracing, scope, drain)
 
 object Agent:
 
   /** Model calls per turn when [[AgentBuilder.withMaxSteps]] is not set. */
   val DefaultMaxSteps: Int = 50
+
+  /** Queue size of a `stream*` or `subscribe` subscription. */
+  val StreamCapacity: Int = 1024
 
   /** A builder for an agent with id `id` (`[a-zA-Z0-9_-]{1,52}`, checked by `build()`) calling `client`. */
   def builder(id: String, client: LLMClient): AgentBuilder = AgentBuilder(id, client)
