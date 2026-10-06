@@ -279,6 +279,19 @@ class ErrorHandlingGuideSpec extends AnyWordSpec with Matchers with EitherValues
         .value shouldBe a[ExecutionError]
     }
 
+    "retry a network error, but not a client-error status or an optimistic-lock failure, as section 4 says" in {
+      def callsFor(error: LLMError): Int = {
+        var calls = 0
+        ErrorRecovery.recoverWithBackoff[String](() => { calls += 1; Left(error) }, 3, 1.millisecond, _ => ())
+        calls
+      }
+      callsFor(NetworkError("down", None, "https://x")) shouldBe 3
+      callsFor(APIError("p", "m", None, None)) shouldBe 3
+      callsFor(APIError("p", "m", Some(400), None)) shouldBe 1
+      callsFor(ServiceError(404, "p", "d")) shouldBe 1
+      callsFor(OptimisticLockFailure("m", "id", 1L)) shouldBe 1
+    }
+
     "fail fast through a circuit breaker once it has opened" in {
       val breaker = new ErrorRecovery.CircuitBreaker[String](failureThreshold = 2, recoveryTimeout = 30.seconds)
       val failing = () => Left(NetworkError("down", None, "https://x")): Result[String]

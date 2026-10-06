@@ -168,8 +168,49 @@ class ErrorRecoverySpec extends AnyFlatSpec with Matchers {
     delays(TimeoutError("t", 1.second, "op")) shouldBe List.fill(3)(100.millis)
     // A service error whose status will not fix itself is not retried
     delays(ServiceError(404, "p", "no such model")) shouldBe Nil
-    // Anything else is not retried, so there is no wait
-    delays(NetworkError("down", None, "https://x")) shouldBe Nil
+    // Any other error RetryPolicy.isRetryable retries waits baseDelay * attempt number (linear)
+    delays(NetworkError("down", None, "https://x")) shouldBe List(100.millis, 200.millis, 300.millis)
+    delays(ExecutionError("m", "op", None, None)) shouldBe List(100.millis, 200.millis, 300.millis)
+    delays(SystemError("m", None)) shouldBe List(100.millis, 200.millis, 300.millis)
+    delays(APIError("p", "m", Some(502), None)) shouldBe List(100.millis, 200.millis, 300.millis)
+    // The rule's two exceptions are not retried, so there is no wait
+    delays(APIError("p", "m", Some(400), None)) shouldBe Nil
+    delays(OptimisticLockFailure("m", "id", 1L)) shouldBe Nil
+    // A non-recoverable error is not retried
+    delays(ValidationError("f", "r")) shouldBe Nil
+  }
+
+  it should "retry exactly what RetryPolicy.isRetryable retries" in {
+    val policy = org.llm4s.reliability.RetryPolicy.exponentialBackoff()
+    val errors: List[LLMError] = List(
+      RateLimitError("p"),
+      TimeoutError("t", 1.second, "op"),
+      NetworkError("down", None, "u"),
+      ServiceError(503, "p", "d"),
+      ServiceError(404, "p", "d"),
+      ServiceError(408, "p", "d"),
+      APIError("p", "m", None, None),
+      APIError("p", "m", Some(500), None),
+      APIError("p", "m", Some(404), None),
+      ExecutionError("m", "op", None, None),
+      SystemError("m", None),
+      OptimisticLockFailure("m", "id", 1L),
+      ValidationError("f", "r"),
+      AuthenticationError("p", "d"),
+      CancelledError("op")
+    )
+    errors.foreach { error =>
+      var calls = 0
+      ErrorRecovery.recoverWithBackoff[String](
+        () => { calls += 1; Left(error) },
+        maxAttempts = 2,
+        baseDelay = 1.millis,
+        sleepFn = _ => ()
+      )
+      withClue(s"$error: ") {
+        (calls == 2) shouldBe policy.isRetryable(error)
+      }
+    }
   }
 
   it should "retry on TimeoutError" in {

@@ -97,7 +97,8 @@ making the call are four steps that can each fail, and you handle them once, at 
 Every error is an `LLMError`, carrying a `message`, an optional `code` and a `context` map. The types in
 `org.llm4s.error` are each also marked as one of two kinds:
 
-- **Recoverable** (`RecoverableError`): the same call may succeed if tried again.
+- **Recoverable** (`RecoverableError`): the call may succeed if tried again, perhaps after you do
+  something first (wait, re-read a record, correct the request).
 - **Non-recoverable** (`NonRecoverableError`): trying again will not help; something has to change.
 
 `LLMError.isRecoverable(error)` tells you which, for an error that carries a marker. Some errors from
@@ -137,8 +138,17 @@ agent hands it back to the model as the tool's result instead of failing the run
 
 **`ServiceError` and its status.** The marker says a `ServiceError` is recoverable, but a 404 is not
 going to fix itself. When it matters, look at `httpStatus`: `error.isRecoverableStatus` (from
-`ServiceError.ServiceErrorOps`) is true for 5xx, 429 and 408. `recoverWithBackoff` and
-`ReliableClient` retry a `ServiceError` only when it is.
+`ServiceError.ServiceErrorOps`) is true for 5xx, 429 and 408. The library's automatic retries retry a
+`ServiceError` only when it is; see the next paragraph.
+
+**Recoverable is not the same as retried automatically.** Every retry in the library -
+`recoverWithBackoff`, `ReliableClient`'s `RetryPolicy`, `LLMClientRetry` and the agent graph's default node
+retry - uses one rule, `RetryPolicy.isRetryable`: it resends the identical request with nobody in the loop,
+so it retries a recoverable error unless repeating the request cannot help. That leaves out two recoverable
+cases: a `ServiceError` or an `APIError` with a client-error status (any 4xx but 408 and 429), because the
+request itself is wrong, and an `OptimisticLockFailure`, because you must re-read the record first. An
+`APIError` with no status is retried. A non-recoverable error is never retried, and neither is an error that
+carries no marker.
 
 **Which status becomes which error.** The status mapping in the table is `HttpErrorMapper`'s: 401 and
 403 to `AuthenticationError`, 429 to `RateLimitError`, 400 to `ValidationError`, any other non-2xx to
@@ -313,24 +323,26 @@ val result = ErrorRecovery.recoverWithBackoff(
 )
 ```
 
-It retries three error types, each on its own schedule. The delays are not exponential:
+It retries what every retry in the library retries (`RetryPolicy.isRetryable`; see
+[section 4](#4-error-types-and-when-each-is-raised)), each error on its own schedule. The delays are not
+exponential:
 
 | Error | Wait before the next attempt |
 |---|---|
 | `RateLimitError` | Its `retryDelay`: the provider's `retryAfter` when it gave one, else 30 seconds (`RateLimitError.DefaultRetryDelay`). `baseDelay` is not used. |
 | `ServiceError` with a 5xx, 429 or 408 status | The provider's `retryAfter` when it gave one, else `baseDelay` times the number of the attempt that failed: `baseDelay`, then `2 * baseDelay`, and so on. |
 | `TimeoutError` | `baseDelay`, every time. |
+| `NetworkError`, `ExecutionError`, `SystemError`, and an `APIError` with no status or a 5xx, 429 or 408 one | `baseDelay` times the number of the attempt that failed, as for a `ServiceError` without a hint. |
 
 Every other error comes back unchanged straight away, whichever attempt it happens on: a
 `ValidationError` on the last attempt, after a retried timeout, is still a `ValidationError`. That
-includes `NetworkError` and a `ServiceError` with any other status, which this function does not retry
-(`ReliableClient` does retry a `NetworkError`). A `CancelledError` is never retried or wrapped, and an
-interrupt during a wait returns one.
+includes a `ServiceError` or an `APIError` with any other status and an `OptimisticLockFailure`. A
+`CancelledError` is never retried or wrapped, and an interrupt during a wait returns one.
 
-When the last attempt fails with one of the three retried types, you get an `ExecutionError` whose
+When the last attempt fails with a retried error, you get an `ExecutionError` whose
 message gives the number of attempts and the last error's message, and whose `operation` is the last
 error's `formatted` text; the original error's type is not kept. `ExecutionError` is itself a
-`RecoverableError`, so an outer retry loop that matches on the marker will retry it. The operation
+`RecoverableError` that the rule retries, so an outer `recoverWithBackoff` or `RetryPolicy` will retry it. The operation
 always runs at least once, even if `maxAttempts` is below 1.
 
 To stop calling a service that keeps failing, wrap the call in an `ErrorRecovery.CircuitBreaker`.
@@ -379,7 +391,8 @@ See the [Testing Guide](../getting-started/testing-guide.md).
   framework forces you to, in one place.
 - Match on specific types first, then on `RecoverableError`, then a catch-all. Call
   `LLMError.isRecoverable` only on an error you know carries a marker.
-- Retry only what is recoverable, with a limit and a delay; never retry a `CancelledError`.
+- Retry only what is recoverable, with a limit and a delay; never retry a `CancelledError`. The
+  library's own retries also leave out a client-error status and an `OptimisticLockFailure`.
 - Log `error.formatted`, show `error.message`, and never put an API key in either.
 
 ## See also

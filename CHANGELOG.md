@@ -1632,6 +1632,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   JDBC connection is closed when opening the file fails (it leaked and kept the file locked, which aborted
   the Windows test suite); and `PRAGMA busy_timeout = 30000` makes concurrent writers wait instead of
   failing with `SQLITE_BUSY`. Remaining store issues are tracked in [#1320](https://github.com/llm4s/llm4s/issues/1320).
+- **One retry rule: `LLMError.isRecoverable` and `RetryPolicy.isRetryable` no longer disagree**
+  ([#1316](https://github.com/llm4s/llm4s/issues/1316)). Four recoverable errors - `APIError`, `ExecutionError`,
+  `SystemError` and `OptimisticLockFailure` - were never retried by the default `RetryPolicy` (so by `ReliableClient`),
+  while `LLMClientRetry` retried every recoverable error and the agent graph's node retries retried every
+  recoverable error and a client-error `ServiceError`; a caller who branched on `isRecoverable` could not know what
+  would be retried. There is now one rule, `RetryPolicy.isRetryable`, used by all three and by `ErrorRecovery.recoverWithBackoff`: an error is retried if it is
+  recoverable, except a response with a client-error HTTP status (any 4xx but 408 and 429, on a `ServiceError` or an
+  `APIError`) and an `OptimisticLockFailure`, both of which need the caller first. The `ScalaDoc` of
+  `RecoverableError`, `LLMError.isRecoverable` and `RetryPolicy.isRetryable` states the contract, and
+  `RetryContractSpec` pins it for every concrete `LLMError`, failing when a new error type has no row.
+  **Behaviour changes:** the default policy now retries `ExecutionError`, `SystemError` and an `APIError` with no
+  status or a retryable one (no LLM client produces these today, so `ReliableClient` is unaffected in practice);
+  `RetryPolicy.custom` with no predicate of its own now uses the same rule (it retried only rate-limit, timeout,
+  network and 5xx/408/429 `ServiceError` errors, so a policy that customised only the delay missed `ExecutionError`,
+  `SystemError` and `APIError`); `LLMClientRetry` no longer retries a 4xx `APIError` or an `OptimisticLockFailure`; and the agent graph's default
+  node retry no longer retries a 4xx `ServiceError` or an `OptimisticLockFailure`. `RetryPolicy.recoverableOnly`
+  (graph) is renamed `RetryPolicy.transientOnly`, as it is no longer `isRecoverable`.
+  `ErrorRecovery.recoverWithBackoff`, which retried only `RateLimitError`, `TimeoutError` and a 5xx/429/408
+  `ServiceError`, now also retries `NetworkError`, `ExecutionError`, `SystemError` and an `APIError` with no status or a
+  retryable one, waiting `baseDelay` times the attempt number (the schedules of the three it already retried are
+  unchanged); docs/guide/error-handling.md describes the rule.
 - **MCP: text stays text, tool failures are `isError` results, `getTools` returns a `Left`** ([#1319](https://github.com/llm4s/llm4s/issues/1319)):
   the client no longer turns a text result that parses as JSON into a JSON value (a tool that returned
   `"24"` is not handed back as the number 24); an object result also travels as the `structuredContent` the
