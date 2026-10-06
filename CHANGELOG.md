@@ -1774,6 +1774,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an up-to-date table is not locked, and the column is added with `ADD COLUMN IF NOT EXISTS`, so
   replicas initialising at once do not fail on a duplicate column. `PgSchemaManager.extendVectorsTable` now also rejects a table
   name that is not a valid SQL identifier, as `PgSearchIndex` and `PgVectorStore` already did.
+- **`llm4s-rag`: re-ingesting a document replaces it, and several inputs return `Left` instead of throwing**
+  ([#1318](https://github.com/llm4s/llm4s/issues/1318)): `RAG.ingestText` / `ingestChunks` / `ingest` upserted by
+  chunk id, so a document that came back with fewer chunks (or none) kept its old tail and went on matching
+  queries. Indexing now embeds, writes the new chunks over the old ones, then removes the old version's tail.
+  Nothing is deleted first, and a write that fails in either store - including after the other store was written -
+  is rolled back, so a document that cannot be embedded or stored keeps its previous version in both stores.
+  The rollback covers the failing write itself, since a store can commit a batch and lose the response (a
+  timed-out Qdrant upsert); if the rollback fails too, that is logged at ERROR and the returned error names both
+  failures. Telling whether a document is already stored is one lookup
+  by id, so ingesting a new document costs no scan of the store. `sync` / `syncAsync` no longer delete a changed
+  document's chunks before re-ingesting it, and a failed ingest no longer registers the document's new version,
+  so the next sync retries it instead of treating it as unchanged. `deleteByPrefix` on the SQLite and
+  pgvector stores and keyword indexes used the prefix as a `LIKE` pattern, so ids containing `_` or `%` deleted
+  other documents' chunks; they are matched literally now. On SQLite it is also case-sensitive (`GLOB`): SQLite's
+  `LIKE` folds ASCII case, so deleting or re-ingesting `Doc-A` removed `doc-a`'s chunks too. A reranker returning an out-of-range index made
+  `HybridSearcher` throw `IndexOutOfBoundsException`; that result is now dropped with a WARN, as
+  `AsyncHybridSearcher` always did. A candidate the reranker names twice is returned once, with its first score, and
+  a non-empty reranker response that names no candidate at all is now a `Left(ProcessingError)` in both searchers
+  instead of an empty success (an empty response stays an empty success). `WeightedScore` fusion no longer scores a channel's weakest genuine hit `0`, the
+  score of a miss: it maps to `0.1`, the best to `1`, so weighted scores shift. New
+  `ChunkingUtils.chunkTextValidated` returns a `Left(ValidationError)` for a non-positive size or an overlap that is
+  not smaller than it, and `FileEmbedder.encodeFromPath` uses it, so an unusable text-chunking configuration is a
+  `Left` instead of an `IllegalArgumentException`. The `ChunkingConfig` and `WeightedScore` constructors keep
+  throwing on an invalid value (decided, #1318 items 4-5): `RAGConfig.withChunking` and `withWeightedScore` are
+  chainable builders that return a `RAGConfig`, which a `Left` cannot be, so validate such values from user input
+  first. `WeightedScore` weights, and their sum, must be finite as well as non-negative: an infinite weight or sum
+  scored `Inf` or `NaN`. The Postgres stores' prefix delete now writes its escape character as `E'\\'`, which does
+  not depend on the server's `standard_conforming_strings` setting. Known limitation: `RAG.deleteDocument("a")` also
+  removes the chunks of a document whose id looks like `a-chunk-<n>`; avoid ids of that shape. `documentCount` / `chunkCount` count each
+  document once with its current chunks: a re-ingest replaces its count, one re-ingested empty or deleted (by
+  `deleteDocument` or a sync) no longer counts, and an ingest that produced no chunks never did.
 - **The docs taught a configuration route that no longer exists.** Since
   [#903](https://github.com/llm4s/llm4s/pull/903) (0.3.2) nothing in llm4s reads `LLM_MODEL` or a
   provider's API-key variable, yet the README, CLAUDE.md, every getting-started page and most
