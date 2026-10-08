@@ -3,7 +3,7 @@ package org.llm4s.llmconnect.provider
 import org.llm4s.annotation.Stable
 import org.llm4s.error.ValidationError
 import org.llm4s.http.{ HttpFailures, Llm4sHttpClient }
-import org.llm4s.llmconnect.config.OpenAICompatibleConfig
+import org.llm4s.llmconnect.config.{ OpenAICompatibleConfig, ProviderTimeouts }
 import org.llm4s.llmconnect.provider.OpenAICompatibleClient.StreamToolCalls
 import org.llm4s.llmconnect.model._
 import org.llm4s.llmconnect.provider.ProviderResultOps.*
@@ -249,10 +249,12 @@ class OpenAICompatibleClient(
    * `OpenRouterClient` had not (#912), so an endpoint that accepted the connection and never
    * answered hung the caller. Scoped to the provider package so specs can shorten it.
    */
-  protected[provider] def requestTimeout: FiniteDuration = OpenAICompatibleClient.RequestTimeout
+  protected[provider] def requestTimeout: FiniteDuration =
+    settings.timeouts.requestOr(OpenAICompatibleClient.RequestTimeout)
 
   /** The timeout `streamComplete` sends with its request. See [[requestTimeout]]. */
-  protected[provider] def streamTimeout: FiniteDuration = OpenAICompatibleClient.StreamTimeout
+  protected[provider] def streamTimeout: FiniteDuration =
+    settings.timeouts.streamOr(OpenAICompatibleClient.StreamTimeout)
 
   /**
    * The headers every request carries. A header the dialect repeats is sent once, its values
@@ -513,13 +515,16 @@ object OpenAICompatibleClient {
 
   /**
    * The timeout on `complete`'s request: two minutes, what the old `MistralClient` and
-   * `CohereClient` used, and what `OllamaClient`, `GeminiClient` and `VertexAIClient` use. A
-   * single internal default for now; configurable timeouts are
-   * [[https://github.com/llm4s/llm4s/issues/712 #712]].
+   * `CohereClient` used, and what `OllamaClient`, `GeminiClient` and `VertexAIClient` use. This is
+   * the default: a section's `timeouts.request` replaces it
+   * ([[https://github.com/llm4s/llm4s/issues/712 #712]]).
    */
   val RequestTimeout: FiniteDuration = 2.minutes
 
-  /** The timeout on `streamComplete`'s request: five minutes, as in the clients this one replaced. */
+  /**
+   * The timeout on `streamComplete`'s request: five minutes, as in the clients this one replaced. A
+   * section's `timeouts.stream` replaces it.
+   */
   val StreamTimeout: FiniteDuration = 5.minutes
 
   /**
@@ -563,7 +568,8 @@ object OpenAICompatibleClient {
     baseUrl: String,
     apiKey: Option[String],
     contextWindow: Int,
-    reserveCompletion: Int
+    reserveCompletion: Int,
+    timeouts: ProviderTimeouts = ProviderTimeouts.default
   ) {
     override def toString: String =
       s"Settings(providerName=$providerName, displayName=$displayName, model=$model, baseUrl=$baseUrl, " +
@@ -579,7 +585,8 @@ object OpenAICompatibleClient {
       baseUrl = config.baseUrl,
       apiKey = config.apiKey,
       contextWindow = config.contextWindow,
-      reserveCompletion = config.reserveCompletion
+      reserveCompletion = config.reserveCompletion,
+      timeouts = config.timeouts
     )
 
   /**
