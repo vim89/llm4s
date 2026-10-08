@@ -524,6 +524,7 @@ import org.llm4s.config.Llm4sConfig
 import org.llm4s.llmconnect.EmbeddingClient
 import org.llm4s.llmconnect.config.EmbeddingModelConfig
 import org.llm4s.agent.memory.LLMEmbeddingService
+import org.llm4s.model.ModelRegistryService
 
 // Core logic depends on injected service
 class RAGService(embeddingService: LLMEmbeddingService) {
@@ -536,9 +537,12 @@ class RAGService(embeddingService: LLMEmbeddingService) {
 object RAGApplication extends App {
   val startup = for {
     // 1. Load config
-    (provider, cfg) <- Llm4sConfig.embeddings()
-    model <- Llm4sConfig.textEmbeddingModel()
-    
+    embeddingConfig <- Llm4sConfig.embeddings()
+    (provider, cfg) = embeddingConfig
+    model    <- Llm4sConfig.textEmbeddingModel()
+    registry <- Llm4sConfig.modelRegistryService()
+    given ModelRegistryService = registry
+
     // 2. Build dependencies
     client <- EmbeddingClient.from(provider, cfg)
     
@@ -1114,10 +1118,9 @@ client.complete(Conversation(Seq(UserMessage("Your query"))))
 
 // Streaming: get tokens as they arrive
 client.streamComplete(
-  Conversation(Seq(UserMessage("Your query")))
-) { chunk =>
-  chunk.content.foreach(print)
-}
+  Conversation(Seq(UserMessage("Your query"))),
+  onChunk = chunk => chunk.content.foreach(print)
+)
 ```
 
 3. **Reduce response length:**
@@ -1136,13 +1139,15 @@ client.complete(
 
 1. **Batch embeddings instead of loading all at once:**
 ```scala
+import org.llm4s.llmconnect.model.EmbeddingRequest
+
 val documents: List[String] = loadDocuments()
 val batchSize = 100
 
 val embeddings = documents.grouped(batchSize).flatMap { batch =>
-  embedder.embed(batch) match {
-    case Right(emb) => emb
-    case Left(err) => 
+  embedder.embed(EmbeddingRequest(batch, embeddingModel)) match {
+    case Right(response) => response.embeddings
+    case Left(err) =>
       println(s"Batch failed: $err")
       List.empty
   }
