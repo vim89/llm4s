@@ -2208,6 +2208,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Voyage embeddings post to the right URL.** The default base URL (and the documented
   `VOYAGE_EMBEDDING_BASE_URL`) end in `/v1`, and the client appended `/v1/embeddings`, so every
   request went to `/v1/v1/embeddings`. It now appends `/embeddings`.
+- **JSON a model or a tool produced is refused beyond 512 levels of nesting instead of overflowing
+  the stack** ([#1562](https://github.com/llm4s/llm4s/issues/1562)). `ujson.read` itself is
+  iterative, but every traversal of the value it builds - rendering it back to the provider or into
+  a log line or error message, `upickle.default.read[A]`, equality - recurses once per level, and a
+  `StackOverflowError` is not an `Exception`: `Try` does not catch it, so a reply such as 100,000
+  nested `[` escaped `Result`-returning APIs as an `Error` (`GraphJsonParser.parse`,
+  `GraphQueryTranslator`, `NativeQueryGenerator`, `ToolOutputCompressor` from a few thousand
+  levels). A `private[llm4s]` `org.llm4s.util.BoundedJson.read` now measures the depth on the raw
+  text first (an iterative, string-aware scan, as `json_tool`'s since #1510) and returns a `Left`
+  naming the 512-level limit, and every place that parses model- or tool-produced text uses it:
+  `LLMClient.completeStructured` (a `ValidationError` on `structured_output`), streamed and
+  non-streamed tool-call arguments in `StreamingToolArgumentParser`, `StreamingAccumulator`,
+  `OpenAICompatibleDialect.lenientToolCalls` (arguments become `{}`), `StandardToolCallDeserializer`
+  (the completion fails, as for malformed arguments) and `OpenAIClient` (the call is dropped, as
+  for malformed arguments), `ToolOutputCompressor` (the result is compressed as text), the
+  `JSONValidator` guardrail (rejected as not valid JSON), the knowledge-graph parsers
+  (`GraphJsonParser`, `GraphQueryTranslator`, `NativeQueryGenerator`, `GraphQAPipeline`,
+  `EntityLinker`: a `ProcessingError`, or the existing fallback), the RAG evaluation metrics
+  (`Faithfulness`, `AnswerRelevancy`, `ContextPrecision`, `ContextRecall`: an `EvaluationError`,
+  where a deep claims reply used to overflow through the `InvalidData` message `.str` builds),
+  `TestDataset` and `GroundTruthGenerator`, `LLMReranker` (neutral scores, as for any reply it
+  cannot read), `LLMMemoryManager.extractEntities` (a `ProcessingError`), and the Ollama client's
+  tool-call arguments when they arrive as a string: a reply's are a malformed call (a
+  `ProcessingError` naming the limit), and an assistant turn's are sent as `{}` like any string that
+  is not a JSON object, never parsed and rendered back. `json_tool` now measures its documents with
+  the same scan. The parser's own failure is reported as a `ValidationError` on `json` carrying its
+  message, mapped directly rather than through `DefaultErrorMapper`, which read the JSON path in
+  that message (`$[429]`) as a rate limit. Configuration, model metadata, JSON the library wrote
+  itself and provider response envelopes, in which the model's text sits inside string literals,
+  are parsed as before.
 - **`ReliableClient` applies `ReliabilityConfig.rateLimit`**
   ([#1133](https://github.com/llm4s/llm4s/issues/1133)). Only `ReliableProviders.wrap` honoured
   it, so `new ReliableClient(...)` with rate limiting enabled made every call unthrottled. The
