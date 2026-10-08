@@ -284,7 +284,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   over the purpose. `RAG` and `RAGPipeline` embed the question they answer as a query and what they index as
   documents, the memory stores embed the text they search with as a query (`EmbeddingService.embedQuery`,
   which delegates to `embed` by default, so existing implementations are unaffected), and `CachedEmbeddingClient`
-  keeps a query and a document with the same text in separate cache entries (document keys are unchanged). **Behaviour changes:** Voyage now sends `input_type` (`document` by
+  keeps a query and a document with the same text in separate cache entries. **Behaviour changes:** Voyage now sends `input_type` (`document` by
   default; it sent none before), so re-index for the best retrieval quality - older document vectors still
   work; and a Jina or Cohere provider built without an explicit task now follows each request's purpose
   instead of always sending the document type. `EmbeddingRequest` becomes a growth-prone type (private
@@ -499,6 +499,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   testing. Its snippets after the first section are compiled and run by `ErrorHandlingGuideSpec`. The Basic Usage
   guide listed error types that do not exist (`ProviderConnectionError`, `InvalidApiKeyError`, ...) and
   called `LLMError` sealed; it now shows the real ones and links to the guide.
+- **Caching guide** ([#1297](https://github.com/llm4s/llm4s/issues/1297)): `docs/guide/caching.md` explains the embedding
+  cache (`CachedEmbeddingClient`, `InMemoryEmbeddingCache`, custom keys and backends) and the semantic completion cache
+  (`CachingLLMClient`, `CacheConfig`): what a hit needs, what the key and the prompt contain, TTL, eviction, the cases
+  that bypass the cache, what it reports through tracing, and its limits. Its snippets are compiled and run by
+  `CachingGuideSpec`. The caching changes it brought with it are listed under Changed.
 - **Structured output guide** ([#1310](https://github.com/llm4s/llm4s/issues/1310)):
   `docs/guide/structured-output.md` explains `LLMClient.completeStructured[A]`: a minimal example, how the
   reply is recovered from a fence or prose, that the schema is derived with `strict = true` and so lists every
@@ -750,6 +755,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   now be rejected. Reworked from #923 by @Shubha9807.
 
 ### Changed
+- **Embedding cache keys are unambiguous; the completion cache refuses a NaN threshold and serves an entry exactly
+  `ttl` old** ([#1297](https://github.com/llm4s/llm4s/issues/1297)). **Breaking:** `CacheKeyGenerator.sha256(parts*)`
+  length-prefixes every part instead of joining text and model with `:` (under which the text `a:b` with model `c`
+  and the text `a` with model `b:c` shared a key), and `CachedEmbeddingClient`'s key function takes
+  `(text, modelName, purpose: InputPurpose)` instead of a `#query`-suffixed model name (under which a query for model
+  `m` and a document for a model named `m#query` shared a key); the default is `CacheKeyGenerator.embeddingKey`.
+  `sha256` also hashes every UTF-16 code unit of the parts rather than their UTF-8 bytes, under which an isolated
+  surrogate (`"\uD800"`, `"\uD801"`) was replaced by `?` and distinct strings shared a key.
+  **Migration:** a custom key function gains the `InputPurpose` parameter and should include it in the key; vectors
+  stored under the old keys in a persistent `EmbeddingCache` are no longer found and are re-embedded on first use.
+  `CacheConfig.create` now refuses a `NaN` similarity threshold, which it accepted before (every similarity check
+  then failed, so nothing was ever served from the cache), and `CachingLLMClient` serves an entry
+  exactly `ttl` old instead of counting it as expired, matching `InMemoryEmbeddingCache`.
 - **`AssistantMessage` is a growth-prone data type; `Completion.thinking` comes from the message**
   ([#1381](https://github.com/llm4s/llm4s/issues/1381)): `AssistantMessage` is `final case class AssistantMessage
   private (contentOpt, toolCalls, thinking)` with a companion `apply` (named arguments, defaults as before, plus the
