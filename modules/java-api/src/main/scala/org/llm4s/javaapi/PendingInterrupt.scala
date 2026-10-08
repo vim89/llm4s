@@ -8,11 +8,11 @@ import java.util.{ Objects, Optional }
 import scala.jdk.CollectionConverters.*
 
 /**
- * One approval or question a suspended agent turn waits for, as [[JAgent.pending]] lists them: every
- * field a `String` or a Java enum, JSON as text.
+ * One approval or question a suspended agent turn waits for, as a `SUSPENDED` [[JAgentStatus.pending]]
+ * (and its shortcut [[JAgent.pending]]) lists them: every field a `String` or a Java enum, JSON as text.
  *
  * {{{
- * for (PendingInterrupt p : JAgent.pending(result)) {
+ * for (PendingInterrupt p : result.status().pending()) {
  *     switch (p.kind()) {
  *         case APPROVAL -> answers.add(Answer.approve(p.id()));
  *         case QUESTION -> answers.add(Answer.reply(p.id(), "true"));
@@ -26,7 +26,8 @@ import scala.jdk.CollectionConverters.*
  * @param id the interrupt's id, to answer it with [[Answer]]
  * @param kind whether it waits for an approval or for the answer to a question
  * @param toolName the name of the tool whose call is waiting
- * @param argumentsJson the call's arguments, a JSON object as text
+ * @param argumentsJson the call's arguments as JSON text - an object, as a model sends them, though a
+ *                      call built with a `ujson.Str` renders as a JSON string literal
  */
 final class PendingInterrupt private (
   val id: String,
