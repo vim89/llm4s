@@ -18,6 +18,7 @@ Comprehensive guides for LLM4S features.
 - **[Java](java)** - Call a model from Java with `llm4s-java-api`: a client, a conversation and failures you can read without Scala
 - **[Spring Boot](spring-boot)** - `llm4s-spring-boot-starter`: properties, an `LLM4STemplate` bean, asynchronous calls and a health indicator
 - **[Error Handling](error-handling)** - Work with `Result[A]` and `LLMError`: pattern matching, for-comprehensions, every error type, recovery and testing
+- **[Structured Output](structured-output)** - `completeStructured`: typed replies from a schema, which providers enforce it, and what a bad reply looks like
 - **[Writing a Provider](writing-a-provider)** - Publish your own provider module against the `llm4s-core` SPI
 - **[JSON Libraries](json-libraries)** - Use circe, play-json or zio-json with LLM4S: converting at the boundary, structured output and tools
 
