@@ -1972,6 +1972,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `llm4s-core`. The loader keeps its `org.llm4s.config` package and its `load(source)` method.
 
 ### Fixed
+- **Redaction reads a query parameter only inside a URL, so a `?` in prose no longer mangles the document**
+  ([#1667](https://github.com/llm4s/llm4s/issues/1667)): `Redaction.redact` and `redactForLogging`, and so the
+  exchange-log sink, read a query parameter as `[?&]`, a key of any characters up to the next `=`, and a value up
+  to the next `&` or whitespace. A `?` in prose, such as a question in a chat message, started a "parameter" whose
+  key ran across quotes, braces and lines to the next `=` anywhere later in the document. When that span held a
+  sensitive word, its "value" replaced the closing quote and the fields after it. The field passes then read the
+  mangled text out of step and left credentials readable: in
+  `{"messages": [{"content": "Is this right?"}], "credentials": {"dsn": "postgres://u@h/db?sslmode=require",
+  "password": "hunter2}SECRET", "keys": ["SECRETBB"]}}` the tail of `password` and the whole of `keys` were
+  written in the clear. A key is now one run of the characters a query key can hold: no whitespace, quote, `?`,
+  `&` or `=`. A value ends at `&`, at whitespace, or at the quote that ends the string the URL sits in, which is kept
+  with the backslashes that escape it. RFC 3986 allows `'` unencoded in a query, so a run of `'` followed by a
+  letter, a digit, one of `._~%+/-` or one of `!$*(@=` is part of the value (`?key=ab'cd`, `pa'(ss)w0rd`,
+  `Xk9'!mQ2`, `ab''cd`, and `''Xk9` at its start); a `"` is part of it only before a letter, a digit or one of
+  `._~%+/-`. One exception: a value that holds `'` before `,`, `)`, `;` or `:` (`?token=ab',cd`) is redacted only
+  up to that quote, and the text after it is written, because such a quote cannot be told from the one that ends a
+  string, as in `fetch('...?token=ab')`. A quoted value (`?key='abc'`, or `\"abc\"` in JSON inside a string) is redacted inside its quotes, and an empty
+  value is left as it is. The value of a parameter that is kept is searched too, so `?next=/cb?token=...`, which
+  was written in the clear, is redacted. The sensitive parameter names are unchanged; `?api_key=`, `&token=`,
+  `?access_token=` and `?filter[api_key]=` are still redacted, and redacted JSON keeps its structure and still
+  parses. No signature changes.
 - **`DefaultErrorMapper` classifies 401 and 429 only when the message names an HTTP status, and keeps the
   cause otherwise** ([#1668](https://github.com/llm4s/llm4s/issues/1668)). The mapper behind `Safety.safely`,
   `Safety.fromTry`, `toResult` and `toLLMError` turned any exception whose message *contained* `401` into
