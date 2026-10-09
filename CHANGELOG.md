@@ -2007,6 +2007,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `llm4s-core`. The loader keeps its `org.llm4s.config` package and its `load(source)` method.
 
 ### Fixed
+- **`llm4s-openai`: OpenAI embeddings reach `/v1/embeddings` with the default base URL**
+  ([#1413](https://github.com/llm4s/llm4s/pull/1413)): the default `llm4s.embeddings.openai.baseUrl` is
+  `https://api.openai.com/v1`, the versioned root the chat provider uses too, but `OpenAIEmbeddingProvider`
+  appended `/v1/embeddings` to it and posted to `https://api.openai.com/v1/v1/embeddings`. A base URL ending in
+  `/v1` now gets `/embeddings`; one without it (`https://api.openai.com`, a proxy root) still gets
+  `/v1/embeddings`, so a base URL that worked before is unchanged.
 - **`llm4s-rag`: `SimpleChunker` and `ChunkingUtils.chunkText` no longer throw for a very large window**
   ([#1424](https://github.com/llm4s/llm4s/pull/1424)): the window end and the next start were computed in `Int`, so
   a valid configuration such as `ChunkingConfig(targetSize = Int.MaxValue, maxSize = Int.MaxValue,
