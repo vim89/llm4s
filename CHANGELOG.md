@@ -8,14 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Cookbook recipe: several agents in one graph** ([#1330](https://github.com/llm4s/llm4s/issues/1330)):
+  `MultiAgentGraphRecipe` runs two specialist agents in one superstep and an editor agent behind a static join,
+  and its spec checks update order, the barrier, step boundaries and cancellation with no API key.
 - **Suspended agent turns from Java and Kotlin** ([#1392](https://github.com/llm4s/llm4s/issues/1392)):
   `llm4s-java-api`'s `JAgent.pending(result)` returns a `java.util.List<PendingInterrupt>`. For a
   `Suspended` turn it lists the approvals, then the questions. For any other turn the list is empty.
   Each `PendingInterrupt` has `id()`, `kind()` (the Java enum `InterruptKind`, `APPROVAL` or `QUESTION`),
   `toolName()`, `argumentsJson()`, and `reason()` or `questionJson()` as an `Optional<String>`. No Scala
   or ujson type is involved. `JAgent.resume(threadId, List<Answer>)` and `JAgent.recover(threadId)` are
-  blocking versions of `streamResume` and `streamRecover`. They return `LlmResult<JAgentResult>` (#1393) and
-  handle an interrupt as `run` does. A partial resume returns `Suspended` again, with the unanswered
+  blocking versions of `streamResume` and `streamRecover`. They return `LlmResult<JAgentResult>` (#1393); an
+  interrupted caller gets a `CancelledError` and the turn is cancelled, leaving the thread for `recover`
+  (#1330). A partial resume returns `Suspended` again, with the unanswered
   items still pending. The Kotlin API adds `AgentKt.pending(result)` and the `suspend` functions
   `resume(threadId, answers)` and `recover(threadId)`. These run the turn as the streams do, so
   cancelling the caller cancels the turn and leaves the thread for `recover`. The Java sample approves
@@ -768,6 +772,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   now be rejected. Reworked from #923 by @Shubha9807.
 
 ### Changed
+- **An interrupted `Agent.run`, `continueConversation`, `recover` or `resume` cancels its turn, from Java too** ([#1330](https://github.com/llm4s/llm4s/issues/1330)):
+  the call returns `Left(CancelledError)` with the interrupt flag set, as before, and now also cancels the turn it
+  was waiting on instead of leaving it running, returning once that turn has ended (within 5 seconds), so `recover`
+  can follow at once; a caller already interrupted starts no turn. Cancelling a graph run therefore cancels the
+  agent turns its nodes are waiting on. Use `start`/`startRecover`/`startResume` and await the `AgentRun` to keep a turn past an interrupt.
+  With tracing, the cancelled turn's trace is complete (its last events delivered, its subscription detached) when
+  the call returns. A turn that had already begun committing its outcome cannot be cancelled: the call then returns
+  that outcome, with the interrupt flag still set. `run(query)`, whose random thread id a `Left` does not carry,
+  forgets the thread of a turn that failed or was cancelled once it has ended.
+  **Java-visible:** `llm4s-java-api`'s blocking `JAgent.run`, `continueConversation`, `resume` and `recover` go
+  through these calls, so an interrupted Java caller now cancels its turn too (they used to stop only the wait and
+  leave the turn running); Java and Kotlin now behave the same. `AgentStream.cancel()` still cancels a streamed turn
+  without interrupting any thread.
 - **Java and Kotlin agent results use Java types only** ([#1393](https://github.com/llm4s/llm4s/issues/1393),
   BREAKING, `llm4s-java-api`, Kotlin API). Every agent turn the Java facade returns - `JAgent.run`,
   `continueConversation`, `resume`, `recover`, `AgentStream.await()`, `AgentStreamListener.onComplete` - is now a
@@ -1828,6 +1845,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `org.llm4s.toolapi.ToolHints` in `llm4s-core` (`@Experimental`), because `llm4s-mcp` cannot depend on the agent runtime.
 
 ### Removed
+- **Orchestration: `PlanRunner`, `DAG`, `TypedAgent`, `Policies`, `OrchestrationError` and `CancellationToken`**
+  ([#1330](https://github.com/llm4s/llm4s/issues/1330)): `org.llm4s.agent.orchestration` is deleted, with
+  `org.llm4s.types.PlanId` and `org.llm4s.types.AgentId` from `llm4s-core` (`org.llm4s.agent.AgentId` is the agent's
+  id). Build the same flows with `GraphBuilder` and run them on `GraphRuntime`; cancel with `RunHandle.cancel()`.
+  See the migration guide's "Orchestration removed (#1330)" and the `multi-agent-graph` cookbook recipe.
 - **`ToolCallPolicy` and `PolicyDecision`** ([#1279](https://github.com/llm4s/llm4s/issues/1279)),
   with `ApprovalSource.Policy` and `ToolLoop.build`'s `policy` parameter, replaced by
   `AgentMiddleware`. Migration: a policy becomes an `AgentMiddleware` overriding `wrapToolCall`:
