@@ -1972,6 +1972,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `llm4s-core`. The loader keeps its `org.llm4s.config` package and its `load(source)` method.
 
 ### Fixed
+- **`llm4s-openai-compatible`: Z.ai keeps replayed reasoning** ([#1384](https://github.com/llm4s/llm4s/pull/1384),
+  [#1411](https://github.com/llm4s/llm4s/pull/1411)):
+  a request that sends an earlier turn's `reasoning_content` back now also sets `"thinking": {"clear_thinking": false}`,
+  merged into any existing `thinking` object. Z.ai's standard endpoint has preserved thinking off by default
+  (`clear_thinking` defaults to `true`) and drops replayed reasoning without it; `thinking.type` is left unset.
 - **Redaction reads a query parameter only inside a URL, so a `?` in prose no longer mangles the document**
   ([#1667](https://github.com/llm4s/llm4s/issues/1667)): `Redaction.redact` and `redactForLogging`, and so the
   exchange-log sink, read a query parameter as `[?&]`, a key of any characters up to the next `=`, and a value up
