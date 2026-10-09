@@ -93,21 +93,65 @@ User Input ──► Agent ──► LLM Provider (API key in header)
 
 **Mitigation:**
 - `SQLiteMemoryStore` path is chosen by the application developer. Use a path under a directory with restricted permissions (e.g., `chmod 700`).
-- For ephemeral use, pass `":memory:"` to `SQLiteMemoryStore.inMemory()` — no files are created.
+- For ephemeral use, use `SQLiteMemoryStore.inMemory()`, which opens the database at `":memory:"` itself — no files are created.
 - Delete the `.db-journal` file alongside the database file when decommissioning a store.
 
 ### 6. Workspace Sandbox Escapes
 
-**Risk:** A command run inside the containerised workspace could read or change more than intended, or escape through an allowed program's own options.
+**Risk:** the workspace runner's `executeCommand` lets an agent run programs inside the workspace. A program on the
+allowlist can do more than its name suggests: `find -exec` and `git -c alias.x='!cmd' x` run other programs,
+`find -delete` and `git clean` delete files, `sort -o` and `uniq in out` write them, `cp -L` and `chmod -L` follow
+links out of the workspace, and any path argument can name a file outside it
+([#1715](https://github.com/llm4s/llm4s/issues/1715)).
 
 **Mitigation (implemented):**
-- `executeCommand` runs an argument vector directly, with no shell. Its first token must be a bare executable name in `WorkspaceSandboxConfig.allowedCommands`: `ReadWriteCommands` (which includes `rm`, `mv`, `cp`, `chmod`) under the permissive profile, which the runner and client use when no profile is set, and `ReadOnlyCommands` for a `WorkspaceSandboxConfig` constructed directly; a path to an executable is refused, and so is any argument containing `&`, `|`, `<`, `>`, `^`, `;`, `` ` ``, `$` or `%` (`WorkspaceAgentInterfaceImpl`).
-- `shellAllowed = false` (the locked profile) refuses every command.
-- The workspace module runs in a Docker container, providing an additional OS-level boundary.
+- The command is split into words and started directly, without a shell, and shell metacharacters (`&`, `|`, `<`, `>`,
+  `^`, `;`, `` ` ``, `$`, `%`) are refused in every word.
+- The executable must be a bare name in `WorkspaceSandboxConfig.allowedCommands`; a path to an executable is
+  refused. What is enforced is decided by the runner's `WORKSPACE_SANDBOX_PROFILE` alone: unset, the runner uses
+  the `permissive` profile, whose list is `ReadWriteCommands` (`ReadOnlyCommands` plus `cp`, `mv`, `rm`, `mkdir`,
+  `touch`, `chmod`, `copy` and `move`); `locked` (`shellAllowed = false`) refuses every command; an unknown name stops
+  the runner. `ReadOnlyCommands` is the field default, for a `WorkspaceSandboxConfig` constructed directly. The
+  workspace client's `llm4s.workspace.sandbox.profile` does not reach the container. On Windows, built-ins such as
+  `echo`, `dir`, `type`, `copy` and `move` run through `cmd.exe /c`, after the forbidden-character check and the
+  checks below.
+- Each program's arguments are checked (`ARGUMENT_NOT_ALLOWED`): options that delete, write, run another program,
+  read a list of file names or follow symbolic links are refused (`find -delete`/`-exec`/`-fprint`/`-L`, `sort -o`,
+  `wc --files0-from`, `ls -L`, `grep -R`/`-S`, `cp -L`/`-H`/`-s`, `chmod -L`/`-H`), `uniq` takes at most one operand,
+  `hostname` none, and `git` runs only read subcommands (`status`, `log`, `show`, `diff`, `ls-files`, `ls-tree`,
+  `grep`, `blame`, `rev-parse`, listing `branch`) with no global option bar `--version`, `--no-pager` and a few
+  harmless ones, and without `--output`, `--ext-diff`, `--textconv`, `--show-signature` or `grep -O`. Every argument
+  is scanned, including those after `--`; short options are matched inside clusters and long options under any
+  abbreviation.
+- Every path argument, and the working directory, must really lie inside the workspace (`PATH_ESCAPE_ATTEMPT`):
+  it is resolved the way the kernel resolves it, following symbolic links component by component. For `cp`, so are
+  the names it will write, since `cp` writes through a link it finds there, and a recursive `cp` refuses a destination
+  directory that holds a link leading outside. An argument longer than 4096 characters, or a command whose paths need
+  more than 20000 lookups, is refused rather than walked.
+- `environment` may set only locale and display variables (`ENVIRONMENT_NOT_ALLOWED`), so `GIT_*`, `PAGER`,
+  `LD_PRELOAD`, `PATH` and `HOME` cannot redirect a program.
+- The runner normally runs in a Docker container, an additional OS-level boundary.
 
-**Residual risk:** arguments are not checked against the workspace, so an allowed program's own options can still read, write or delete files anywhere in the container, or run programs that are not on the list. Even `ReadOnlyCommands` includes `find` (`-delete`, `-exec`), `git` (`clean`, `-c core.pager=…`), `sort -o` and `uniq <in> <out>` ([#1715](https://github.com/llm4s/llm4s/issues/1715)). On Windows, built-ins such as `echo`, `dir`, `type`, `copy` and `move` run through `cmd.exe /c`, after the forbidden-character check.
+**Not covered:**
+- `git` reads the repository's own `.git/config` and runs its hooks. Where the agent can write files (the
+  `writeFile` operation, or the read-write allowlist) it can set `core.fsmonitor`, `diff.external` or a filter driver,
+  or add a hook such as `.git/hooks/post-index-change`, which a later `git status` or `git diff` runs, or point git
+  at files outside through `core.worktree`, `.git/commondir` or `.git/objects/info/alternates`
+  ([#1721](https://github.com/llm4s/llm4s/issues/1721)).
+- `diff -r` follows symbolic links it meets inside the tree it walks, and no portable option stops it.
+- A link that the read-write list moves or copies to another depth (`mv a/b/rel rel`) can come to point outside.
+  Path arguments through it are refused, and a later recursive `cp` into its directory is refused, but the link
+  itself is not.
+- The checks run before the program starts; a link made at a checked name by a concurrent command is not seen.
+  Windows `copy` has the path rule but not `cp`'s destination checks.
+- A path rule cannot tell a path from text, so an argument or option value that is absolute or climbs out with `..`
+  is refused even when it is text: a `grep` pattern `/api` (write `[/]api`), `git log --grep=/x`. A relative value
+  without `..` (`--since=2024/01/01`, `--exclude=*/target/*`) and `sort -t/` run.
 
-**Recommended practice:** Use the locked profile (`shellAllowed = false`) for untrusted input, and treat the allowlist as defence-in-depth only. Do not grant the workspace access to credentials or network resources that an escaped process could exploit.
+**Recommended practice:** use the `locked` profile, or `ReadOnlyCommands`, unless the agent needs more. Leave `git`
+out of `allowedCommands` when the agent can also write files and the repository's configuration matters. Do not
+give the workspace credentials or network access that an escaped process could exploit. See
+[Workspace sandbox](workspace-sandbox#command-policy).
 
 ### 7. Dependency CVEs
 

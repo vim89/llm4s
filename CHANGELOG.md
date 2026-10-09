@@ -2013,6 +2013,95 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `llm4s-core`. The loader keeps its `org.llm4s.config` package and its `load(source)` method.
 
 ### Fixed
+- **Security - workspace runner: allowlisted commands can no longer write, delete or run other programs through their
+  arguments** ([#1715](https://github.com/llm4s/llm4s/issues/1715)): `executeCommand` checked only the executable
+  name against `allowedCommands` and a set of shell metacharacters, so programs on `WorkspaceSandboxConfig.ReadOnlyCommands`
+  could delete files (`find -delete`, `git clean`, `git checkout -- .`, `git reset --hard`), write them (`find -fprint`,
+  `sort -o`, `uniq in out`, `git diff --output`), run programs that are not on the list (`find -exec`,
+  `git -c alias.x=!cmd x`, `git -c core.fsmonitor=cmd status`, `git grep -O`, `git diff --ext-diff`, or `GIT_EXTERNAL_DIFF` /
+  `PAGER` / `LD_PRELOAD` in `environment`), and read or write outside the workspace (`cat /etc/passwd`,
+  `grep -r x ..`, a symbolic link out of it). The runner now also checks, before the process starts:
+  - *Options* (`ARGUMENT_NOT_ALLOWED`): `find -delete -exec -execdir -ok -okdir -fprint -fprint0 -fprintf -fls
+    -files0-from -follow -L`; `sort -o --output --compress-program --files0-from` (and Windows `sort /O`);
+    `wc --files0-from`; `ls -L --dereference`; `grep -R --dereference-recursive -S`; `cp -L -H -s --dereference
+    --symbolic-link`; `chmod -L -H --dereference`; `hostname` with an operand, `-F` or `-b`; `uniq` with more than
+    one operand (every argument after the first operand counts, as BSD `uniq` does not reorder). `git` runs only `status`, `log`, `show`, `diff`, `ls-files`,
+    `ls-tree`, `grep`, `blame`, `rev-parse` and a listing `branch`; refuses every global option except `--version`,
+    `--no-pager`, `--no-optional-locks`, `--literal-pathspecs` and `--no-replace-objects` (so `-c`, `-C`,
+    `--exec-path`, `--git-dir`, `--work-tree`, `-p`); and refuses `--output`, `--ext-diff`, `--textconv`,
+    `--show-signature` and `git grep -O` / `--open-files-in-pager`; `git branch` takes the next argument as the
+    value of `--merged`, `--contains`, `--points-at`, `--sort` or `--format`. Every argument is scanned, after `--` too; a
+    short option is refused anywhere in a cluster (`-ro`) and a long one under any abbreviation (`--outp`), with or
+    without `=value`.
+  - *Paths* (`PATH_ESCAPE_ATTEMPT`, the code the file operations already use): each argument, the value of a
+    `--name=value` option, and each tail of a short option (`-f/x`) is resolved from the working directory as the
+    kernel resolves it - component by component, following symbolic links where they are met, so `link/..` is the
+    parent of the link's target - and must stay inside the real workspace root (`sort -t` and `--field-separator`
+    take a separator, not a path). The working directory is held to the same rule. `echo`, `pwd`, `whoami` and
+    `hostname` are not checked. `cp`, which writes through a link it finds at the name it writes, also has the
+    names it will write checked, and a recursive `cp` refuses a destination directory holding a link that leads
+    outside. An argument over 4096 characters, or paths needing more than 20000 lookups, is refused
+    (`ARGUMENT_NOT_ALLOWED`) rather than walked. A string that is not a valid path is refused, not thrown: an
+    argument with a NUL character, or whose check fails, gets `ARGUMENT_NOT_ALLOWED`, and a working directory or file
+    operation path the platform cannot parse gets `PATH_ESCAPE_ATTEMPT` (before, `InvalidPathException`, or on
+    Windows an `IOError` for a drive-relative path on a drive that does not exist, such as the `G:` of
+    `findstr /G:file`, escaped `executeCommand`).
+    On Windows, a device or NT-namespace path (`\\?\C:\x`, `\??\C:\x`), a drive-relative path on another drive
+    (`D:x`) and a wildcard argument leading outside (`..\*`) are refused, and so is an argument with a wildcard
+    or `:` followed by a `..` component, or that leads outside with those characters replaced by `_`: Win32 removes
+    `..` as text before it opens a name, so `type x*\..\..\outside\f` opened `..\outside\f` although the part
+    before the `*` is inside. An argument holding `"` is refused on Windows (`ARGUMENT_NOT_ALLOWED`): the C runtime's
+    argument parser and cmd.exe delete it as a quote, so `"..\outside\f` opened `..\outside\f` and a leading `"`
+    hid an absolute path. On Windows, the built-ins started through `cmd.exe /c` (`dir`, `type`, `copy`, `move`,
+    `echo`, ...) also refuse an argument holding `,`, `=`, `(`, `)`, `@`, `!`, a control character or a non-ASCII
+    space (`ARGUMENT_NOT_ALLOWED`; `echo` may print `,`, `=` and parentheses): `ProcessBuilder` quotes an argument
+    only for a space, tab, `"`, `<` or `>`, and cmd.exe splits on `,`, `;`, `=`, VT, FF and 0xFF too, so
+    `type a.txt,..\outside\f` typed `..\outside\f` after `a.txt`. A path must also stay inside under that lexical reading (`..` removed as text, then
+    links resolved) as well as the kernel's, so `l/../../x` with `l` -> `a/b` is refused on every platform.
+  - *Windows* (`ARGUMENT_NOT_ALLOWED`): the policy refuses what it cannot reason about, and only the forms
+    `docs/reference/workspace-sandbox.md#on-windows` lists are supported. Refused: a device name as a path component
+    (`nul`, `sub\con`, `NUL.txt`, `COM1`, `LPT¹`, `CONIN$`), a component ending in `.` or a space (Win32 strips them,
+    so `outside.` opened `outside`; this refuses `git log HEAD..` too); for programs that are not cmd.exe built-ins,
+    which may run under a runtime that re-parses their command line (MSYS2, Cygwin, Git for Windows), an argument
+    starting with `@` (a response file) or `~`, one holding `{ } [ ] ' ( )`, a path starting with `/`, and a
+    wildcard outside a last component that has a literal character other than `.` (`*`, `.*`, `*/a.txt`);
+    `findstr /F:list` (any switch with `F`) and a `/D:` directory list; and `sort` `/O`, `/T`, `-O`, `-T`, `-t`,
+    `--temporary-directory`. 8.3 short names and alternate data streams (`a.txt:s`, judged by the file before the
+    `:`) are not refused.
+  - *git's repository* (every platform): git looks for its repository in the directories above the working
+    directory, so a workspace inside a larger repository ran `git show HEAD:secret`, `git diff` and `git status` on
+    that repository and read files outside the workspace. The runner now starts `git` with
+    `GIT_CEILING_DIRECTORIES` set to the workspace root's parent and without any inherited `GIT_*` variable
+    (`GIT_DIR`-style locations, `GIT_CONFIG_*` / `GIT_CONFIG_PARAMETERS` / `GIT_CONFIG_COUNT` configuration,
+    `GIT_EXEC_PATH`, object directories); refuses `git` (`PATH_ESCAPE_ATTEMPT`) when the workspace root's parent
+    path holds the path-list separator (`:` on POSIX, `;` on Windows), which `GIT_CEILING_DIRECTORIES` cannot
+    escape, and when the nearest `.git` inside the workspace is a `gitdir:` file, a link, or a directory whose real
+    path lies outside the workspace (a Windows junction); and refuses a git argument starting with `:` (`:/`,
+    `:(top)`, `:a.txt`), which git resolves from the repository's top level.
+  - *Environment* (`ENVIRONMENT_NOT_ALLOWED`): `environment` may set only `LANG`, `LANGUAGE`, `LC_*`, `TZ`, `TERM`,
+    `COLUMNS`, `LINES` and `NO_COLOR`.
+
+  The checks apply to every allowlist, `ReadWriteCommands` and custom ones included (a custom program gets the path
+  and environment rules). Still open: `git` reads the repository's own `.git/config` and runs its hooks, so where
+  the agent can write files it can set `core.fsmonitor`, `diff.external` or a filter, or add a hook such as
+  `.git/hooks/post-index-change`, that `git status` / `git diff` then runs, or point git at files outside through
+  `core.worktree`, `.git/commondir` or `.git/objects/info/alternates`
+  ([#1721](https://github.com/llm4s/llm4s/issues/1721)); `diff -r` follows links inside the tree it walks; a relative
+  link moved to another depth by the read-write list can come to point outside (paths through it are refused); and
+  the checks do not see a link made by a concurrent command.
+
+  **Migration.** The new error codes are plain strings in the existing `WorkspaceAgentErrorResponse`, so the protocol
+  is unchanged. Commands that worked before and are now refused: the forms above; any argument that is, or
+  resolves to, a location outside the workspace, including a `grep` pattern or option value that starts with `/` or
+  has a `..` component (write `[/]api` for `/api`); `ls -L`, `grep -R`/`-S`, `find -L`, `cp -L`/`-H`/`-s` and
+  `chmod -L`/`-H`; `uniq` with an option after its file (write `uniq -c a.txt`); a link-preserving `cp` (`-R`, `-a`,
+  `-P`, `-d`) of two sources with the same name, or of several sources one of which is `dir/` or `dir/.`;
+  `git branch <name>` without `--list`;
+  `git` subcommands other than the read ones; a `git` argument starting with `:`; `git` in a workspace that has no
+  repository of its own but lies inside one (it now reports `not a git repository`); `git` in a workspace whose
+  parent path holds `:` (POSIX) or `;` (Windows); on Windows, the forms listed
+  above; and `environment` variables outside the list. Run writes through the
+  `writeFile` / `modifyFile` operations or the read-write allowlist's own programs instead.
 - **A subscription receives every live event sent after `subscribe` returns** ([#1731](https://github.com/llm4s/llm4s/issues/1731)):
   `GraphRuntime.subscribe` returned before its dispatcher joined the event hub's live set, which it
   did only after replaying the log, so live events (`RunContext.progress`, `StreamEvent.Live`) sent in
