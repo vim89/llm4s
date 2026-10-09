@@ -2274,6 +2274,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (followed by `,` and the next key, by `}`, or cut off): `{'Authorization': "[REDACTED]"}`; the same holds inside a
   JSON string (`\"it's\"`), and for such a leaf of a single-quoted container there, which used to end the container.
   Double-quoted JSON is redacted as before. No signature changes.
+- **Redaction reads query parameters after a JSON-escaped `&`** ([#1676](https://github.com/llm4s/llm4s/issues/1676)):
+  Go's `encoding/json` writes `&` as `\u0026` by default, and HTML-safe serialisers do the same (some also write `=` as
+  `\u003d` and `?` as `\u003f`). `Redaction.redact` and `redactForLogging` treated the escape as ordinary text, so in
+  `{"url":"https://h/x?a=1\u0026token=SECRETPW"}` the `token` was not read as a parameter and its value was written in
+  the clear. The query pass now reads `\u0026` as `&`, `\u003f` as `?` where a query can start and `\u003d` as the `=` between
+  a key and its value. That includes the doubled-backslash forms in JSON that sits inside a string, and the hex digits
+  in either case. The output keeps the escapes as they were written: `{"url":"https://h/x?a=1\u0026token=[REDACTED]"}`.
+  A query value now ends at `\u0026` as it ends at `&`, so the parameters after a sensitive one stay readable. The
+  `key=value`, `key="..."` and `key='...'` field passes read a key that follows one of these escapes as they read
+  `&key=`. So do the `Bearer` and `Basic` token patterns after an escape, written with a lower-case `u` as JSON
+  writes it. The value of a sensitive `key=value` pair ends at `\u0026` only where another pair, `key=` or
+  `key\u003d`, follows it: a credential that holds an `&`, which these serialisers escape too, is redacted in full,
+  as it was before, so `{"dsn":"host=db password=p\u0026ssW0rd dbname=x"}` becomes
+  `{"dsn":"host=db password=[REDACTED] dbname=x"}`. A query value ends at `\u0026` only while it has held no
+  quote: once a quote has been read, bare or escaped (System.Text.Json writes `'` as `\u0027` and `"` as `\u0022`),
+  the value runs over `\u0026` as it did before, and after an escaped quote over `&` too. So
+  `GET https://h/x?password='p&ss=QZXJ'` as System.Text.Json writes it,
+  `{"msg":"GET https://h/x?password=\u0027p\u0026ss=QZXJ\u0027"}`, becomes
+  `{"msg":"GET https://h/x?password=[REDACTED]"}`, and `x=1\u0026password=\u0027p\u0026ss=QZXJ\u0027 n=1` becomes
+  `x=1\u0026password=[REDACTED] n=1`. A `key=value` value that opens with an escaped quote runs to the matching
+  escaped quote, over whitespace, `&`, `,` and `;` as `key='...'` does, so
+  `client_secret=\u0027a;b\u0027` is redacted whole, which it was not before; and the field passes read `\u003d`
+  as the `=` of a pair, as Gson writes it.
+  Where the input holds one of these escapes, or `\u0027` or `\u0022`, every pass of `redact` also reads the input
+  as it was given, and what any pass replaces - alone, or in sequence as the passes ran before - is merged and
+  replaced once. A pass that reads further than a value, as a query value that holds a quote runs over `\u0026`,
+  can no longer take the key or the opening quote of the field after it from the pass that reads that field:
+  `{"msg":"GET https://h/x?a=1\u0026token=ab'cd\u0026password='correct horse battery'"}`, as Go writes it, becomes
+  `{"msg":"GET https://h/x?a=1\u0026token=[REDACTED]'"}`, where ` horse battery'` was left readable, and so for a
+  `'passwd':'...'` or `\"password\":\"...\"` field after such a value. A `Bearer` or `Basic` token after an
+  escape is read apart from the plain pattern, so it cannot take the keyword of the next token
+  (`Basic \u003DBasic Basic 9K29`). A field of JSON whose quotes System.Text.Json writes as `\u0022` (or a dict's
+  as `\u0027`) is read as `"token": "..."` is, and so is `key=` before a value in escaped quotes, so
+  `{"msg":"{\u0022url\u0022:\u0022https://h/x?token=abc\u0026page=2\u0022,\u0022nested\u0022:{\u0022token\u0022:\u0022NESTEDSECRET\u0022}}"}`
+  keeps `page=2` and redacts both tokens. The value of a `key=value` pair whose key is not sensitive ends at an
+  escaped quote, `<` or `>`, as it ends at the character, so the pair after it is read.
+  In an input that holds one of these escapes, a `key=value` key starts where it would in the text the escapes stand
+  for: never at the `u` of an escape, and right after the escape of a character that ends a word (`'`, `<`,
+  `é`, ...), as after the character. The escape itself was read as a key before, so after `'` and `=`
+  the key `u0027` held `password=...` as its value and the credential was never read.
+  The value of a key that is not sensitive is not skipped where its `=` is `=`: the text after the escape is
+  read for pairs, so `password=password=...` (a key that starts at the escape of `p`) and
+  `abc=password=...` have the credential redacted, as when the `=` is not read as one. A query read through its
+  escapes ends at the escape of whitespace (` `, `\u000a`, ...) as at whitespace, so its key or value cannot run
+  into the field after it, and a `Basic` token runs over `=` as over its `=` padding.
+  An input that holds none of these escapes is redacted exactly as before.
 - **Redaction reads a query parameter only inside a URL, so a `?` in prose no longer mangles the document**
   ([#1667](https://github.com/llm4s/llm4s/issues/1667)): `Redaction.redact` and `redactForLogging`, and so the
   exchange-log sink, read a query parameter as `[?&]`, a key of any characters up to the next `=`, and a value up
