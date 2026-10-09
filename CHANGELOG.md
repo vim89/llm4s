@@ -2462,6 +2462,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   judge score`: make it answer with only a number between 0 and 1, as the fixed system message already asks. A
   subclass that calls or overrides `evaluateWithLLM` takes a `BigDecimal` (`.toDouble` where a `Double` is
   needed). The score-reading rules are documented on `LLMGuardrail`.
+- **`llm4s-agent`: a judge guardrail with a threshold outside 0.0 to 1.0 fails with a clear error, instead of silently
+  blocking everything or passing everything** ([#1520](https://github.com/llm4s/llm4s/issues/1520)): the threshold of
+  `LLMGuardrail` (and so of `LLMSafetyGuardrail`, `LLMFactualityGuardrail`, `LLMQualityGuardrail`,
+  `LLMToneGuardrail` and `LLMGuardrail(...)`) was not validated: above 1.0 (or `+Infinity`), or NaN, nothing could
+  pass, and below 0.0 (or `-Infinity`) everything that parsed passed. `validate` now returns a `ValidationError` on
+  field `threshold` for a value below 0.0, above 1.0 (an infinity too) or NaN, **before** calling the judge, so no
+  call is spent on a guardrail that cannot work. 0.0 and 1.0 are accepted, and a valid threshold is still compared
+  as the decimal it is written as (#1405). The check runs when `validate` runs, not when the guardrail is built, so
+  no constructor or factory signature changed and a subclass that overrides `threshold` is checked too.
+  **Migration:** a guardrail whose threshold was out of range, and so was blocking everything or approving
+  everything, now fails every `validate` with that error: correct the threshold.
 - **`llm4s-gemini`: a signed function call with an empty `id` is replayed with its thought signature**
   ([#1615](https://github.com/llm4s/llm4s/issues/1615)): a `functionCall` returned with `"id": ""` got a generated
   tool-call id at parse, but the signed part was kept verbatim, so on the next turn its stored `""` was compared with
