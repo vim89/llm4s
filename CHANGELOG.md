@@ -2353,6 +2353,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   admitted `/srv/agent-data-secret`, and `developmentSafe(workingDirectory)` could read and write a sibling
   directory whose name began with the working directory's. Both now use `Path.startsWith` on normalised absolute
   paths; blocked paths are matched the same way (`/var` no longer blocks `/variable`).
+- **`llm4s-agent-tools`: `get_current_datetime` reads the same on every host and checks its parameters**
+  ([#1512](https://github.com/llm4s/llm4s/issues/1512), [#1513](https://github.com/llm4s/llm4s/issues/1513),
+  [#1511](https://github.com/llm4s/llm4s/issues/1511)): the `human` format used the JVM's default locale, so the
+  same call wrote localised month and weekday names (and a lower-case `am` under `en_GB`); it is now always English
+  (`Locale.US`, so the text under `en_US` is unchanged). `timezone` and `format` were marked required in the tool
+  schema although the handler defaults both, so a call with null arguments was refused with `NullArguments`; both
+  are optional now, as the guide already said. **Behaviour changes:** an unsupported `format` is now an error that
+  names the supported formats, where it used to answer in ISO; a `format` or `timezone` that is not a string is an
+  error naming the parameter, where it used to be ignored (the answer came in UTC / ISO). A JSON `null` still counts
+  as absent.
 - **`llm4s-knowledgegraph`: a failed graph extraction logs a preview of the reply, not the whole reply**
   ([#1635](https://github.com/llm4s/llm4s/issues/1635)): `GraphJsonParser` used to put the entire model reply on
   the ERROR line when it did not parse, or parsed but was not a graph - the second site re-rendering the whole
