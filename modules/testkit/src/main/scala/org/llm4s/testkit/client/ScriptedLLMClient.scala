@@ -5,7 +5,7 @@ import org.llm4s.llmconnect.LLMClient
 import org.llm4s.llmconnect.model.{ AssistantMessage, Completion, CompletionOptions, Conversation, StreamedChunk }
 import org.llm4s.types.Result
 
-import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 import scala.jdk.CollectionConverters._
 
@@ -33,7 +33,7 @@ final class ScriptedLLMClient private (
 ) extends LLMClient {
 
   private val position = new AtomicInteger(0)
-  private val recorded = new CopyOnWriteArrayList[Conversation]()
+  private val recorded = new ConcurrentLinkedQueue[Conversation]()
 
   /** Every conversation passed to [[complete]] or [[streamComplete]] so far, in call order. */
   def requests: List[Conversation] = recorded.asScala.toList
