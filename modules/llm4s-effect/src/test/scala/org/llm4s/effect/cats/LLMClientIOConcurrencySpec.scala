@@ -6,6 +6,7 @@ import cats.effect.{ Deferred, IO }
 import cats.effect.kernel.Outcome
 import cats.effect.unsafe.implicits.global
 import cats.syntax.parallel.*
+import org.llm4s.agent.testkit.Fixtures
 import org.llm4s.error.SimpleError
 import org.llm4s.llmconnect.LLMClient
 import org.llm4s.llmconnect.model.{ AssistantMessage, Completion, CompletionOptions, Conversation, StreamedChunk }
