@@ -2042,6 +2042,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `llm4s-core`. The loader keeps its `org.llm4s.config` package and its `load(source)` method.
 
 ### Fixed
+- **Security - redaction: `Proxy-Authorization`, `Cookie`, `Set-Cookie` and `X-Amz-Security-Token` are treated as
+  sensitive** ([#1686](https://github.com/llm4s/llm4s/issues/1686)): `Redaction` (used by the provider exchange
+  logger, `LLMError` messages and error mapping) matched `authorization` as a whole key only, so a JSON field or header
+  map `{"Proxy-Authorization": "Negotiate ..."}`, its escaped form inside a string, `proxy_authorization=...` and a
+  `Digest`, `Negotiate` or raw proxy credential there were written in the clear; cookies were not covered in any shape,
+  so a session id in a `Cookie` or `Set-Cookie` header line, JSON field, cookie list or `key=value` pair leaked. They
+  are now sensitive keys in every shape the redactor reads (a header line, also after a prefix, a JSON or escaped-JSON
+  field, a single-quoted dict, a container, `key=value`, a query parameter), and a cookie header's whole value is
+  replaced - every name and value of it, from after `Cookie:` or `Set-Cookie:` and the whitespace after it (escaped
+  `\n`, `\r` and `\t` included) to the end of its line. Where the header sits inside a string that opened on the same
+  line - a JSON string, a header in a JSON array, a log line inside JSON, a Python repr - the value ends earlier: at
+  the escape of a line break (`\r`, `\n`, `\u000a`, `\u000d`; `\\r\\n` before the next header in JSON inside JSON)
+  or, in a double-quoted string, at the unescaped `"` that ends the string, so the headers and fields after it are
+  kept and the JSON still parses. An escaped quote (`sid=\"abc\"`) is part of the value. Ending at the quote is a
+  heuristic for well-formed JSON strings: where the first unescaped `"` in the value is not followed by what follows
+  the end of a JSON string, the line is malformed (a stray quote earlier on it, quoted cookie values in a log line)
+  and the value runs to the end of the line, its quotes with it (`msg="Cookie: theme="dark" sid=abc"` becomes
+  `msg="Cookie: [REDACTED]`). Outside a string, quotes, apostrophes and backslashes are part of the value, so a raw
+  `Cookie: sid="abc"; x=y` is replaced to the end of the line. The cookie pass runs after every other pass, so it
+  only adds to what they redact: the field, pair and dict passes read the text exactly as they would were cookie
+  headers not read (the header-line pass leaves `Cookie:` and `Set-Cookie:` lines to it), and a value that takes a
+  quote of a malformed line can no longer change how a later pass pairs quotes and leave a `password="..."` or
+  `{'password': "..."}` field on that or a later line readable. `Authorization` and
+  `Proxy-Authorization` header values run to the end of the line in every context, as before: a Digest credential
+  holds quoted strings and commas, so a quote is no sure end of it. `X-Amz-Security-Token` (suffix `securitytoken`)
+  joins `X-Api-Key`, `Api-Key`, `X-Goog-Api-Key` and `X-Auth-Token`, already covered. `cookie` is a whole word, not a
+  substring: `cookie_policy`, `cookie_consent` and `max_cookie_age` are left alone. `SensitiveKeyWords` and
+  `SensitiveKeySuffixes` in `Redaction` are core's one list of sensitive key names for fields, header lines and
+  `key=value` pairs; URL query parameters are also matched, by substring, against `SensitiveQueryParams`.
 - **Security - `llm4s-agent-tools` / `llm4s-core`: the HTTP tool forwards only safe headers across origins and
   refuses the remaining special-purpose address ranges** ([#1734](https://github.com/llm4s/llm4s/issues/1734)):
   on a redirect that left the original origin, `HTTPTool` stripped only `Authorization`, `Cookie` and
