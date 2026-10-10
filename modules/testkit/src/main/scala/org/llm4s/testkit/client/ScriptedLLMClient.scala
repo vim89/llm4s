@@ -33,7 +33,7 @@ final class ScriptedLLMClient private (
 ) extends LLMClient {
 
   private val position = new AtomicInteger(0)
-  private val recorded  = new CopyOnWriteArrayList[Conversation]()
+  private val recorded = new CopyOnWriteArrayList[Conversation]()
 
   /** Every conversation passed to [[complete]] or [[streamComplete]] so far, in call order. */
   def requests: List[Conversation] = recorded.asScala.toList
@@ -86,7 +86,13 @@ object ScriptedLLMClient {
    */
   def returningText(contents: String*): ScriptedLLMClient =
     returning(contents.zipWithIndex.map { case (content, i) =>
-      Completion(id = s"scripted-$i", created = 0L, content = content, model = "scripted", message = AssistantMessage(content))
+      Completion(
+        id = s"scripted-$i",
+        created = 0L,
+        content = content,
+        model = "scripted",
+        message = AssistantMessage(content)
+      )
     }: _*)
 
   /**

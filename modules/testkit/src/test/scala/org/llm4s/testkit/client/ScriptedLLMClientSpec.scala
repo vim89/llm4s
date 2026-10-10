@@ -52,7 +52,11 @@ class ScriptedLLMClientSpec extends AnyFlatSpec with Matchers {
   "complete and streamComplete" should "consume the same script position regardless of which is called" in {
     val client = ScriptedLLMClient.returning(completion("c0", "x"), completion("c1", "y"))
     var seen   = List.empty[String]
-    client.streamComplete(conversation("a"), options, chunk => seen = chunk.content.get :: seen).toOption.get.id shouldBe "c0"
+    client
+      .streamComplete(conversation("a"), options, chunk => seen = chunk.content.get :: seen)
+      .toOption
+      .get
+      .id shouldBe "c0"
     client.complete(conversation("b"), options).toOption.get.id shouldBe "c1"
     seen shouldBe List("x")
   }
@@ -84,7 +88,7 @@ class ScriptedLLMClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be safe to call from many threads at once, serving each scripted result exactly once" in {
-    val scriptSize = 2000
+    val scriptSize  = 2000
     val completions = (0 until scriptSize).map(i => completion(s"c$i", s"content-$i"))
     val client      = ScriptedLLMClient.returning(completions: _*)
     val seenIds     = ConcurrentHashMap.newKeySet[String]()
