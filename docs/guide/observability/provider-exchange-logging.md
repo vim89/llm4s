@@ -194,7 +194,9 @@ The file sink changes `request_body`, `response_body` and `error_message` before
   `spring.datasource.password=...`, `PASSWORD="..."`), also with the quotes escaped by backslashes, as a
   logfmt line inside a JSON string writes them (`{"message": "login password=\"...\" ok"}`, `\'...\'`, and
   `\\\"...\\\"` one string deeper: the content is replaced and the escaped quotes kept, so the JSON still
-  parses; an escaped quote never closed ends where the enclosing string or the line does), also with `=` and `&`
+  parses; an escaped quote never closed ends where the enclosing string or the line does; a value in quotes behind
+  an even run of backslashes, `password=\\'p&ss=...\\'` inside a JSON string, is redacted up to the same quote
+  written the same way, `&word=` included), also with `=` and `&`
   written as the JSON escapes Gson's default HTML-safe output uses (`password\u003d...\u0026user\u003d...`) and in
   a log written into a JSON string, where the key follows the escape of a line break or a tab
   (`...\ntoken\u003d...`, `\r\nAuthorization=...`, also one string deeper); a value that holds a literal `&` with no
