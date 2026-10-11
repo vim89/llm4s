@@ -1895,7 +1895,7 @@ class ToolLoopSpec extends AnyFlatSpec with Matchers with EitherValues with Opti
       IdempotencyKey("k")
     )
     upickle.default.read[ToolQuestionRequest](upickle.default.write(request)) shouldBe request
-    val approved = request.copy(approved = true)
+    val approved = request.withApproved(true)
     upickle.default.read[ToolQuestionRequest](upickle.default.write(approved)) shouldBe approved
   }
 }

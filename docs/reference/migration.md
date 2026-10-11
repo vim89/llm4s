@@ -16,7 +16,8 @@ Not in a release yet. Stage 2 ([#1699](https://github.com/llm4s/llm4s/issues/169
 
 - [#1700](https://github.com/llm4s/llm4s/issues/1700), the durable `Checkpointer` contract - run-claim leases, fencing tokens and a store contract suite: [below](#durable-checkpointer-contract-1700).
 - [#1703](https://github.com/llm4s/llm4s/issues/1703), tool side-effect safety - idempotency keys and one result per tool call: [below](#tool-side-effect-safety-1703).
-- [#1701](https://github.com/llm4s/llm4s/issues/1701) SQLite checkpointer, [#1702](https://github.com/llm4s/llm4s/issues/1702) history, fork and `updateState`, [#1704](https://github.com/llm4s/llm4s/issues/1704) human-review interrupts and [#1705](https://github.com/llm4s/llm4s/issues/1705) live subscriptions across runtimes: not yet landed.
+- [#1704](https://github.com/llm4s/llm4s/issues/1704), human-review interrupts - static breakpoints and typed middleware questions: [below](#human-review-interrupts-1704).
+- [#1701](https://github.com/llm4s/llm4s/issues/1701) SQLite checkpointer, [#1702](https://github.com/llm4s/llm4s/issues/1702) history, fork and `updateState`, and [#1705](https://github.com/llm4s/llm4s/issues/1705) live subscriptions across runtimes: not yet landed.
 
 Design: `docs/design/typed-agent-runtime-design.md` §4.16 onwards. Guide: [Durable Checkpointers](../guide/agents/durable-checkpointers.html).
 
@@ -83,6 +84,43 @@ ToolQuestionRequest(messageId, call, question, IdempotencyKey("key-1"))
 - **Provider authors:** a chat provider that takes tools can run
   `ProviderModuleChecks.assertOneToolResultPerCall(format, response, path)(baseUrl => client)` from
   `llm4s-provider-testkit`; see [Writing a provider](/guide/writing-a-provider#tool-results).
+
+### Human-review interrupts (#1704)
+
+A turn can now wait for a person in two new ways: at a static breakpoint, before or after a node runs, and on a
+typed question from middleware. Both are interrupts like approvals and tool questions, answered through the same
+`resume`, any subset at a time. See [Human Review](../guide/agents/human-review.html).
+
+- **`AgentStatus.Suspended` has four lists.** `Suspended(approvals, questions)` is
+  `Suspended(approvals, questions, middlewareQuestions, breakpoints)`. The new fields default to empty, so
+  constructing one still compiles, but a pattern must name all four: `case AgentStatus.Suspended(approvals, _)`
+  becomes `case AgentStatus.Suspended(approvals, _, _, _)`, or match the type, `case _: AgentStatus.Suspended`.
+- **`PendingInterrupt` (graph kernel) has `breakpoint: Option[BreakpointPhase]`**, `None` for a task that suspended
+  itself. For a held task `resumeNode` is the held node and `question` its input (before) or `null` (after).
+- **`RunConfig` has `interruptBefore` and `interruptAfter`** (`Set[NodeId]`, empty by default), with
+  `withInterruptBefore` / `withInterruptAfter`. Admission refuses a node the graph does not have with a
+  `ValidationError`, before the thread is read. `AgentBuilder.withInterruptBefore(AgentNode*)` and
+  `withInterruptAfter(AgentNode*)` add breakpoints to every run of an agent; they are not part of its version.
+- **`CompiledGraph.resume` refuses a breakpoint answer that is not JSON `null`** (`Breakpoint.proceed`,
+  `AgentResult.proceed(id)`, Java `Answer.proceed(id)`) with `InvalidResume`.
+- **Middleware can ask.** `AgentMiddleware.Asking[Q, Ans]` declares a question; a hook asks with `ask(q)` (from
+  `beforeAgent`, `afterAgent`, `wrapModelCall`) or `askAbout(q)` (from `wrapToolCall`). A middleware that is not
+  `Asking` and returns `ToolOutcome.Ask` from `wrapToolCall` now fails the run with `ToolFailed` ("asked a question it
+  does not declare"); before, the question was attributed to the tool. A wrapper that retries on `Left` should pass a
+  `Left(MiddlewareAsked)` through, as it passes a cancellation.
+- **`ApprovalRequest` and `ToolQuestionRequest` gain `answered: Vector[GivenAnswer]`** (default empty), the
+  middleware answers a call carries through an approval or a tool question. Both now have a private constructor, as
+  the new `MiddlewareQuestionRequest`, `BreakpointRequest`, `GivenAnswer` and `GuardrailReview` do: `apply` still
+  builds them and a pattern still matches them, but `copy` is private - `request.copy(approved = true)` becomes
+  `request.withApproved(true)`.
+- **Java and Kotlin: `PendingInterrupt.toolName()` and `argumentsJson()` return `Optional<String>`.** They were
+  `String`s; a breakpoint on a model call, or a middleware question about an answer, has no tool call. They are present
+  for every `APPROVAL` and `QUESTION`, so `p.toolName()` becomes `p.toolName().get()` (or `orElse`) there.
+  `InterruptKind` gains `MIDDLEWARE_QUESTION` and `BREAKPOINT`: a Kotlin `when` over it that is used as an expression
+  must cover them, and a Java `switch` expression too. `PendingInterrupt` gains `middleware()`, `node()` and `phase()`
+  (the Java enum `BreakpointPhase`); `Answer` gains `proceed(id)`.
+- **`Checkpoint.CurrentFormat` is 6**, with an identity migration from 5: a build that predates breakpoints refuses a
+  format-6 checkpoint rather than run a held task's continuation as an ordinary task.
 
 ## Stage 1 migration: agent runtime
 

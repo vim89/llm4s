@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Human-review interrupts: static breakpoints and typed middleware questions** ([#1704](https://github.com/llm4s/llm4s/issues/1704),
+  part of [#1699](https://github.com/llm4s/llm4s/issues/1699)): `RunConfig.interruptBefore`/`interruptAfter` hold a
+  graph node's tasks before they run or after they ran, each as an interrupt of its own keyed by its task id, parked
+  and persisted like a node's own suspension and answered with `Breakpoint.proceed`; a held task's siblings run, a
+  held-after task's update commits while its routes, edges and join arrivals wait, and a continuation is not held
+  again by the breakpoint it passed - through `resume`, `recover` and cancellation. `AgentBuilder.withInterruptBefore`
+  / `withInterruptAfter` (Java/Kotlin varargs) take `AgentNode.Model`, `Tool` (one interrupt per tool call) and
+  `Finish`; held after, a step continued after a review - at its approval, question or middleware-question node - is
+  held too. `AgentMiddleware.Asking[Q, Ans]` lets a middleware suspend a turn with a typed question - `ask(q)` from
+  `beforeAgent`, `afterAgent` or `wrapModelCall`, `askAbout(q)` from `wrapToolCall` - for review, an edit or missing
+  information; the answer is decoded as `Ans` at resume (a bad one is refused), and the hook's stack runs again with
+  `answered(context)`, keeping earlier answers of the same run, through approvals and tool questions too; model calls
+  a wrapper made before asking are counted in usage. `GuardrailReviewMiddleware` asks a reviewer (`GuardrailReview`,
+  answered with `GuardrailVerdict.Allow`, `Edit(text)` or `Block`) instead of blocking; a verdict holds for the text
+  whatever the refusal's wording, and the guardrails are not run on it again. `AgentStatus.Suspended` lists `middlewareQuestions` and `breakpoints`;
+  `AgentResult.proceed(id)` continues a breakpoint. The Java and Kotlin facades list them as `PendingInterrupt`s of
+  kind `MIDDLEWARE_QUESTION` and `BREAKPOINT`, with `middleware()`, `node()` and `phase()` (Java enum
+  `BreakpointPhase`), and `Answer.proceed(id)`. Any subset of a turn's interrupts can be answered at a time. See
+  [Human Review](docs/guide/agents/human-review.md).
 - **Tool idempotency keys, and a provider contract suite for one result per tool call** ([#1703](https://github.com/llm4s/llm4s/issues/1703)):
   an agent tool reads its call's key as `ToolContext.idempotencyKey` (`org.llm4s.agent.graph.IdempotencyKey`, 64 hex
   characters) and passes it to the system it calls, so a call the runtime runs again - a retrying `wrapToolCall`,
@@ -1133,6 +1152,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   now be rejected. Reworked from #923 by @Shubha9807.
 
 ### Changed
+- **Breaking: human-review interrupts** ([#1704](https://github.com/llm4s/llm4s/issues/1704)): `AgentStatus.Suspended`
+  has four fields (`approvals`, `questions`, `middlewareQuestions`, `breakpoints`), so a pattern must name four; the
+  kernel's `PendingInterrupt` gains `breakpoint`; `RunConfig` gains `interruptBefore`/`interruptAfter`;
+  `ApprovalRequest` and `ToolQuestionRequest` gain `answered` and, like the new `MiddlewareQuestionRequest`,
+  `BreakpointRequest`, `GivenAnswer` and `GuardrailReview`, have a private constructor: build them with `apply`,
+  change them with `with*` (`copy` is private). A tool wrapper that is not `AgentMiddleware.Asking`
+  and returns `ToolOutcome.Ask` fails the run (`ToolFailed`) instead of asking as the tool. Java/Kotlin:
+  `PendingInterrupt.toolName()` and `argumentsJson()` return `Optional<String>`, and `InterruptKind` has two more
+  values. `Checkpoint.CurrentFormat` is 6 (identity migration from 5). Migration:
+  [Human-review interrupts](docs/reference/migration.md#human-review-interrupts-1704).
 - **Breaking: no model request holds a tool call without exactly one result straight after it** ([#1703](https://github.com/llm4s/llm4s/issues/1703)):
   the agent checks each request as every `wrapModelCall` middleware left it, positionally rather than by id (a
   reused `call_0` can no longer hide a call with no result), and fails the model call with a `ValidationError`
