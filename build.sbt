@@ -284,6 +284,7 @@ lazy val llm4s = (project in file("."))
     cohere,
     watsonx,
     providerTestkit,
+    schemaDerivation,
     testkit,
     agentTestkit,
     llm4sEffect,
@@ -1116,6 +1117,24 @@ lazy val providerTestkit = (project in file("modules/provider-testkit"))
     )
   )
 
+// `llm4s-schema-derivation` (#1472): a JSON schema derived from a case class with Scala 3 `Mirror`, so
+// `completeStructured` needs no hand-written `ObjectSchema` that repeats the type. It layers on core's
+// public API (it builds an `ObjectSchema` and calls `completeStructured`) and adds no dependency.
+lazy val schemaDerivation = (project in file("modules/schema-derivation"))
+  .dependsOn(core % "compile->compile;test->test")
+  .settings(
+    name := "llm4s-schema-derivation",
+    commonSettings,
+    // Measured 98.94% statement and 95.24% branch coverage (`sbt coverage schemaDerivation/test
+    // schemaDerivation/coverageReport`), up from 88.63% when the recursion check and the external-package and
+    // tool specs were added, and from 98.62% / 93.33% when the case keys and the given-aware check were; 99.38% / 96.00% with the run-time recursion guard. Floor is the measured value rounded down to the nearest 5. Never lower it. Macro
+    // code runs inside the compiler, where scoverage cannot see all of it; `CompileErrorsSpec` and the golden
+    // specs exercise it when they compile.
+    coverageFloor(95),
+    Compile / mainClass             := None,
+    Compile / discoveredMainClasses := Seq.empty
+  )
+
 // `llm4s-testkit` (#1475) is for the people who USE llm4s: a scriptable fake `LLMClient` they can put
 // in their own tests (`% Test`) instead of copying the mocks out of this repository, whose test sources
 // are not published. It is a different audience from `llm4s-provider-testkit` above, which is for the
@@ -1281,6 +1300,7 @@ lazy val docSnippetsReport = taskKey[Unit](
 lazy val samples = (project in file("modules//samples"))
   .dependsOn(
     core,
+    schemaDerivation,
     rag,
     knowledgegraph,
     memory,
@@ -1712,6 +1732,7 @@ lazy val docs = (project in file("modules/docs"))
     cohere,
     watsonx,
     providerTestkit,
+    schemaDerivation,
     testkit,
     workspaceShared,
     workspaceClient,
@@ -1759,6 +1780,7 @@ lazy val docs = (project in file("modules/docs"))
         (cohere / Compile / sources).value ++
         (watsonx / Compile / sources).value ++
         (providerTestkit / Compile / sources).value ++
+        (schemaDerivation / Compile / sources).value ++
         (testkit / Compile / sources).value ++
         (workspaceShared / Compile / sources).value ++
         (workspaceClient / Compile / sources).value ++

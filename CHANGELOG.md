@@ -166,6 +166,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Llm4s.createAgent(client, tools, streaming)` and `wrapAgent` match Java's. As in the fs2 and ZIO streams, a consumer too slow for the stream's 256-event buffer loses live
   events and receives a `StreamEvent.LiveGap` with their count - it never cancels the run - and a run that
   ends without a terminal event still ends the stream with its error. The Java sample streams a turn.
+- **`llm4s-schema-derivation`: the JSON schema of `completeStructured`, derived from a case class** ([#1472](https://github.com/llm4s/llm4s/issues/1472)):
+  a new module (`@Experimental`, not part of the 1.0 frozen surface; depends on `llm4s-core` only, adds no dependency)
+  with `SchemaOf[A]` and `case class Invoice(...) derives SchemaOf`, built on Scala 3 `Mirror`, and
+  `client.completeStructuredOf[Invoice](conversation)`, which builds the same `ObjectSchema` and calls the same
+  `completeStructured`. It describes what uPickle's derived `ReadWriter` reads and writes (field names including
+  `@upickle.implicits.key`, `Option` as the value or `null`, an enum as its case name or the case's
+  `@upickle.implicits.key`, `BigDecimal` and `BigInt` as strings) and the tests check that round trip in both directions,
+  including a read of every document each golden schema allows. `@description("...")` sets a field's or type's
+  description. Supported: scalars, `Option`, `List`/`Seq`/`Vector`/`Set`, nested and generic case classes, enums and
+  sealed hierarchies of singletons. Refused at compile time with a message naming the type: `Map`, recursive types and
+  sealed hierarchies with fields, because core's schema model cannot express map values, `$ref` or `oneOf`; and
+  `Option` directly inside `Option` and tuples, which uPickle writes as arrays, and named tuples, which uPickle cannot
+  read. A hand-written `given SchemaOf` is used as it is, so it describes a type the derivation would refuse. A
+  recursion that passes through a hand-written given which itself calls `SchemaOf.derived` is not visible at compile
+  time; building that schema throws an `IllegalStateException` naming the type on first use, and `completeStructuredOf`
+  returns it as a `Left` without calling the model (a derived instance looks
+  up its fields' instances only when its schema is built, so such givens never deadlock each other's initialisation).
+  The run-time guard is restored whatever a field's instance throws, fatal errors included, so an
+  `ExceptionInInitializerError` or `InterruptedException` is reported as itself on every build, never later as a
+  "recursive type". A generic case class may nest in itself at most 16 deep; a 17th level is refused at compile time
+  when spelled out in a field's type, and when the schema is built when reached through the generic instance.
+  `SchemaOf[A].definition` is the same schema as a `SchemaDefinition`, so `ToolBuilder` takes it as a tool's
+  parameters. Guide: [Derived Schemas](docs/guide/derived-schemas.md).
 - **`llm4s-config-policy`: a setup checker, `DoctorCli`** ([#1481](https://github.com/llm4s/llm4s/issues/1481)):
   `sbt "configPolicy/runMain org.llm4s.configpolicy.DoctorCli [--config <file>] [--classpath <path>] [--local] [--live] [--timeout <s>] [--json]"`
   checks the JDK (21 or newer), that the configuration can be read, that `llm4s.providers.provider` names a section,

@@ -120,6 +120,10 @@ flags:
     paths:
       - modules/provider-testkit/src/main/scala
     carryforward: true
+  schema-derivation:
+    paths:
+      - modules/schema-derivation/src/main/scala
+    carryforward: true
   testkit:
     paths:
       - modules/testkit/src/main/scala
