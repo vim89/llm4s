@@ -82,6 +82,7 @@ Every top-level package under `modules/core/src/main/scala/org/llm4s/`, its targ
 | `llmconnect/provider` — other community providers | `llm4s-openai-compatible` dialects, or `modules/providers/<name>` | Beta |
 | `jev` — typed client for TypeSafe's Jev decision model (Noul, Choice, Score); not a chat provider — **new** | `llm4s-jev` (`modules/providers/jev`) | Beta |
 | `testkit` — the checks a provider module's `Llm4s<Name>ModuleSpec` makes (`ProviderModuleChecks`, `ProviderTestConfig`, `CredentialsRoundTrip`, `LocalProviderTestServer`), formerly unpublished helpers in core's test sources — **new** | `llm4s-provider-testkit` (`modules/provider-testkit`), a test-scope dependency; requires JDK 21 (virtual threads) | Beta |
+| `agent/testkit` — `CheckpointerContract`, the contract every `Checkpointer` must pass (commits, event numbering, compaction, run-claim leases and fencing, two runtimes over one store), and `ManualClock` — **new** | `llm4s-agent-testkit` (`modules/agent-testkit`), a test-scope dependency; requires JDK 21 (virtual threads) | Beta |
 | build — the bill of materials that pins every published artifact to one version (no code) — **new** | `llm4s-bom` (`modules/bom`) | Beta |
 | `rag`, `vectorstore`, `chunking`, `reranker`, `eval` — **carved** | `llm4s-rag` | Beta |
 | `extract` (consolidated from `rag/extract` + `llmconnect/extractors`) and `rag/embed` (from `llmconnect/encoding`) — **carved** | `llm4s-rag` | Beta |
