@@ -132,6 +132,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   writing, `AudioIO.saveWav` / `saveRawPcm16` and the new `AudioPreprocessing.standardizeForSTT(audio, rate)`
   reject MP3 with a `ValidationError`; Tacotron2 refuses it. A caller with an exhaustive `match` on
   `AudioFormat` needs a case for `Mp3`. The `@Cloud` smoke suites check MP3 magic bytes.
+- **`llm4s-observability-micrometer`: LLM4S metrics in a Micrometer `MeterRegistry`**
+  ([#1466](https://github.com/llm4s/llm4s/issues/1466)): a new Beta module (`modules/observability-micrometer`) that depends on
+  `llm4s-core` and `micrometer-core`. `new MicrometerMetrics(registry)` is a `MetricsCollector` that records requests,
+  durations, tokens, cost, errors and image generation as `llm4s.*` meters whose Prometheus export has the same series names
+  and duration buckets as `llm4s-observability-prometheus` (`llm4s.requests` is `llm4s_requests_total`), so dashboards carry
+  over; a test compares the two collectors' exposed series and values. It also records retries
+  (`llm4s.retries`), circuit-breaker transitions and `recordError`, which the Prometheus collector leaves as no-ops. Tags are
+  provider, model and fixed sets only (provider and model capped at 64 and 256 distinct values per collector, beyond which
+  they are recorded as `other`), no method throws, and negative or non-finite amounts are ignored. The OpenTelemetry
+  GenAI metric names are not used: they are in Development status and the token metric has already been renamed.
+  `llm4s-spring-boot-starter` wires it with no code: its new `LlmMetricsAutoConfiguration` registers a `MicrometerMetrics`
+  bean (`llm4sMetricsCollector`) when the module and a `MeterRegistry` bean are present, and the client bean reports to
+  every `MetricsCollector` bean, so the meters are on `/actuator/metrics`. The starter declares the module `provided`, like
+  Actuator. `FrozenDependencies` now bans `io.micrometer` from frozen modules, as it does `io.prometheus`. See
+  [Micrometer metrics](docs/guide/observability/micrometer.md).
 - **Scala CLI quick start: a first LLM call from one file** ([#1456](https://github.com/llm4s/llm4s/issues/1456)):
   `modules/samples/scala-cli` holds `hello.scala` (with `//> using jvm 21`), `resources/application.conf` (OpenAI),
   `resources/ollama.conf` (a local Ollama, no key) and `logback.xml`; `cd modules/samples/scala-cli && scala-cli run .`

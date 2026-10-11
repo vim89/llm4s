@@ -288,6 +288,7 @@ lazy val llm4s = (project in file("."))
     workspaceSamples,
     observability,
     observabilityPrometheus,
+    observabilityMicrometer,
     traceOpentelemetry,
     agent,
     agentTools,
@@ -1371,6 +1372,33 @@ lazy val observabilityPrometheus = (project in file("modules/observability-prome
     )
   )
 
+// `llm4s-observability-micrometer` (#1466) is the Micrometer counterpart of `llm4s-observability-prometheus`: a
+// `MetricsCollector` that writes into a `MeterRegistry` the application already has, so a Spring Boot or
+// Quarkus service sees llm4s request, token, cost and error metrics next to its own with no second metrics
+// stack. It depends on core and `micrometer-core` only. Micrometer stays out of every frozen module
+// (`FrozenDependencies` bans `io.micrometer` there), and it is separate from the Prometheus module so
+// that neither client reaches users who do not use it. The series names match `llm4s-observability-prometheus`
+// (see docs/guide/observability/micrometer), so dashboards carry over.
+lazy val observabilityMicrometer = (project in file("modules/observability-micrometer"))
+  // `observabilityPrometheus % Test` is for `MicrometerPrometheusSeriesSpec`, which feeds the same calls to both
+  // collectors and compares the series they expose. It is not a dependency users get.
+  .dependsOn(core, observabilityPrometheus % Test)
+  .settings(
+    name := "llm4s-observability-micrometer",
+    commonSettings,
+    // Measured 99.49% statement and 97.83% branch coverage (`sbt coverage observabilityMicrometer/test
+    // observabilityMicrometer/coverageReport`). Floor is the measured value rounded down to the nearest 5.
+    // Never lower it.
+    coverageFloor(95),
+    Compile / mainClass             := None,
+    Compile / discoveredMainClasses := Seq.empty,
+    libraryDependencies ++= Seq(
+      Deps.micrometerCore,
+      Deps.scalatest            % Test,
+      Deps.micrometerPrometheus % Test
+    )
+  )
+
 lazy val traceOpentelemetry = (project in file("modules/trace-opentelemetry"))
   // Test depends on core's tests for `ReferenceConfig`, which proves this module's
   // `reference.conf` binds `OTEL_*` under `llm4s.tracing.opentelemetry` (#1133).
@@ -1590,6 +1618,7 @@ lazy val docs = (project in file("modules/docs"))
     workspaceClient,
     observability,
     observabilityPrometheus,
+    observabilityMicrometer,
     traceOpentelemetry,
     agent,
     agentTools,
@@ -1634,6 +1663,7 @@ lazy val docs = (project in file("modules/docs"))
         (workspaceClient / Compile / sources).value ++
         (observability / Compile / sources).value ++
         (observabilityPrometheus / Compile / sources).value ++
+        (observabilityMicrometer / Compile / sources).value ++
         (traceOpentelemetry / Compile / sources).value ++
         (agent / Compile / sources).value ++
         (agentTools / Compile / sources).value ++
@@ -1671,7 +1701,10 @@ lazy val javaApi = (project in file("modules/java-api"))
   )
 
 lazy val springBootStarter = (project in file("modules/spring-boot-starter"))
-  .dependsOn(javaApi)
+  // `observabilityMicrometer` is provided, like Actuator: `LlmMetricsAutoConfiguration` records into the
+  // application's MeterRegistry only when the application adds `llm4s-observability-micrometer` itself, so the
+  // starter puts no Micrometer jar on a classpath that did not ask for one (#1466).
+  .dependsOn(javaApi, observabilityMicrometer % "provided")
   .settings(
     name := "llm4s-spring-boot-starter",
     commonSettings,
@@ -1685,7 +1718,9 @@ lazy val springBootStarter = (project in file("modules/spring-boot-starter"))
       Deps.scalatest                   % Test,
       Deps.springBootStarterTest       % Test,
       Deps.springBootTestAutoConfigure % Test,
-      Deps.springBootActuator          % Test
+      Deps.springBootActuator          % Test,
+      // MeterRegistry and /actuator/metrics as an application gets them, for LlmMetricsAutoConfigurationSpec.
+      Deps.springBootActuatorAutoConfigure % Test
     )
   )
 
