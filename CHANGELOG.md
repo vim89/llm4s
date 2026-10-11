@@ -231,6 +231,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`Locale.ROOT`, aliases such as `google` folded onto `gemini`), and a per-provider cap or pin naming no registered or allowed
   provider is an `unknownProvider` violation instead of being silently ignored. A per-provider pin replaces the environment-wide
   one for that provider, so a loose provider pin weakens a strict global one.
+- **`llm4s-spring-boot-starter`: any provider on the classpath, through `llm4s.providers.*` properties**
+  ([#1467](https://github.com/llm4s/llm4s/issues/1467)): the starter used to map three providers by hand
+  (`llm4s.provider=openai | anthropic | ollama`). The `llm4s.providers.<section>.*` properties now mirror llm4s's
+  own `llm4s.providers` HOCON block (`kebab-case` and `snake_case` names read as the `camelCase` HOCON names, header
+  names under `headers` kept as written), are laid over llm4s's defaults and resolved by the same loader and
+  provider SPI as a HOCON file, so Gemini, Vertex AI, Azure OpenAI, Mistral, OpenRouter, a generic OpenAI-compatible
+  server and any provider module added to the classpath work with their declared extras (`endpoint`, `api-version`,
+  `headers.*`, ...), several sections can coexist, and a vendor's shared `llm4s.credentials.<id>.api-key` applies.
+  `llm4s.providers.provider` names the default section (the flat `llm4s.provider` may name one when it is not set).
+  An unknown provider id fails startup with llm4s's own message, which names the registered providers and the
+  dependency to add. **Backwards compatible**: with no `llm4s.providers.*` property the flat keys of openai,
+  anthropic and ollama are read exactly as before (pinned by `LegacyConfigGoldenSpec`, recorded before the change).
+  Two things differ in the block: the context window and reserved completion size come from the model registry
+  except for the generic `openai-compatible` provider, which reads `context-window` and `reserve-completion` from the
+  section; and with any `llm4s.providers.*` property set the flat `llm4s.model`, `llm4s.api-key`, ... are ignored.
+  When two property sources spell one setting differently (`apiKey` in `application.yml`, `api-key` on the command
+  line), the higher-priority source wins, as Spring's precedence says. An `LLM4S_PROVIDERS_*` environment variable
+  cannot add a setting, only override one a property source declares; secrets come through placeholders or the vendor's variable bound by `llm4s.credentials`.
+  The Actuator health indicator reports the resolved provider and model and keeps every credential out of its
+  messages, including the resolved provider's own key from a non-Spring source (`application.conf`, a vendor's
+  environment variable). The flat `llm4s.provider` error for another provider id now names the providers on the classpath and
+  points to `llm4s.providers.*`. Metadata for the new keys is in `additional-spring-configuration-metadata.json`.
+  **Spring Boot support policy**: Spring Boot 3.x from 3.3 on. The starter is built against 3.3.6 and a new CI job,
+  `Spring Boot 3.x (latest)`, runs its specs against 3.5.16 (`-Dllm4s.springBootVersion`); Spring Boot 4 is not
+  supported yet and stays open in #1467.
 - **`llm4s-spring-boot-starter`: Spring Boot auto-configuration** (Beta, `modules/spring-boot-starter`,
   [#936](https://github.com/llm4s/llm4s/issues/936)): built on `llm4s-java-api`. Properties under `llm4s.*` (`provider`, `model`, `apiKey`,
   `baseUrl`, `organization`, `contextWindow`, `reserveCompletion`) produce a `JLlmClient` and an

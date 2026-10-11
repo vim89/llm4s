@@ -1799,10 +1799,12 @@ lazy val javaApi = (project in file("modules/java-api"))
   )
 
 lazy val springBootStarter = (project in file("modules/spring-boot-starter"))
+  // core's test classes carry the `fixturechat` provider and its services entry, and the provider testkit a
+  // local HTTP server: the specs for providers other than openai, anthropic and ollama use both (#1467).
   // `observabilityMicrometer` is provided, like Actuator: `LlmMetricsAutoConfiguration` records into the
   // application's MeterRegistry only when the application adds `llm4s-observability-micrometer` itself, so the
   // starter puts no Micrometer jar on a classpath that did not ask for one (#1466).
-  .dependsOn(javaApi, observabilityMicrometer % "provided")
+  .dependsOn(javaApi, observabilityMicrometer % "provided", core % "test->test", providerTestkit % Test)
   .settings(
     name := "llm4s-spring-boot-starter",
     commonSettings,
