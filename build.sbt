@@ -284,6 +284,7 @@ lazy val llm4s = (project in file("."))
     cohere,
     watsonx,
     providerTestkit,
+    testkit,
     agentTestkit,
     llm4sEffect,
     llm4sZio,
@@ -479,7 +480,9 @@ lazy val media = (project in file("modules/media"))
   )
 
 lazy val llm4sEffect = (project in file("modules/llm4s-effect"))
-  .dependsOn(core, agent, agent % "test->test")
+  // `testkit % Test`: `ScriptedAgentIOSpec` drives an `AgentIO` end to end from a `ScriptedLLMClient`, the way a
+  // user's tests would; the testing guide shows that code.
+  .dependsOn(core, agent, agent % "test->test", testkit % Test)
   .settings(
     name := "llm4s-effect",
     commonSettings,
@@ -495,7 +498,9 @@ lazy val llm4sEffect = (project in file("modules/llm4s-effect"))
   )
 
 lazy val llm4sZio = (project in file("modules/llm4s-zio"))
-  .dependsOn(core, agent, agent % "test->test")
+  // `testkit % Test`: `ScriptedAgentZSpec` drives an `AgentZ` end to end from a `ScriptedLLMClient`, the way a
+  // user's tests would; the testing guide shows that code.
+  .dependsOn(core, agent, agent % "test->test", testkit % Test)
   .settings(
     name := "llm4s-zio",
     commonSettings,
@@ -1111,6 +1116,27 @@ lazy val providerTestkit = (project in file("modules/provider-testkit"))
     )
   )
 
+// `llm4s-testkit` (#1475) is for the people who USE llm4s: a scriptable fake `LLMClient` they can put
+// in their own tests (`% Test`) instead of copying the mocks out of this repository, whose test sources
+// are not published. It is a different audience from `llm4s-provider-testkit` above, which is for the
+// authors of provider modules. Depends on core only, registers no provider, and has no test framework
+// in its API, so it works with ScalaTest, MUnit and the rest.
+lazy val testkit = (project in file("modules/testkit"))
+  .dependsOn(core)
+  .settings(
+    name := "llm4s-testkit",
+    commonSettings,
+    // Measured 100.00% statement and 100.00% branch coverage (`sbt coverage testkit/test
+    // testkit/coverageReport`). Floor is the measured value rounded down to the nearest 5. Never lower it.
+    coverageFloor(100),
+    Compile / mainClass             := None,
+    Compile / discoveredMainClasses := Seq.empty,
+    libraryDependencies ++= Seq(
+      Deps.ujson,
+      Deps.scalatest % Test
+    )
+  )
+
 // The OpenAI family carves fourth, split by shared client: OpenAI, Azure and Requesty all run
 // on `OpenAIClient`, so they move together and took the SDK out of core - after this core has
 // no vendor SDK at all. That SDK was Microsoft's `azure-ai-openai`, since deprecated; the
@@ -1280,7 +1306,9 @@ lazy val samples = (project in file("modules//samples"))
     agentTools,
     llm4sEffect,
     llm4sZio,
-    llm4sPekko
+    llm4sPekko,
+    // Test scope: the guide `docs/guide/testing-with-the-testkit` is run by a spec in this module.
+    testkit % Test
   )
   .settings(
     name := "llm4s-samples",
@@ -1680,6 +1708,7 @@ lazy val docs = (project in file("modules/docs"))
     cohere,
     watsonx,
     providerTestkit,
+    testkit,
     workspaceShared,
     workspaceClient,
     observability,
@@ -1726,6 +1755,7 @@ lazy val docs = (project in file("modules/docs"))
         (cohere / Compile / sources).value ++
         (watsonx / Compile / sources).value ++
         (providerTestkit / Compile / sources).value ++
+        (testkit / Compile / sources).value ++
         (workspaceShared / Compile / sources).value ++
         (workspaceClient / Compile / sources).value ++
         (observability / Compile / sources).value ++
