@@ -130,6 +130,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Llm4s.createAgent(client, tools, streaming)` and `wrapAgent` match Java's. As in the fs2 and ZIO streams, a consumer too slow for the stream's 256-event buffer loses live
   events and receives a `StreamEvent.LiveGap` with their count - it never cancels the run - and a run that
   ends without a terminal event still ends the stream with its error. The Java sample streams a turn.
+- **`llm4s-config-policy`: a setup checker, `DoctorCli`** ([#1481](https://github.com/llm4s/llm4s/issues/1481)):
+  `sbt "configPolicy/runMain org.llm4s.configpolicy.DoctorCli [--config <file>] [--classpath <path>] [--local] [--live] [--timeout <s>] [--json]"`
+  checks the JDK (21 or newer), that the configuration can be read, that `llm4s.providers.provider` names a section,
+  that the section's provider is registered (and, if not, names the registered ones and says to add the dependency;
+  `--classpath` checks the provider modules on the application's classpath instead of the doctor's own, and layers
+  that classpath's `reference.conf` files, and its `application.conf` when no `--config` is given, so a third-party
+  module's credential binding is seen), that its
+  API key resolves (the config path it came from, never the value), that the section validates, with `--local`, for a
+  server on the loopback interface, that it answers and has the configured model, and that the other sections load
+  (a warning if not). With `--live` it makes one small request and maps an authentication, rate-limit, not-found,
+  timeout or network error to its own advice. Without `--local` or `--live` nothing is contacted. The configuration
+  is read through `Llm4sConfig`. Every step that fails prints a `fix:` line; the exit code is `0`, `1` (warnings
+  only) or `2`. A URL is printed without its user info, query or fragment (a password holding `/` included). A
+  configuration file that cannot be parsed is reported by file, line and kind of error only, never with Typesafe
+  Config's message, which quotes the values beside the problem; every quoted value of 8 characters or more in that
+  file is also hidden by value. Every API key, every section's header values
+  and the base-URL user info and query values in the configuration are hidden by value in the output (values of 8
+  characters or more), in addition to the shape-based redaction. `Doctor.run` and `DoctorPorts` are the same check as a function with the JDK, model probe and live
+  request injectable. The module is not published and `Doctor` adds no public API to a published module. See
+  [Doctor](docs/reference/doctor.md).
 - **`llm4s-pekko`: LLM responses and agent runs as Apache Pekko Streams `Source`s**
   ([#1457](https://github.com/llm4s/llm4s/issues/1457)): a new Beta module (`modules/llm4s-pekko`, package
   `org.llm4s.pekko`) that depends on `llm4s-core`, `llm4s-agent` and `pekko-stream` 1.7 (Apache-2.0; Akka is not
