@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`MemoryManagerConfig.contextTokenBudget` and `autoExtractEntities` take effect** ([#1579](https://github.com/llm4s/llm4s/issues/1579)):
+  `getRelevantContext` without a `maxTokens` now uses the manager's `contextTokenBudget` (2000 by default, as
+  before; an explicit `maxTokens` still wins), through a new `MemoryManager.contextTokenBudget` member that
+  `SimpleMemoryManager` and `LLMMemoryManager` take from their config and other implementations inherit as
+  `MemoryManager.DefaultContextTokenBudget`. With `autoExtractEntities = true`, `recordMessage` and
+  `recordConversation` also run `extractEntities` over each recorded user and assistant message, with its
+  conversation id - one extra LLM call per message on `LLMMemoryManager`, nothing on `SimpleMemoryManager`;
+  a failed extraction is logged and the message stays recorded. `MemoryManagerConfig.fullFeatured` turns it on.
 - **`Llm4s.createClient(ProviderConfig, MetricsCollector)` is public** ([#1817](https://github.com/llm4s/llm4s/issues/1817)):
   the `llm4s-java-api` overload that attaches a `MetricsCollector` (a `MicrometerMetrics` over the application's
   `MeterRegistry`, say) was `private[llm4s]` for the Spring Boot starter, yet public in the bytecode, so Java callers
@@ -2419,6 +2427,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `org.llm4s.toolapi.ToolHints` in `llm4s-core` (`@Experimental`), because `llm4s-mcp` cannot depend on the agent runtime.
 
 ### Removed
+- **`MemoryManagerConfig.autoRecordMessages` and `consolidationEnabled`** ([#1579](https://github.com/llm4s/llm4s/issues/1579)):
+  no manager ever read them. A manager records only the messages passed to `recordMessage`/`recordConversation`,
+  so there was nothing for `autoRecordMessages` (default `true`) to switch, and automatic consolidation has no
+  trigger to hang on - `consolidateMemories` runs when you call it, reading `consolidationConfig`. The 5-parameter
+  `MemoryManagerConfig` constructor, `apply` and `copy` overloads went with them. **Migration:** drop both
+  arguments; record each turn with `recordMessage`/`recordConversation` and call `consolidateMemories` yourself
+  (for example from a scheduled job). Positional calls shift: the constructor and `apply` are now
+  `(autoExtractEntities, defaultImportance, contextTokenBudget, consolidationConfig)`.
 - **`WorkspaceConfigSupport.loadSandboxConfig`** ([#1730](https://github.com/llm4s/llm4s/issues/1730)): it read a
   sandbox profile from the client's `llm4s.workspace.sandbox.profile`, which nothing passed to the runner and nothing
   called, so it suggested a client setting that enforced nothing. What the runner enforces is decided only by its own
