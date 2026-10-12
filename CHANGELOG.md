@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Java client builders: a client in code, with no `application.conf` and no Scala type** ([#1489](https://github.com/llm4s/llm4s/issues/1489)):
+  `Llm4s.openAi()`, `anthropic()`, `gemini()`, `ollama()`, `openAiCompatible()` and `azureOpenAi()` return immutable
+  builders (`OpenAiClientBuilder` and so on) taking `apiKey`, `model`, `baseUrl`, `contextWindow`, `reserveCompletion`,
+  `requestTimeout`/`streamTimeout` (`java.time.Duration`) and each provider's own fields (`organization`, `apiVersion`,
+  `header`), whose `build()` returns `LlmResult<JLlmClient>`. A required field left out, `null` or blank, or a value out
+  of range, is a failed result of kind `VALIDATION` naming the field; `build()` sends no request and never throws, and
+  `toString` prints the key as `***` and URLs without userinfo, query or fragment. Defaults are those `application.conf`
+  gives - the provider's base URL and the model catalogue's context window, for an OpenAI-compatible server the window
+  for the provider its base URL's host names - because each builder makes its config as the provider's descriptor makes
+  it from a section, and a test compares the two. `metrics(MetricsCollector)` attaches a collector, as
+  `Llm4s.createClient(config, metrics)` does. Other providers still take a config object through
+  `Llm4s.createClient(ProviderConfig)`. The Kotlin API cannot wrap a builder's client yet
+  ([#1850](https://github.com/llm4s/llm4s/issues/1850)). See [Configure in code](docs/guide/java.md#configure-in-code).
 - **`MemoryManagerConfig.contextTokenBudget` and `autoExtractEntities` take effect** ([#1579](https://github.com/llm4s/llm4s/issues/1579)):
   `getRelevantContext` without a `maxTokens` now uses the manager's `contextTokenBudget` (2000 by default, as
   before; an explicit `maxTokens` still wins), through a new `MemoryManager.contextTokenBudget` member that
