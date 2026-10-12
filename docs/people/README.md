@@ -13,7 +13,7 @@ Use `/people/<filename>` in `docs/people.md` and `docs/people/<filename>` in the
 | Atul S. Khot | <img src="atul-s-khot.jpg" alt="Atul S. Khot" width="100"> | [atul-s-khot.jpg](atul-s-khot.jpg) |
 | Christopher Wheeler | <img src="christopher-wheeler.jpg" alt="Christopher Wheeler" width="100"> | [christopher-wheeler.jpg](christopher-wheeler.jpg) |
 | Dmitry Mamonov | <img src="dmitry-mamonov.jpg" alt="Dmitry Mamonov" width="100"> | [dmitry-mamonov.jpg](dmitry-mamonov.jpg) |
-| Elvan Konukseven | <img src="elvan-konukseven.png" alt="Elvan Konukseven" width="100"> | [elvan-konukseven.png](elvan-konukseven.png) |
+| Elvan Konukseven | <img src="elvan-konukseven.jpg" alt="Elvan Konukseven" width="100"> | [elvan-konukseven.jpg](elvan-konukseven.jpg) |
 | Gagandeep Kalra | <img src="gagandeep-kalra.jpg" alt="Gagandeep Kalra" width="100"> | [gagandeep-kalra.jpg](gagandeep-kalra.jpg) |
 | Giovanni Ruggiero | <img src="giovanni-ruggiero.jpg" alt="Giovanni Ruggiero" width="100"> | [giovanni-ruggiero.jpg](giovanni-ruggiero.jpg) |
 | Gopi Trinadh | <img src="gopi-trinadh.jpg" alt="Gopi Trinadh" width="100"> | [gopi-trinadh.jpg](gopi-trinadh.jpg) |
@@ -31,6 +31,8 @@ Retained for reference; the People pages use the current headshots above. Numeri
 
 | Person | File |
 |---|---|
+| Elvan Konukseven | [elvan-konukseven-github.png](elvan-konukseven-github.png) |
+| Gopi Trinadh | [gopi-trinadh-github.jpg](gopi-trinadh-github.jpg) |
 | Kannupriya Kalra | [kannupriya-kalra-github.png](kannupriya-kalra-github.png) |
 | Rory Graves | [rory-graves-github.jpg](rory-graves-github.jpg) |
 | Vitthal Mirji | [vitthal-mirji-github.jpg](vitthal-mirji-github.jpg) |
