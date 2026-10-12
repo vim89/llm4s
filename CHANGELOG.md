@@ -1279,6 +1279,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   now be rejected. Reworked from #923 by @Shubha9807.
 
 ### Changed
+- **Workload-identity configuration is `@Stable`; `stabilityTierCheck` flags Stable signatures that name Experimental types** ([#1818](https://github.com/llm4s/llm4s/issues/1818)):
+  `AuthConfig`, `IdentitySource`, `TokenExchangeConfig`, `AccessToken`, `AccessTokenProvider`,
+  `OpenAIWorkloadIdentity` and `AnthropicWorkloadIdentity` were `@Experimental` while the Stable
+  `NamedProviderConfig.auth`/`withAuth`/`apply`, `ProviderDescriptor.requireAuthExtra`,
+  `OpenAICompatibleConfig.tokenExchange`, `OpenAICompatibleClient.Credential` and the `workloadIdentity` fields of
+  `OpenAIConfig` and `AnthropicConfig` carried them, so the 1.x promise on those signatures could not hold. They are
+  now `@Stable`; `TokenExchange`, `CachingAccessTokenProvider` and `IdentityTokenSource` stay `@Experimental`.
+  `stabilityTierCheck` now also fails for a public member of a `@Stable` type whose signature names an
+  `@Experimental` type, and checks itself against fixtures first. **Migration:** `AccessToken` is growth-safe: its
+  constructor and `copy` are private - build one with `AccessToken(value, expiresAt)` and change it with
+  `withValue` / `withExpiresAt`.
+- **A test framework's assertion under a bare `assertion` key stays readable** ([#1818](https://github.com/llm4s/llm4s/issues/1818)):
+  `Redaction` treated every key ending in `assertion` as a credential, which blanked test-framework lines such as
+  `Assertion: expected status 200` and `{"assertion": "response.status == 200"}`. The bare key is still a credential
+  in every shape - JSON field, IdP error echo, Python dict, escaped JSON, header line, `key=value` pair, quoted pair,
+  form body and query - but a value under it that reads as prose is left readable: it holds a space (U+0020), no
+  `<`, and no run of 20 or more characters of `[A-Za-z0-9+/_=-]`. A test assertion (`expected status 200 but got
+  404`, `len(items) > 0`) is words and operators between spaces; an RFC 7521 / 7523 `assertion` grant fails the rule
+  however it is wrapped - a JWT, a base64 or base64url SAML assertion (also wrapped with spaces), a hex or opaque
+  token is one long run, a raw XML SAML assertion holds `<`, a PEM block holds base64 lines - and so does a credential
+  with a word beside it (`ghp_... x`, an AWS key id and its secret). The check reads only the value, so redaction
+  stays linear in the input. One rule, read by every pass and by `remoteBody`'s collector. A compound key
+  (`client_assertion`, `saml_assertion`, `jwtAssertion`) and a container under the bare key are redacted whatever
+  they hold, and the patterns that read no key (JWTs, bearer tokens, API keys, sensitive pairs) still apply inside a
+  readable assertion. An `Assertion` request header is still withheld on a cross-origin redirect by the HTTP tool.
 - **Breaking (Java API): the facade's Java-visible surface is the intended one** ([#1666](https://github.com/llm4s/llm4s/issues/1666)):
   Scala 3 emitted the `private` constructors and `private[javaapi]` factories of `llm4s-java-api` as `public`, so Java
   could build values the library never would (`new JToolCall(null, null, null)`, a `COMPLETED` `JAgentStatus` with no
@@ -2603,6 +2628,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `llm4s-core`. The loader keeps its `org.llm4s.config` package and its `load(source)` method.
 
 ### Fixed
+- **A throwing access-token fetch no longer escapes the client** ([#1818](https://github.com/llm4s/llm4s/issues/1818)):
+  an `OpenAICompatibleClient.Credential.Dynamic` provider whose `token()` throws now fails the request with an
+  `AuthenticationError` naming the exception's class (not its message), and one whose `invalidate` throws no longer
+  stops the 401 retry; a `CachingAccessTokenProvider` fetch that throws is a failed `token()`, shared for the
+  failure window like any rejection.
+- **Anthropic workload identity checks the identity token file when the client is built** ([#1818](https://github.com/llm4s/llm4s/issues/1818)):
+  the Anthropic SDK reads `identityTokenFile` itself, without llm4s's regular-file and 64 KiB checks. `AnthropicClient`
+  now refuses a path that is a directory, a FIFO, a device or larger than 64 KiB, as a `ConfigurationError` naming
+  `workloadIdentity.identityTokenFile`; a path that does not exist yet is still accepted. Documented in the
+  configuration guide.
 - **Security - workspace runner: more programs that run another cannot be added as extra commands, `tar`, `zip`,
   `rsync`, `scp` and `sftp` refuse their program-running options, and a command's child gets the system directories
   when no `PATH` entry survives** ([#1805](https://github.com/llm4s/llm4s/issues/1805)):
