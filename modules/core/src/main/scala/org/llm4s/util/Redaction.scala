@@ -16,7 +16,7 @@ import scala.util.matching.Regex
  * Pattern-based redaction automatically detects and masks:
  *  - API keys (OpenAI, Anthropic, Google, Voyage, Langfuse)
  *  - Bearer tokens and credential headers: Authorization, Proxy-Authorization, Cookie and Set-Cookie
- *  - URL query parameters with sensitive keys
+ *  - URL query parameters with sensitive keys, and the password of a URL's userinfo (`https://user:password@host`)
  *  - Sensitive fields, whatever the shape: JSON (also inside a string, single-quoted, with a number value, or with
  *    an array or object value, whose every leaf - string, number or bare word - is replaced), `key=value` pairs and
  *    `x-api-key: value` header lines (api_key, password, token, client_secret, etc.)
@@ -415,6 +415,8 @@ private[llm4s] object Redaction {
    * strings, numbers and words of the value of a sensitive key of a Python literal, read as Python writes it
    * (`pythonValues`): a `pytest` diff, a notebook's line array, a dict cut off after a comma, `str(dict)` inside a
    * `repr`, `\'` inside a JSON string, a keyword argument holding a list or a call (`token=SecretStr('...')`, #1813).
+   * A sixth (#1816) adds the password of a URL's userinfo, `https://alice:[REDACTED]@host`, also with the slashes
+   * escaped as JSON writes them.
    *
    * Redacting the output a second time usually changes nothing, but that is not guaranteed: where quotes are
    * unbalanced or stray, the text a first pass replaced can change how a second pass pairs the quotes, and the
@@ -541,6 +543,8 @@ private[llm4s] object Redaction {
    * that meets a placeholder already written is written as nothing, so that the two read as one (#1813). The same
    * reading then runs again for a key whose value is a call (`token=SecretStr('...')`, #1813).
    *
+   * Last, the same way, the password of a URL's userinfo (`urlUserinfoPasswords`, #1816).
+   *
    * Each reading is a fixed number of passes over the input, so the cost stays linear.
    */
   private def addedReadingEdits(input: String, placeholder: String, edits: Vector[Edit]): Vector[Edit] = {
@@ -578,7 +582,109 @@ private[llm4s] object Redaction {
         }
       }
     }
+    if (input.indexOf('@') >= 0) {
+      val added = joinedToPlaceholders(kept, uncoveredEdits(input, kept, urlUserinfoPasswords(input), placeholder))
+      if (added.nonEmpty) kept = (kept ++ added).sortBy(_.start)
+    }
     kept
+  }
+
+  /**
+   * The password of every URL whose authority holds userinfo, `scheme://user:password@host`, as `(start, end)`
+   * spans of the input, sorted and free of overlaps (#1816): a provider `baseUrl`, a proxy or a database URL in a
+   * connection error or a log line. The scheme is a run of letters, digits, `+`, `.` or `-` before `:`, and its two
+   * slashes may be written behind backslashes, as JSON writes them (`https:\/\/`, behind the same run each). The
+   * authority runs from there to the first character no authority holds unencoded in a log line - whitespace, `/`,
+   * `?`, `#`, `\`, `"`, `<`, `>`, `[`, `]`, `{`, `}`, `|`, `^` or a backtick - or to the scheme of another URL
+   * (`redis://u:p1@h1,redis://u:p2@h2`), where the search goes on, so that every URL of a list joined by `,`, `;`,
+   * `)` or `'` is read. Its userinfo runs to its last `@`, as a browser reads it, so a password that holds `@`
+   * unencoded is read whole. The password is the userinfo after its first `:`; a userinfo with no `:`
+   * (`https://alice@host`) has none, and an empty password is left. Only the password is replaced:
+   * `https://alice:[REDACTED]@host` keeps the user and the host. It holds no `"` or backslash, so a JSON string around
+   * the URL still parses, and it holds `[`, which ends an authority, so a second redaction finds nothing more.
+   *
+   * A `,` or `;` in an authority starts another item of a list, read the same way without a scheme, when it follows
+   * a password and an `@` follows it (`https://u:p@h1,a@b.com` keeps `a@b.com`), or when it follows a host and its
+   * port (`https://example.com:8080,bob@corp.com` keeps the port and `bob`): a host holds a `.` and a port only
+   * digits. What is left: a password holding `@` and then `,` or `;` before another `@`, a password of digits only
+   * behind a user holding a `.` and before a `,`, or one holding `://` after letters, is read only in part. One
+   * forward scan, each character read once.
+   */
+  private def urlUserinfoPasswords(input: String): Vector[(Int, Int)] = {
+    val length                          = input.length
+    val found                           = Vector.newBuilder[(Int, Int)]
+    def schemeChar(c: Char): Boolean    = c.isLetterOrDigit || c == '+' || c == '.' || c == '-'
+    def endsAuthority(c: Char): Boolean = Character.isWhitespace(c) || "/?#\\\"<>[]{}|^`".indexOf(c.toInt) >= 0
+    // The index after the two slashes of a scheme whose `:` is at `i`, behind the same run of backslashes each, or -1.
+    def afterSlashes(i: Int): Int = {
+      val slash = afterBackslashes(input, i + 1)
+      if (slash < length && input.charAt(slash) == '/') {
+        val second = afterBackslashes(input, slash + 1)
+        if (second < length && input.charAt(second) == '/' && second - (slash + 1) == slash - (i + 1)) second + 1
+        else -1
+      } else -1
+    }
+    var i = input.indexOf(':')
+    while (i >= 0) {
+      var next  = i + 1
+      val start = if (i > 0 && schemeChar(input.charAt(i - 1))) afterSlashes(i) else -1
+      if (start >= 0) {
+        var j            = start
+        var end          = -1
+        var colon        = -1    // the first `:` of the item
+        var lastAt       = -1    // its last `@`
+        var hostDot      = false // a `.` before `colon`, in the item
+        var portOnly     = true  // only digits since `colon`
+        var pending      = -1    // a `,` or `;` after the item's password, which an `@` would make a list's
+        var nextColon    = -1    // the first `:` after `pending`
+        var nextHostDot  = false
+        var nextPortOnly = true
+        var run          = start // the start of the run of scheme characters `j` is in
+        def emit(): Unit = if (colon >= 0 && lastAt > colon + 1) found += ((colon + 1) -> lastAt)
+        def startItem(firstColon: Int, dot: Boolean, port: Boolean): Unit = {
+          colon = firstColon; lastAt = -1; hostDot = dot; portOnly = port; pending = -1
+        }
+        while (j < length && end < 0) {
+          val c = input.charAt(j)
+          if (endsAuthority(c)) end = j
+          else {
+            if (c == ':' && j > run && afterSlashes(j) >= 0) end = run
+            else {
+              if (c == '@') {
+                if (pending >= 0) {
+                  emit()
+                  startItem(nextColon, nextHostDot, nextPortOnly)
+                }
+                lastAt = j
+              } else if (c == ':') {
+                if (pending >= 0) { if (nextColon < 0) nextColon = j }
+                else if (colon < 0) colon = j
+              } else if ((c == ',' || c == ';') && pending < 0) {
+                if (colon >= 0 && lastAt > colon + 1) {
+                  pending = j; nextColon = -1; nextHostDot = false; nextPortOnly = true
+                } else if (colon >= 0 && lastAt < 0 && hostDot && portOnly && j > colon + 1) {
+                  startItem(-1, false, true)
+                }
+              }
+              if (pending >= 0) {
+                if (c == '.' && nextColon < 0) nextHostDot = true
+                if (nextColon >= 0 && j > nextColon && !c.isDigit) nextPortOnly = false
+              } else {
+                if (c == '.' && colon < 0) hostDot = true
+                if (colon >= 0 && j > colon && !c.isDigit) portOnly = false
+              }
+              if (!schemeChar(c)) run = j + 1
+            }
+            if (end < 0) j += 1
+          }
+        }
+        if (end < 0) end = length
+        emit()
+        next = end
+      }
+      i = if (next < length) input.indexOf(':', next) else -1
+    }
+    found.result()
   }
 
   /**

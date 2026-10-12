@@ -2629,6 +2629,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `llm4s-core`. The loader keeps its `org.llm4s.config` package and its `load(source)` method.
 
 ### Fixed
+- **Security - `Redaction`: the password of a URL's userinfo is redacted** ([#1816](https://github.com/llm4s/llm4s/issues/1816)):
+  `https://alice:s3cret@gw.example.com/v1` - a provider `baseUrl`, a proxy or a database URL in a connection error,
+  an HTTP client error or the provider exchange log - came out unchanged. The password of `scheme://user:password@host`
+  is now replaced (`https://alice:[REDACTED]@gw.example.com/v1`), in plain text, inside a JSON string with the slashes
+  escaped or not, at any depth, and as a query value (`?next=https://u:p@h/`). The user, the host, the port and the
+  path are kept; the userinfo ends at the authority's last `@`, so an unencoded `@` in a password is read whole, and a
+  percent-encoded one is read as it is. A URL with no userinfo, a user with no password, an empty password and an `@`
+  in the path, query or fragment are left as they were. Every URL of a list is read: an authority also ends at the
+  scheme of the next URL (`redis://u:[REDACTED]@h1,redis://u:[REDACTED]@h2`, also joined by `;`, `)` or `'`), and a `,`
+  or `;` starts another item when it follows a password and an `@` follows it (`https://u:[REDACTED]@h1,a@b.com` keeps
+  the address) or when it follows a host and its port (`https://example.com:8080,bob@corp.com` is left as it is). A
+  second redaction of the output changes nothing. What is left: a password holding an unencoded `@` and then `,` or
+  `;` before another `@`, or one holding `://`, is replaced only in part. Like the readings of #1695, #1706 and #1707,
+  it only adds to what was replaced before.
 - **`llm4s-pekko`: a cancelled agent stream releases its thread before reporting it, and says when it has**
   ([#1822](https://github.com/llm4s/llm4s/issues/1822), item 1 of [#1815](https://github.com/llm4s/llm4s/issues/1815)):
   cancelling an `AgentPekko` stream cancelled the turn on a background cleanup thread, so a `recover` on the same thread
