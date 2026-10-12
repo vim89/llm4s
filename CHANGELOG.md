@@ -1258,6 +1258,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   now be rejected. Reworked from #923 by @Shubha9807.
 
 ### Changed
+- **Breaking (Java API): the facade's Java-visible surface is the intended one** ([#1666](https://github.com/llm4s/llm4s/issues/1666)):
+  Scala 3 emitted the `private` constructors and `private[javaapi]` factories of `llm4s-java-api` as `public`, so Java
+  could build values the library never would (`new JToolCall(null, null, null)`, a `COMPLETED` `JAgentStatus` with no
+  answer) and adding a field would have broken a caller compiled against a constructor. The value types - `JAgentResult`,
+  `JAgentStatus`, `JMessage`, `JToolCall`, `JUsageSummary`, `JModelUsage`, `PendingInterrupt`, `JCompletion`,
+  `JTokenUsage` and `JEmbeddings` - are now Java classes with package-private constructors and no static factory (bar
+  `JEmbeddings.cosineSimilarity`), with the same accessors, `equals`, `hashCode` and `toString`. The facade's Scala
+  classes (`JLlmClient`, `JAgent`, `JEmbeddingClient`, `AgentStream`, `LlmResult`, `Answer`, `ConversationBuilder`,
+  `JCompletionOptions` and its `Builder`) take a package-private token first in their constructors, which throw
+  `UnsupportedOperationException` when called from outside the package, and the internal `of`/`from` factories
+  and `AgentStream.start` are gone from the facade types (`Llm4s.createClient(config, metrics)` stays public, as
+  [#1817](https://github.com/llm4s/llm4s/issues/1817) made it). `JavaInteropSpec` now
+  fails on any public constructor or public static method that is not in its list of intended ones, its companion's
+  included, and compiles a Java class in another package that tries to build each value type. New:
+  `Llm4s.wrapClient(LLMClient)` and `Llm4s.wrapEmbeddingClient(EmbeddingClient, EmbeddingModelConfig)`, the
+  counterparts of `wrapAgent`. Migration: `new JLlmClient(client)` from Java or Kotlin becomes
+  `Llm4s.wrapClient(client)`, and `new JEmbeddingClient(client, model)` becomes `Llm4s.wrapEmbeddingClient(client,
+  model)`; nothing else had a supported way in.
 - **Subscriptions watch the checkpoint store** ([#1705](https://github.com/llm4s/llm4s/issues/1705), BREAKING,
   `llm4s-agent`): `Checkpointer` gains `awaitEventsAfter`, with a polling default, so existing stores compile
   unchanged. A delegating store should forward it. `GraphRuntime`'s constructor gains an optional `WatchPolicy`, and
