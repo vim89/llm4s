@@ -78,6 +78,7 @@ object PlatformTests {
     ),
     "configPolicy" -> Seq(
       "org.llm4s.configpolicy.DoctorSpec",
+      "org.llm4s.configpolicy.DoctorClassLoaderSpec",
       "org.llm4s.configpolicy.CheckPoliciesSourceSpec"
     ),
     // `it` holds integration suites by tier. Only `@Local` ones (no Docker, model server or API key) belong here, as
