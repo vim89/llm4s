@@ -68,6 +68,16 @@ Code that only builds agents with the built-in middleware needs no change. A mid
   rendered prompt, separators included) and to 64 per request, over which the run fails. `LoopAgent` gains `maxPromptSectionTokens` and `TurnState` gains `priorValues`; a stored `TurnState` without
   it decodes.
 
+### Tool permissions, timeouts and batch locks (#1903)
+
+Design §4.23. Additive, bar one reserved key: an agent without `PermissionMiddleware`, `withTimeout` or `withLocks` behaves as before.
+
+- **`tool-queue` is a key the loop owns.** A tool or middleware that declares a `StateKey` with id `tool-queue` is refused at build, as `tool-results` is. Rename it.
+- **`ToolCallRequest` carries `resources`.** `ToolCallRequest(spec, call)` still compiles and gives the tool's `defaultResource`, `(Invoke, <name>)`; the loop builds every request with the call's own resources. A wrapper that builds one for a tool with `withResources` passes them: `ToolCallRequest(spec, call, resources)`.
+- **`PermissionMiddleware` denies what no rule allows**, a tool without `withResources` included: add `PermissionRule.allow(Operation.Invoke, "<name>")` (or `"*"`) for each tool the agent may call. See [Tool Permissions, Timeouts and Locks](/guide/agents/#tool-permissions-timeouts-and-locks).
+- **Adopting locks reshapes the agent's graph.** The loop registers `tool-queue` only for an agent with a tool that declares `withLocks`, so the first tool to adopt locks changes the agent's structural fingerprint and refuses the threads checkpointed before with `RestoreRejected`: finish or `forget` them first. Once an agent has the key, changing lock functions is safe for threads in flight: a batch keeps the lock schedule it was made with. Agents without locks, timeouts and resources included, restore their existing threads unchanged.
+- **Locked calls cost supersteps.** Each further round of a batch whose calls hold conflicting locks costs two supersteps; raise `RunBudgets.maxSupersteps` if a long batch of conflicting calls reaches it.
+
 ## Stage 2 migration: durable execution
 
 Not in a release yet. Stage 2 ([#1699](https://github.com/llm4s/llm4s/issues/1699)) makes agent and graph threads durable and adds human review. One note covers the whole stage; each slice adds its part here as it lands:
