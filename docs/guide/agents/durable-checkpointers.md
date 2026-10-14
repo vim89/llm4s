@@ -229,12 +229,19 @@ is free:
   system able to fence can pass the claim's token on: it is `context.position.fencingToken` in a node and
   `context.run.position.fencingToken` in a tool, and it grows with every claim, so the system can refuse a token
   lower than the highest it has seen.
-- Until it ends, such a run's live progress events (`StreamEvent.Live`, which are never stored) still reach the
-  subscribers of its own runtime. Its durable events are refused or dropped with its commits.
+- Until the loss is noticed, such a run's live progress events (`StreamEvent.Live`, which are never stored) still
+  reach the subscribers of its own runtime; from then on its tasks send none, even a task that ignores the interrupt
+  and outlives the run. Its durable events are refused or dropped with its commits. A live event carries its run's
+  claim token (`StreamEvent.Live.token`), so a subscription that has been handed a newer claim's commit drops an
+  older claim's progress, and a run's observer and its run-scoped streams never deliver another claim's, even under
+  the same `RunId`.
 - A `ClaimLost` run's own event stream - `AgentRun.subscribe`, `Agent.stream`, its observer and its tracing - ends
   at the run's end, which never waits on a hung store. An `Async` write the run abandoned may still land after
   that; it is then visible only through the thread's log - a thread subscription (`GraphRuntime.subscribe`) or a
   replay - never as one of the run's events, even to a run-scoped subscription made later that replays the run.
+  That holds for the next run on the thread too, even if it reuses the lost run's `RunId`: a run's own events are
+  those committed under its claim's fencing token (`EventRecord.token`), so a late write that lands while it is being
+  admitted is never delivered to its observer, its stream or its tracing.
 - A run that has begun committing its outcome finishes that commit: a loss found during it does not interrupt it.
   The commit is still fenced, so it lands only if nobody has taken the thread over. The run's end does not wait for
   it past `2 × ttl` of the loss: if the commit returns first the run ends with its outcome (or `ClaimLost`, if the
@@ -588,6 +595,8 @@ the contract. In short:
   removes it, and keep pending writes for the latest only;
 - on `retractTurn`, remove every checkpoint after the newest `Completed` or `Failed` one before adding the new one;
 - number events contiguously inside the commit, and never reuse a number, also across `deleteThread`;
+- record on each event the token of the commit that stored it (`EventRecord.committed(threadId, seq, commit.token,
+  draft)`): a run's subscriptions tell its events from an earlier run's of the same `RunId` by it;
 - release only with the current token, and treat any other as a no-op;
 - return from `awaitEventsAfter` what `eventsAfter` would: at once if there is something, and otherwise within about
   its `timeout`. A store that can be told of commits, such as a database with a notification channel, overrides it
