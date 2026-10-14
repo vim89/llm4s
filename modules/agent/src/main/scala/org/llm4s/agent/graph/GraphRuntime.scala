@@ -168,10 +168,24 @@ object GraphRuntime:
  * the run ([[RunHandle.observation]]).
  *
  * A subscription also sees the durable events of commits made through another runtime or process
- * sharing the checkpointer, in the same order and with the same guarantees: each live subscription
- * watches the store ([[WatchPolicy]], [[Checkpointer.awaitEventsAfter]]), so they arrive as soon as
- * the store reports them - at once from a store that is told of commits, within `pollInterval` from
- * one that is polled. Live progress events are never stored, so another runtime's do not arrive.
+ * sharing the checkpointer, with the same durable guarantees (ascending `seq`, no gap or duplicate):
+ * each live subscription watches the store ([[WatchPolicy]], [[Checkpointer.awaitEventsAfter]]), so
+ * they arrive as soon as the store reports them - at once from a store that is told of commits,
+ * within `pollInterval` from one that is polled. Live progress events are never stored, so another
+ * runtime's do not arrive.
+ *
+ * '''Ordering across runtimes.''' Concurrently active subscriptions to a thread that stay caught up see one
+ * interleaving of durable and live events within one runtime: every event handed to several of them has the same
+ * relative placement for each. A subscription that attaches later misses earlier live events, and a slower one can lose
+ * live events ([[StreamEvent.LiveGap]]) or be disconnected as `Lagging`; the guarantee does not cover those cases. A
+ * commit made elsewhere reaches each subscription through that subscription's own store watch, through a hand-over's
+ * gap read, or, while the subscription is still in its initial replay (one created after the commit included), directly
+ * from that replay, so its position among this runtime's live events can differ from one subscription to another; each still
+ * sees the durable events in `seq` order. The guarantee holds when nothing outside this runtime commits to the thread;
+ * an external commit allows subscriptions to place it differently, not necessarily make them differ. A consumer that
+ * needs one order across runtimes orders only [[StreamEvent.Durable]] records by `EventRecord.seq`. It ignores
+ * [[StreamEvent.Live]] and [[StreamEvent.LiveGap]], which have no `seq`, and treats [[StreamEvent.Disconnected]] as the
+ * end of the subscription, not as a record: it carries `lastSeq` and a reason.
  */
 final class GraphRuntime(
   checkpointer: Checkpointer,
@@ -279,8 +293,15 @@ final class GraphRuntime(
    * see there for how cancel waits on a running listener. Commits made through this runtime are
    * handed over as they land; those of another runtime or process sharing the checkpointer are read
    * from the store by the subscription's watch ([[WatchPolicy]]: a second virtual thread, which
-   * `cancel` stops too), in the same order and with the same guarantees, and are queued only as they
-   * fit, so they never make it lag. Live progress of another runtime's runs is not delivered: it is
+   * `cancel` stops too), in `seq` order and with the same durable guarantees, and are queued only as
+   * they fit, so they never make it lag. Where such a commit falls among this runtime's live events
+   * is not fixed: it depends on which read reached this subscription first (its initial replay, its watch, or a
+   * hand-over's gap read), so
+   * two subscriptions can place it differently. The guarantee that caught-up subscriptions in one runtime see one
+   * live/durable interleaving holds while nothing outside the runtime commits to the thread; an external commit
+   * allows it to differ rather than making it differ. Where one order across runtimes
+   * matters, order only [[StreamEvent.Durable]] records by `seq`, ignoring [[StreamEvent.Live]] and
+   * [[StreamEvent.LiveGap]], and end at [[StreamEvent.Disconnected]] (#1920). Live progress of another runtime's runs is not delivered: it is
    * never stored. With [[WatchPolicy.disabled]], another runtime's commits are seen only by
    * subscribing again, which replays the log - all of it once no commit a run of this runtime gave up
    * on is still in the store on the thread; until then the replay stops at the first event above what
