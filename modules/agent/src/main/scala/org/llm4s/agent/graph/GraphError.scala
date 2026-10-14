@@ -231,6 +231,27 @@ object GraphError:
       s"Claim token $token on thread '$threadId' is stale (current: ${current.fold("none")(_.toString)})"
 
   /**
+   * The run lost its claim on the thread, so it stopped: its lease passed with no renewal landing (the
+   * run judges this itself, by its own monotonic clock), a renewal was refused ([[StaleClaim]]), or the
+   * store refused one of its commits as stale. The run commits nothing more - not even a `RunFailed` -
+   * and drops what it had not yet written; whatever it made durable before stands. `token` is the run's
+   * own claim, and `current` the thread's current claim when the store named one: another run then
+   * holds the thread. `None` means the store named none - the run judged its lease passed without
+   * asking it, or the store found no current claim (a successor that took over has since released
+   * it). A failure the run was recording when its commit was refused is logged, not carried. Unlike
+   * [[CheckpointWriteFailed]], it is not a store outage. `recover` may be attempted once the thread is
+   * free: it is refused with [[ThreadBusy]] while a successor holds the thread, so retry; a successor
+   * that finished the work leaves the thread's state showing it ([[NothingToRecover]]); and a lease that
+   * lapsed with no successor leaves the last checkpoint `Running`, which `recover` continues.
+   */
+  final case class ClaimLost(threadId: String, token: FencingToken, current: Option[FencingToken])
+      extends GraphError
+      with NonRecoverableError:
+    override val message: String =
+      s"Run on thread '$threadId' lost its claim (token ${token.value}, current: ${current
+          .fold("not named")(_.value.toString)}); it stopped and committed nothing more"
+
+  /**
    * An unexpected throwable - such as a `Clock` that threw - refused the run at admission, or
    * ended it where it was; a checkpointer whose commit throws is reported as
    * [[CheckpointWriteFailed]] instead. Its thread claim is released; whatever the

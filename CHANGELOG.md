@@ -172,7 +172,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   holding run; once a claim has expired - its process died - another runtime's `recover` takes the thread over,
   reusing the pending writes of the tasks that finished. Every commit carries the claim's token, and the store refuses
   a stale one atomically (`GraphError.StaleClaim`), so a run that lost its claim records nothing after its successor
-  started and ends with `CheckpointWriteFailed`. `RunPosition.fencingToken` gives a node the token. The new
+  started; it stops at once and ends with `GraphError.ClaimLost` (see Changed). `RunPosition.fencingToken` gives a node the token. The new
   **`llm4s-agent-testkit`** publishes `CheckpointerContract`, the contract every store must pass as a ScalaTest
   suite (atomic commits, conflicts, event numbering, compaction and `ReplayUnavailable`, `deleteThread`, claims and
   fencing, and two or more `GraphRuntime`s contending over one store), with the `ManualClock` it drives expiry with;
@@ -1295,6 +1295,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   now be rejected. Reworked from #923 by @Shubha9807.
 
 ### Changed
+- **Breaking - a run that loses its claim stops at once and ends `GraphError.ClaimLost`** ([#1700](https://github.com/llm4s/llm4s/issues/1700)):
+  it used to end `CheckpointWriteFailed(_, StaleClaim, _)`, which a caller could not tell from a store outage without
+  matching on its cause. `GraphError.ClaimLost(threadId, token, current)` is new: the run's own `FencingToken`, and the
+  thread's current one when the store named it. The run finds its claim lost when its lease passes with no renewal
+  landing - judged by the runtime's own monotonic clock - or when a renewal or commit is refused as stale. Its tasks
+  are interrupted as a cancel interrupts them, it commits nothing more (not even `RunFailed`), and it drops its
+  `Async` queue and `OnExit` buffer. `recover` may be attempted once the thread is free: it is refused with
+  `ThreadBusy` while a successor holds the thread, a successor that finished leaves the thread's state showing it, and
+  a lease that lapsed with no successor leaves the run for `recover` to continue. A `start`, `recover` or `resume`
+  whose claim's commit is refused as stale returns `ClaimLost` too, and a `fork` or `updateState` whose commit is
+  refused as stale returns `ThreadBusy`, so no runtime call returns `CheckpointWriteFailed(StaleClaim)`. `StaleClaim`
+  stays the store's refusal. `RunEvent.RunRecovered` gains
+  `takenOverFrom: Option[String]`, and `RunClaim` `takenOverFrom: Option[RunId]`: a `recover` whose claim replaced
+  another run's expired, unreleased one records that run, so the log shows the takeover - even when a reused `RunId`
+  makes it this run's own id; a store reports it from
+  `claim`, and `CheckpointerContract` checks it. Both default to `None`, so older logs still read. See
+  [Durable Checkpointers](docs/guide/agents/durable-checkpointers.md#fencing-a-run-that-lost-its-claim-stops-and-records-nothing)
+  and the [migration note](docs/reference/migration.md#durable-checkpointer-contract-1700).
 - **`Checkpointer.deleteThread` is fenced by a claim token, and a deleted thread's id numbers on** ([#1700](https://github.com/llm4s/llm4s/issues/1700) follow-up, BREAKING,
   `llm4s-agent`, `llm4s-agent-testkit`, `llm4s-agent-checkpoint-sqlite`): `deleteThread(threadId)` is
   `deleteThread(threadId, token: FencingToken)`, and a store deletes only while `token` is the thread's current claim,
@@ -2658,6 +2676,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `llm4s-core`. The loader keeps its `org.llm4s.config` package and its `load(source)` method.
 
 ### Fixed
+- **A run whose claim renewals fail or hang no longer runs on after another runtime takes its thread over** ([#1700](https://github.com/llm4s/llm4s/issues/1700)):
+  a run learned its claim was gone only from a renewal the store refused, or a refused commit, so a run partitioned
+  from its store, or whose renewal hung in it, executed every remaining superstep - under `OnExit` the whole graph -
+  and their side effects after its successor started. It now judges its own lease, from the monotonic time just
+  before the request that granted or last renewed the claim was sent, on a heartbeat that never waits on the store:
+  renewals run on their own thread, one at a time, and a failing one is retried while the lease lasts. A loss it
+  detects now interrupts the task in flight instead of waiting for the next superstep.
+- **A cancelled or expired run releases its claim with its interrupt flag clear** ([#1700](https://github.com/llm4s/llm4s/issues/1700)):
+  the release ran with the flag set, so a store whose I/O honours interrupts refused it and the thread stayed busy
+  for the claim's whole `ttl`, to every runtime. Admission and `fork`/`updateState` give a claim back the same way.
+  The store-failure stop and a crashed run now record a stop cause before closing, so a late cancel or deadline no
+  longer interrupts their close or their release.
+- **No claim renewal lands after a run's release** ([#1700](https://github.com/llm4s/llm4s/issues/1700)): the
+  heartbeat is stopped and joined, for at most `ttl`, before the release, so a renewal still in the store cannot
+  extend a finished run's claim after a release that failed.
+- **A run that lost its claim ends even when its store hangs** ([#1700](https://github.com/llm4s/llm4s/issues/1700)):
+  under `Durability.Async`, dropping the queue waited for a commit hung in the store forever, and a release queued
+  behind a hung renewal in a store that serialises its calls (SQLite) never returned, so the run never set its
+  result or freed its thread in the runtime. An `Async` commit in flight is now waited for at most `ttl`, then left
+  to finish fenced on the writer, and such a run releases its claim on a detached thread, waited for at most `ttl`
+  (not at all when a renewal is still hung); a release landing late is by token, so it never frees a claim another
+  run has taken since. Until every write the run gave up on returns - a `Sync` run's concurrent tasks can leave
+  several - the event hub keeps its hand-over mark for the thread, so a subscription made meanwhile - a run-scoped replay of the lost run included - joins with it and never
+  waits on that write; once the write returns the hub keeps no state for the thread, even when it returns while the
+  run is freeing the thread (the check and both steps of the run's local release share one lock). Its events are
+  an orphan of a run that has ended: they reach the thread's subscribers in sequence, but never the run's own
+  listeners, its observer or its tracing, live or replayed, so a `ClaimLost` run's run-scoped stream ends at its end
+  and `AgentRun.await` never waits for a write it abandoned. So is a commit whose hand-over is still reading a
+  subscriber's missing events from the store when the run stops waiting. A commit is now handed to every subscription
+  of its thread in one step, once every subscriber's missing events are read, or to none: before, it reached the
+  subscriptions one at a time, and was counted as the run's while some still waited for it, so one run-scoped
+  listener or tracing sink could deliver it live while another, and a replay through the same handle, skipped it.
+  A subscription made while no run holds the thread no longer replays a commit whose hand-over has not finished - the
+  next run's first commit, say - ahead of progress its other subscriptions received before that commit: it decides
+  which stored events have been handed over holding the thread's commit lock, on its own dispatcher thread, and a
+  cancel ends that wait. An `Observer` takes its place in the log from its own run's claim: a lost run's late write
+  handed over during the next run's admission is no longer delivered to that run's observer ahead of its claim.
+- **A run that loses its claim while finishing, or while stuck in the store, still ends**
+  ([#1700](https://github.com/llm4s/llm4s/issues/1700)): a loss found once the run had begun committing its outcome
+  was discarded, because the first stop cause wins, so a `Sync`, `Async` or `OnExit` closing commit hung in the store
+  held `await()` and the thread's slot in the runtime indefinitely; so did any `Sync` commit stuck in a store call
+  that ignores interrupts. A loss now fences the run at any stage - a commit not yet begun is skipped - and, if the
+  run has not ended within `2 × ttl`, ends it without its thread: `ClaimLost`, the thread freed in the runtime, the
+  claim released on a detached thread. The run thread, when it returns, sets no second result and frees nothing; and
+  the watchdog fences and cuts the run only once it has taken it, so a run thread that settles first ends with its
+  own outcome, which its listeners see in full. It also shuts an `Async` run's writer down, without waiting, so a run
+  thread that never returns no longer leaves the writer's platform thread parked for good: the writer ends once a
+  write still in the store returns, and that write still lands, or not, as an orphan.
+  `fork`, `updateState` and a `deleteThread` that did not delete likewise release on a detached thread when their
+  heartbeat's renewal cannot be joined, so a renewal hung in a store that serialises its calls (SQLite) no longer
+  keeps them from returning.
+- **A lost claim bounds the end exactly, admission included** ([#1700](https://github.com/llm4s/llm4s/issues/1700)):
+  a commit could pass the fence's check and begin after the loss was found, so the store could accept work of a run
+  already declared lost; a commit now begins, or is skipped, in one atomic step with the fence. The claim commit of
+  `start`, `recover` and `resume` ran on the caller's thread with no bound, so a store hung on it kept the call blocked
+  and the thread held even after the claim was found lost; that commit is now given up `2 × ttl` after the loss, the
+  call returns `ClaimLost`, the thread is freed and the claim released, and the run never starts. Settling a lost run
+  no longer joins a renewal still in the store before releasing, which had pushed the end to about `3 × ttl`. From
+  the moment a loss is found - its lease passing, or a renewal or commit refused - `await()` and the call that
+  admits a run now return, with the thread free in the runtime, within `2 × ttl`, plus only local work that never
+  calls the store. `fork`, `updateState` and `deleteThread` are bounded the same way: their work under the claim ran
+  on the caller's thread, so a renewal hung in a store that serialises its calls (SQLite) held the call and the
+  thread past the loss. Once the claim is found lost they return `ThreadBusy`, naming no checkpoint, within
+  `2 × ttl` of the loss, with the thread freed and the claim released; their write - commit or store delete - goes
+  through the same atomic fence, so one not begun at the loss never reaches the store. Every stale refusal now counts
+  as the loss it is: an `OnExit` run's exit commit, or a change's commit or store delete, refused as stale after
+  another runtime took the thread over was reported, but not recorded as a loss, so the run or change went on to
+  release its claim synchronously, as if it still held it, and a store hung on that release held `await()` or the
+  call, and the thread, indefinitely. They are now bounded by `2 × ttl` from the refusal, and the claim released on a
+  detached thread, as a refused `Sync` or `Async` commit or renewal already was.
+- **A commit or subscription read hung in the store holds up only its own thread** ([#1700](https://github.com/llm4s/llm4s/issues/1700)):
+  every commit in a `GraphRuntime` was written under one runtime-wide lock, so one thread's hung commit stalled every
+  other thread's runs, their admission included. Commits are now ordered per thread. A subscription's read of the
+  store - switching to live, or filling a gap before a commit handed over - no longer holds the event hub's lock,
+  which every thread's hand-overs and every run's local release take: a read stalled in the store froze the whole
+  runtime, and kept a lost run from ending within its bound.
+- **A claim is renewed from its grant** ([#1700](https://github.com/llm4s/llm4s/issues/1700)): the first renewal came
+  `renewEvery` after the run was launched, so slow admission work could let the lease lapse before it; `fork`,
+  `updateState` and `deleteThread` now renew the claim they hold too, so a store delete slower than `ttl` still lands.
 - **`GraphRuntime.deleteThread` no longer deletes a thread another runtime took over** ([#1700](https://github.com/llm4s/llm4s/issues/1700) follow-up):
   a runtime that stalled past its claim's `ttl` between claiming the thread and deleting it - a GC pause, a slow
   store - while another runtime claimed the thread and ran on it deleted that run's checkpoints, events and claim, and
