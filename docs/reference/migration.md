@@ -209,6 +209,13 @@ Effects outside thread state replay through `ReplayGuard`: an intent and an outc
 
 Design: `docs/design/typed-agent-runtime/4.24-stage-3-slice-c4-replay-of-external-effects.md` (§4.24).
 
+### Harness backend SPIs (#1904)
+
+Design §4.25. New, opt-in API in `org.llm4s.agent.harness`; nothing existing changes, except:
+
+- **`llm4s-agent-testkit` depends on `llm4s-testkit`**, whose `ScriptedLLMClient` drives `FileBackendContract`'s agent runs. A build that excludes `llm4s-testkit` from its test classpath adds it back.
+- **File tools over a `StateFileBackend` add the `files` key.** Every mutation holds the lock `files/state/<keyId>` (needed: it keeps two edits of one file in a batch from losing one, and the quota exact), so adding file tools over a `StateFileBackend` adds its `files` key and C2's `tool-queue`, and changes the agent's version. Under §4.29 (C5) a thread at rest continues, its files starting empty; a thread in flight (suspended, or `Running` after a crash) is refused with `RestoreRejected` until it is finished or forgotten. Taking the tools out again refuses only a thread whose files hold content: the last file's delete removes the key's entry, so a thread with no files restores.
+
 ### Event records carry their claim's token (#1918)
 
 A run is told from an earlier run with the same `RunId` by its claim's fencing token. Code that only runs agents or graphs is unaffected.
