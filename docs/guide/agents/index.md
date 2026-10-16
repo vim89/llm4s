@@ -471,6 +471,44 @@ for {
   names `read_file` and `write_file`, and a `ToolSet` refuses duplicate names: use one suite or the
   other.
 - `FileToolsContract` (`llm4s-agent-testkit`) runs the tools over your own `FileBackend`.
+### Workspace Sandbox
+
+`llm4s-workspace-client` puts a containerised workspace behind both backend SPIs: `WorkspaceFileBackend`
+for its files and `WorkspaceSandboxBackend` for its commands (`org.llm4s.agent.harness.workspace`). The
+`execute` tool (`ExecuteTool`, in `llm4s-agent`) runs a command in any `SandboxBackend`:
+
+```scala
+import org.llm4s.agent.harness.ExecuteTool
+import org.llm4s.agent.harness.workspace.{WorkspaceFileBackend, WorkspaceSandboxBackend}
+
+val workspace = new ContainerisedWorkspace(dir, image, port)   // started with startContainer()
+for
+  files   <- WorkspaceFileBackend("ws1", workspace)             // a FileBackend for the file tools
+  sandbox <- WorkspaceSandboxBackend("ws1", workspace)
+  agent   <- Agent.builder("coder", client)
+               .withTools(ToolSet.of(ExecuteTool(sandbox)).toOption.get)
+               .build()
+yield agent
+```
+
+- **Permissions.** An `execute` call touches `(Execute, <command>)` and is `destructive` and
+  `openWorld`, so `PermissionRule.allow(Operation.Execute, "sbt *")` lets the agent run builds and
+  nothing else. The runner refuses anything its command policy forbids as well
+  ([Workspace sandbox](../../reference/workspace-sandbox.html)), and enforces `allowedPaths`,
+  `readOnlyPaths` and its size limits itself.
+- **Order.** A file mutation and a command both lock the whole workspace (`files/workspace/<id>`), so a
+  batch's edits and commands in one workspace apply one after another, in call order. Two paths that name
+  one file through a link are ordered too.
+- **Replay.** File mutations are `Verifiable`: each is a compare-and-set against the file's hash, which
+  the runner applies atomically, so a replayed edit that landed returns its first result and one whose
+  file changed meanwhile is refused. Commands are `Unverifiable`: a completed command replays its stored
+  result, and one that may have run is refused, never run again.
+- **Effects stay.** What a command or a file write did to the workspace is outside thread state: a Block
+  that retracts the turn does not undo it. The runner never runs a file change beside a command it started,
+  but a process a command leaves running, or a writer outside the container, is outside the compare-and-set.
+- **Tenants.** One workspace is one tenant's. An application serving several builds a pair per tenant
+  and picks it with `FileBackend.resolved` and
+  `SandboxBackend.resolved(_ => Set(WorkspaceLocks.AllWorkspaces))`.
 
 ### Tool Permissions, Timeouts and Locks
 

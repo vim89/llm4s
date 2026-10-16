@@ -41,6 +41,46 @@ In 0.5.1. Stage 3 slice F8b ([#1913](https://github.com/llm4s/llm4s/issues/1913)
 - **A client refuses what it cannot send, before sending**: a part kind, source or format its wire format cannot carry is `UnsupportedContentPartError`. A provider's own limits (how many images, how large a request, which formats a model reads) are the provider's: its 400 or 413 comes back as a typed `ValidationError` or `ServiceError` with its message. The guide's [table](../guide/multimodal.html#what-each-provider-sends) lists what each takes.
 - **An agent thread holds at most 20 MiB of inline media** (`Messages.MaxInlineBytes`): media added past it is replaced by a text part naming what was removed. Context budgets (`ConversationTokenCounter`, `ContextPruning`) count media by estimate.
 - **Inline media is bounded** at 5 MiB per part by `ContentPart.image` / `ContentPart.document`, which return a `Result`. Every agent checkpoint copies the thread's messages, so larger media goes at a `MediaSource.Url` or in a `MediaSource.ProviderFile`. See [Multimodal content](../guide/multimodal.html).
+## Workspace backends (#1906)
+
+Not in a release yet. Stage 3 slice F2 ([#1906](https://github.com/llm4s/llm4s/issues/1906)) puts the workspace behind the harness's `FileBackend` and `SandboxBackend` ([design 4.33](https://github.com/llm4s/llm4s/blob/main/docs/design/typed-agent-runtime/4.33-stage-3-slice-f2-workspace-backends.md)). Source and behaviour breaks, with no shims:
+
+- **`org.llm4s.toolapi.WorkspaceTools` and `createDefaultWorkspaceTools` are deleted.** Their `ToolFunction`s called the workspace directly, with no locks, no replay guard and no bounds of their own. Build the harness tools over the workspace instead and give the agent a `ToolSet`; `codegen.CodeWorker` does this itself:
+
+  ```scala
+  // before
+  WorkspaceTools.createDefaultWorkspaceTools(workspace).map(tools => builder.withTools(new ToolRegistry(tools)))
+  // after
+  for
+    files   <- WorkspaceFileBackend("ws1", workspace)
+    sandbox <- WorkspaceSandboxBackend("ws1", workspace)
+    tools   <- ToolSet.of((FileTools(files) :+ ExecuteTool(sandbox))*)
+  yield builder.withTools(tools)
+  ```
+
+  | Old tool | Replacement | Notes |
+  |---|---|---|
+  | `explore_files` | `ls`, `glob` | paths are absolute (`/src`), the workspace root is `/` |
+  | `read_file` | `read_file` | numbered lines, paged by `offset` / `limit` |
+  | `write_file` | `write_file` | creates parent directories; no append mode |
+  | `modify_file` | `edit_file` | replaces exact text (`old_string`, `new_string`), not line ranges |
+  | `search_files` | `grep` | a regex; `include` filters files |
+  | `execute_command` | `execute` | `workdir` (default `/`), `timeout_seconds`; the result is text, `exit code: N` then `stdout:` and `stderr:` |
+
+  An `execute` call is the resource `(Execute, <command>)`, so it needs a `PermissionMiddleware` rule if you use one.
+- **`WorkspaceAgentInterface` has two new methods and two new parameters.** `fileSnapshot(path, includeContent, followLinks)` and `deleteFile(path, expectedHash)`; `writeFile(..., expectedHash)` and `executeCommand(..., maxOutputBytes)` (each stream's bound in UTF-8, JSON-escaped bytes). A class implementing the interface implements them; a caller that passes arguments by position is unaffected. The wire messages' new fields have defaults, so an older client and a newer runner (or the reverse) still talk, without the new calls.
+- **`ContainerisedWorkspace` keeps the runner's error code.** A refused call used to throw `WorkspaceAgentException(..., "EXECUTION_FAILED")` with the code in the message; it now throws the runner's own code (`FILE_NOT_FOUND`, `PATH_NOT_ALLOWED`, ...), as `WorkspaceAgentInterfaceRemote` does. `EXECUTION_FAILED` now means the transport failed.
+- **The runner enforces the sandbox's paths and limits** (#870): a file operation or a command's working directory outside `allowedPaths` is `PATH_NOT_ALLOWED`, a mutation under `readOnlyPaths` is `PATH_READ_ONLY`, and a write, append or line edit that would leave a file over `maxFileSize` is `SIZE_LIMIT_EXCEEDED`. Each path check is made on what the path names through symbolic links as well as on its text, so a file operation through a link that leads outside the workspace is now `PATH_ESCAPE_ATTEMPT`. A config that set these and relied on them being ignored now has its calls refused.
+- **Command output is kept as it was written**, up to `maxOutputSize` bytes per stream (UTF-8, JSON-escaped, as it is carried). The direct `executeCommand` path used to read it line by line, ending every line with `\n` (a final line without one gained it, `\r\n` became `\n`) and keeping whole lines past the bound.
+
+```scala
+// a FileBackend and a SandboxBackend over a running ContainerisedWorkspace
+for
+  files   <- WorkspaceFileBackend("ws1", workspace)
+  sandbox <- WorkspaceSandboxBackend("ws1", workspace)
+yield (files, ExecuteTool(sandbox))
+```
+
 ## Smaller breaks since 0.4.1
 
 Changes too small for a section of their own. Each is listed under Breaking changes in the CHANGELOG.
