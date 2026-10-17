@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Added** the exit examples, `DeepResearchExample` and `CodingWorkspaceExample` with acceptance suites on a scripted model, and
   `StaticFileBackend` (read-only application files, e.g. skills) [#1916](https://github.com/llm4s/llm4s/issues/1916); [design §4.38](docs/design/typed-agent-runtime/4.38-stage-3-slice-p2-exit-examples.md).
 
+### Streaming integrations
+
+- **Fixed** a `llm4s-pekko` stream leaking its producer thread when provider code swallows the interrupt: once the
+  stream stops, every later chunk is refused at once; `ThreadBusy` refusals are tested in pekko, effect and zio [#1815](https://github.com/llm4s/llm4s/issues/1815).
+
 ### Providers
 
 - **Changed** an `ollama` section's `baseUrl` to default to `http://localhost:11434`, so a local section needs only
