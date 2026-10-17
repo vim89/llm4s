@@ -10,8 +10,8 @@ import org.llm4s.agent.graph.toolloop.{
 }
 import org.llm4s.config.Llm4sConfig
 import org.llm4s.error.ValidationError
-import org.llm4s.llmconnect.LLMConnect
-import org.llm4s.llmconnect.config.ProviderConfig
+import org.llm4s.llmconnect.{ EmbeddingClient, LLMConnect }
+import org.llm4s.llmconnect.config.{ EmbeddingProviderConfig, ModelDimensionRegistry, ProviderConfig }
 import org.llm4s.llmconnect.model.{
   AssistantMessage,
   Completion,
@@ -28,7 +28,7 @@ import org.llm4s.llmconnect.model.{
 import org.llm4s.metrics.MetricsCollector
 import org.llm4s.types.Result
 
-import java.util.Optional
+import java.util.{ Optional, OptionalInt }
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 
@@ -44,6 +44,26 @@ private[llm4s] object FacadeInternals {
 
   /** `result` as Java callers read it. */
   def result[A](result: Result[A]): LlmResult[A] = new LlmResult(FacadeToken.INSTANCE, result)
+
+  /**
+   * What `Llm4s`'s embedding factories do: the client for the provider and config `loaded` selected - or why there is
+   * none. Its dimensions are the ones the provider module declares for the model, and empty for a model it does not
+   * list: the embed call itself needs none, and a reply's vectors say how long they are (#1781).
+   */
+  def embeddingClient(loaded: Result[(String, EmbeddingProviderConfig)]): Result[JEmbeddingClient] =
+    for {
+      selected <- loaded
+      (provider, config) = selected
+      registry <- Llm4sConfig.modelRegistryService()
+      client   <- EmbeddingClient.from(provider, config)(using registry)
+    } yield new JEmbeddingClient(FacadeToken.INSTANCE, client, config.model, declaredDimensions(provider, config.model))
+
+  /**
+   * The dimensions `provider`'s module declares for `model`. The provider is the one the config loaded, so the only
+   * refusal left is an unlisted model, which is not a failure here.
+   */
+  private def declaredDimensions(provider: String, model: String): OptionalInt =
+    ModelDimensionRegistry.getDimension(provider, model).fold(_ => OptionalInt.empty(), OptionalInt.of)
 
   /**
    * What both public `Llm4s.createClient` overloads do: the client for `config`, reporting every call to `metrics` (a
