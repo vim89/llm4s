@@ -2,7 +2,7 @@ package org.llm4s.agent.delegation
 
 import org.llm4s.agent.{ Agent, AgentId, AgentResult, AgentRun, AgentStatus }
 import org.llm4s.agent.events.TaskEnded
-import org.llm4s.agent.graph.{ GraphError, GraphRuntime, RunConfig, RunId, RunOrigin, ThreadId, ToolCallId }
+import org.llm4s.agent.graph.{ GraphError, GraphRuntime, RunConfig, RunId, RunOrigin, ThreadId }
 import org.llm4s.agent.graph.middleware.AgentMiddleware
 import org.llm4s.agent.graph.tool.{ ToolContext, ToolSet }
 import org.llm4s.agent.graph.toolloop.{ AgentInput, LoopKeys }
@@ -219,7 +219,7 @@ final class BoundAgent[I, O] private[delegation] (val definition: TypedAgent[I, 
    */
   def run(input: I, config: RunConfig = RunConfig()): Result[TaskOutcome[O]] =
     val threadId = ThreadId(java.util.UUID.randomUUID().toString)
-    val ref      = ChildRef(threadId, config.runId, agent.id, ToolCallId(""), 0)
+    val ref      = ChildRef(threadId, config.runId, agent.id, None, 0)
     // a renderer or input codec is caller code: what it throws is a refused input, not an escaped exception
     // an interrupt while it renders is a cancellation, the flag kept, as for the run itself
     CancelledError
@@ -258,7 +258,7 @@ final class BoundAgent[I, O] private[delegation] (val definition: TypedAgent[I, 
     answers: Option[DelegatedAnswers] = None
   ): Result[(TaskOutcome[O], Option[LLMError], Option[TaskEnded])] =
     val threadId = ThreadId.child(origin.parent, origin.agent, origin.call)
-    val ref      = ChildRef(threadId, config.runId, agent.id, ctx.toolCallId, origin.depth)
+    val ref      = ChildRef(threadId, config.runId, agent.id, Some(ctx.toolCallId), origin.depth)
     val settle   = definition.failure == ChildFailure.Report
     val query    = AgentInput(definition.rendered(input))
     answers
