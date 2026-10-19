@@ -24,6 +24,7 @@ import org.llm4s.agent.graph.tool.{
   ToolArgumentValidator,
   ToolContent,
   ToolContext,
+  ToolErrors,
   ToolOutcome,
   ToolQuestion,
   ToolResource,
@@ -1340,10 +1341,14 @@ object ToolLoop:
             .goto(target.model)
         case _ =>
           // a handoff with other calls, or several: nothing runs, every call gets the rule as its error
-          val error = ujson.Obj("error" -> HandoffTools.MixedBatch).render()
-          calls.filterNot(c => handoffs.contains(c.name)).foreach(pipeline.refusedInBatch(_, error, context))
+          // cut, for a tool that bounds its errors (the task tools, design 4.44), as every recorded error is
+          def error(call: ToolCall) =
+            ujson
+              .Obj("error" -> ToolErrors.recorded(nodes.tools.get(call.name), HandoffTools.MixedBatch, isError = true))
+              .render()
+          calls.filterNot(c => handoffs.contains(c.name)).foreach(c => pipeline.refusedInBatch(c, error(c), context))
           calls
-            .foldLeft(appended(Set.empty))((command, c) => command.update(messages, toolMessage(c, error)))
+            .foldLeft(appended(Set.empty))((command, c) => command.update(messages, toolMessage(c, error(c))))
             .goto(nodes.model)
 
     /**
@@ -1736,12 +1741,14 @@ object ToolLoop:
       outcome: ToolExecutionOutcome,
       duration: FiniteDuration
     ): NodeResult =
-      announce(task.call, content, isError, context, outcome, duration)
+      // a tool that bounds its errors (the task tools, design 4.44) has every error recorded for it cut to fit
+      val stored = ToolErrors.recorded(tools.get(task.call.name), content, isError)
+      announce(task.call, stored, isError, context, outcome, duration)
       NodeResult.Continue(
         Command.empty
           .update(
             results,
-            ToolResult(task.assistantMessageId, task.call.id, Vector(ContentPart.Text(content)), isError)
+            ToolResult(task.assistantMessageId, task.call.id, Vector(ContentPart.Text(stored)), isError)
           )
       )
 
@@ -2192,7 +2199,9 @@ object ToolLoop:
           val undeclared =
             update.operations.map(_.key.id).filterNot(k => allowed.exists(_.id == k)).map(_.value).distinct
           if undeclared.isEmpty then
-            resultParts(name, content) match
+            // a tool that bounds its messages (the task tools, design 4.44) has its final result checked too: a wrapper
+            // outside it may have replaced the result it checked
+            resultParts(name, content).flatMap(parts => ToolErrors.overBound(tool, parts).toLeft(parts)) match
               case Left(problem) => record(task, problem, isError = true, context, ToolExecutionOutcome.Errored, took)
               case Right(parts)  =>
                 // live only, and the text view only: media is not put on the event bus
@@ -2336,6 +2345,4 @@ object ToolLoop:
      * A string result is the string itself, not a quoted JSON string - except a blank one, which a
      * `ToolMessage` refuses, so it is recorded in its quoted JSON form.
      */
-    private def rendered(content: ujson.Value): String = content match
-      case ujson.Str(s) if s.trim.nonEmpty => s
-      case other                           => other.render()
+    private def rendered(content: ujson.Value): String = ToolErrors.storedText(content)

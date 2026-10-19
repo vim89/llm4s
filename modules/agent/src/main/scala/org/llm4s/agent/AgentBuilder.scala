@@ -4,6 +4,7 @@ import org.llm4s.agent.graph.{ BreakpointPhase, GraphRuntime, NodeId, RetentionP
 import org.llm4s.agent.graph.middleware.AgentMiddleware
 import org.llm4s.agent.graph.tool.{ AgentTool, ToolArgumentValidator, ToolSet }
 import org.llm4s.agent.graph.toolloop.{ LoopAgent, LoopHandoff, ModelStep, OutputFormat, ToolLoop }
+import org.llm4s.agent.delegation.{ BoundAgent, DelegationConfig, DelegationMiddleware, TaskTools, TypedAgent }
 import org.llm4s.agent.harness.HarnessProfile
 import org.llm4s.error.ValidationError
 import org.llm4s.llmconnect.LLMClient
@@ -43,7 +44,9 @@ final class AgentBuilder private (
   private val interruptAfter: Vector[AgentNode],
   maxPromptSectionTokens: Int,
   output: Option[OutputFormat],
-  harness: Option[HarnessProfile]
+  harness: Option[HarnessProfile],
+  private val subagents: Vector[TypedAgent[?, ?]],
+  private val delegation: DelegationConfig
 ):
 
   private def copy(
@@ -61,7 +64,9 @@ final class AgentBuilder private (
     interruptAfter: Vector[AgentNode] = interruptAfter,
     maxPromptSectionTokens: Int = maxPromptSectionTokens,
     output: Option[OutputFormat] = output,
-    harness: Option[HarnessProfile] = harness
+    harness: Option[HarnessProfile] = harness,
+    subagents: Vector[TypedAgent[?, ?]] = subagents,
+    delegation: DelegationConfig = delegation
   ): AgentBuilder =
     new AgentBuilder(
       id,
@@ -80,7 +85,9 @@ final class AgentBuilder private (
       interruptAfter,
       maxPromptSectionTokens,
       output,
-      harness
+      harness,
+      subagents,
+      delegation
     )
 
   /** The agent's tools, replacing any set before, checked with the set's validator. */
@@ -140,6 +147,19 @@ final class AgentBuilder private (
    */
   def withHarness(profile: HarnessProfile): AgentBuilder = copy(harness = Some(profile))
 
+  /**
+   * Appends `agents` to the subagents this agent may delegate to (design 4.44), in order. At [[build]] each is bound
+   * to this agent's client and runtime, and a `delegation` middleware, innermost in the stack, offers them: the
+   * `task` tool for every subagent taking a `TaskRequest`, a `task_<id>` tool for each other one, and a cacheable
+   * prompt section listing each subagent's id and description. A call runs the subagent on a child thread of the
+   * calling thread and returns only its typed report. [[build]] refuses two subagents with one id, a subagent that does
+   * not bind, and a task tool whose name clashes with another tool. Bounded by [[withDelegation]].
+   */
+  def withSubagents(agents: TypedAgent[?, ?]*): AgentBuilder = copy(subagents = subagents ++ agents)
+
+  /** The bounds on this agent's delegated tasks, replacing the defaults; [[build]] refuses a bound that is not positive. */
+  def withDelegation(config: DelegationConfig): AgentBuilder = copy(delegation = config)
+
   /** Model calls per turn, at least 1; at the limit the turn ends `StepLimitReached`. */
   def withMaxSteps(n: Int): AgentBuilder = copy(maxSteps = n)
 
@@ -197,16 +217,17 @@ final class AgentBuilder private (
    * Compiles this agent and every agent reachable through handoffs into one graph. Refuses an
    * invalid id, a `maxSteps` below 1, a handoff whose id is invalid or differs from its target's,
    * an id-only handoff ([[Handoff.toId]]) to an id no builder of the family defines, one id
-   * defined by two builders with different settings - their handoff targets compared too - and whatever
+   * defined by two builders with different settings - their handoff targets and subagents compared too - and whatever
    * [[org.llm4s.agent.graph.toolloop.ToolLoop.build]] refuses: tool name clashes, invalid tool
    * schemas, keys the loop owns, handoffs to self or twice to one target.
    */
   def build(): Result[Agent] =
+    val graphRuntime = runtime.getOrElse(GraphRuntime.inMemory())
     for
       family <- AgentBuilder.family(this)
       _      <- AgentBuilder.idTargetsDefined(family)
       agents <- family.foldLeft[Result[Vector[LoopAgent]]](Right(Vector.empty)) { (acc, builder) =>
-        acc.flatMap(done => builder.loopAgent.map(done :+ _))
+        acc.flatMap(done => builder.loopAgent(graphRuntime).map(done :+ _))
       }
       root      <- AgentId.of(id)
       loop      <- ToolLoop.build(id, AgentBuilder.fingerprint(family), root, agents)
@@ -214,12 +235,37 @@ final class AgentBuilder private (
     yield new Agent(
       root,
       loop,
-      runtime.getOrElse(GraphRuntime.inMemory()),
+      graphRuntime,
       tracing,
       family.flatMap(b => b.held(loop, b.interruptBefore, BreakpointPhase.Before)).toSet,
       family.flatMap(b => b.held(loop, b.interruptAfter, BreakpointPhase.After)).toSet,
-      installed.retention
+      installed.retention,
+      // children are made on the family's thread by whichever agent is active: keep the tightest bound any sets
+      family.filter(_.subagents.nonEmpty).map(_.delegation.childRetention).minOption
     )
+
+  /**
+   * The `delegation` middleware offering this agent's subagents, each bound to its client and `graphRuntime`; none
+   * without subagents. Refuses a bound that is not positive, two subagents with one id, and a subagent that does not
+   * bind.
+   */
+  private def delegating(graphRuntime: GraphRuntime): Result[Option[DelegationMiddleware]] =
+    // the bounds are checked whether or not any subagent is set, so a bad config never lies latent
+    if subagents.isEmpty then delegation.validated.map(_ => None)
+    else
+      val ids        = subagents.map(_.id.value)
+      val duplicated = ids.diff(ids.distinct).distinct
+      for
+        config <- delegation.validated
+        _ <- Either.cond(
+          duplicated.isEmpty,
+          (),
+          ValidationError("subagents", s"agent '$id': subagent ids defined twice: ${duplicated.mkString(", ")}")
+        )
+        bound <- subagents.foldLeft[Result[Vector[BoundAgent[?, ?]]]](Right(Vector.empty)) { (acc, definition) =>
+          acc.flatMap(done => definition.bind(client, graphRuntime).map(done :+ _))
+        }
+      yield Some(new DelegationMiddleware(bound, config, depth = 0))
 
   /** The nodes of `loop` this agent's breakpoints on `nodes` hold in `phase`; its id is checked by `build` first. */
   private def held(loop: ToolLoop, nodes: Vector[AgentNode], phase: BreakpointPhase): Vector[NodeId] =
@@ -250,7 +296,7 @@ final class AgentBuilder private (
             )
           )
 
-  private def loopAgent: Result[LoopAgent] =
+  private def loopAgent(graphRuntime: GraphRuntime): Result[LoopAgent] =
     for
       agentId <- AgentId.of(id)
       _ <- Either.cond(
@@ -258,8 +304,9 @@ final class AgentBuilder private (
         (),
         ValidationError("maxSteps", s"agent '$id': must be at least 1, was $maxSteps")
       )
-      installed <- effective
-      toolSet   <- ToolSet.of(validator, installed.tools*)
+      installed  <- effective
+      delegating <- delegating(graphRuntime)
+      toolSet    <- ToolSet.of(validator, installed.tools*)
       loopHandoffs <- handoffs.foldLeft[Result[Vector[LoopHandoff]]](Right(Vector.empty)) { (acc, h) =>
         acc.flatMap(done => loopHandoff(h).map(done :+ _))
       }
@@ -268,7 +315,7 @@ final class AgentBuilder private (
       .withOutput(output)
       .withMaxSteps(maxSteps)
       .withMaxPromptSectionTokens(maxPromptSectionTokens)
-      .withMiddleware(installed.middleware)
+      .withMiddleware(installed.middleware ++ delegating)
       .withHandoffs(loopHandoffs)
 
   private def loopHandoff(handoff: Handoff): Result[LoopHandoff] =
@@ -290,6 +337,16 @@ final class AgentBuilder private (
    * tools, middleware and prompt are covered as the agent's own; a harness that does not assemble is covered by its
    * presence only, and refused by `build()`.
    */
+  /**
+   * Whether `other` delegates as this builder does: the same subagent definitions, as instances, in order, and the same
+   * bounds. The graph version covers only the task tools' specs, so two builders whose subagents differ behind the same
+   * specs (prompts, tools, output, failure policy) would otherwise pass as one agent.
+   */
+  private def delegatesAs(other: AgentBuilder): Boolean =
+    subagents.size == other.subagents.size &&
+      subagents.lazyZip(other.subagents).forall(_ eq _) &&
+      delegation == other.delegation
+
   private def canonical: ujson.Obj =
     val installed = effective.getOrElse(AgentBuilder.Effective(tools, middleware, systemPrompt, None))
     val settings = ujson.Obj(
@@ -320,6 +377,11 @@ final class AgentBuilder private (
     )
     // only when set, so the version of an agent without a response format is what it was before formats existed
     output.foreach(format => settings("output") = format.schema)
+    // only when set, likewise: the task tools the delegation middleware contributes
+    if subagents.nonEmpty then
+      settings("subagents") = ujson.Arr.from(
+        TaskTools.specs(subagents).map(s => ujson.Obj("name" -> s.name, "definition" -> s.toolDefinition.render()))
+      )
     if harness.isDefined && effective.isLeft then settings("harness") = "invalid"
     settings
 
@@ -343,7 +405,9 @@ object AgentBuilder:
       interruptAfter = Vector.empty,
       maxPromptSectionTokens = LoopAgent.DefaultMaxPromptSectionTokens,
       output = None,
-      harness = None
+      harness = None,
+      subagents = Vector.empty,
+      delegation = DelegationConfig.default
     )
 
   /** What an agent runs with once its harness is installed; `retention` only with a harness. */
@@ -372,8 +436,9 @@ object AgentBuilder:
         case next +: rest =>
           val targets = next.handoffs.flatMap(_.target)
           found.find(_.id == next.id) match
-            case None                                           => walk(rest ++ targets, found :+ next, walked :+ next)
-            case Some(seen) if seen.canonical == next.canonical => walk(rest ++ targets, found, walked :+ next)
+            case None => walk(rest ++ targets, found :+ next, walked :+ next)
+            case Some(seen) if seen.canonical == next.canonical && seen.delegatesAs(next) =>
+              walk(rest ++ targets, found, walked :+ next)
             case Some(_) =>
               Left(ValidationError("handoffs", s"agent id '${next.id}' is defined by two different builders"))
         case _ => Right(found)
