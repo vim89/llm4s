@@ -1,6 +1,7 @@
 package org.llm4s.agent.graph.toolloop
 
 import org.llm4s.agent.{ AgentId, AgentNode }
+import org.llm4s.agent.delegation.{ CountedUpdate, DelegationKeys }
 import org.llm4s.agent.events
 import org.llm4s.agent.events.{ AgentEvents, GuardrailBlock, GuardrailPhase, ToolExecutionOutcome }
 import org.llm4s.agent.graph.*
@@ -699,7 +700,10 @@ object ToolLoop:
         LoopKeys.usage.id,
         LoopKeys.activeAgent.id,
         LoopKeys.turn.id,
-        LoopKeys.transfer.id
+        LoopKeys.transfer.id,
+        DelegationKeys.priorUsage.id,
+        DelegationKeys.input.id,
+        DelegationKeys.counted.id
       )
     def touches(keys: Set[StateKey[?, ?]]) = keys.exists(k => owned.contains(k.id))
     val clause =
@@ -752,7 +756,12 @@ object ToolLoop:
 
     /** What the call-tool, approval and ask nodes may write: any tool's keys; each call is checked against its own tool's. */
     def callWrites: Set[StateKey[?, ?]] =
-      tools.tools.flatMap(_.writes).toSet ++ stack.writes ++ Set(results, Messages.key)
+      tools.tools.flatMap(_.writes).toSet ++ stack.writes ++ Set(
+        results,
+        Messages.key,
+        LoopKeys.usage,
+        DelegationKeys.counted
+      )
 
     /** The keys this agent's tools and middleware may write: what an output Block may have to restore. */
     def harnessWrites: Set[StateKey[?, ?]] = tools.tools.flatMap(_.writes).toSet ++ stack.writes
@@ -777,7 +786,8 @@ object ToolLoop:
     Set(Messages.key, LoopKeys.usage, LoopKeys.turn, LoopKeys.activeAgent, LoopKeys.transfer)
   private val finishWrites: Set[StateKey[?, ?]] =
     Set(Messages.key, LoopKeys.usage, LoopKeys.turn, LoopKeys.activeAgent, LoopKeys.transfer)
-  private val inputWrites: Set[StateKey[?, ?]] = Set(Messages.key, LoopKeys.usage, LoopKeys.activeAgent, LoopKeys.turn)
+  private val inputWrites: Set[StateKey[?, ?]] =
+    Set(Messages.key, LoopKeys.usage, LoopKeys.activeAgent, LoopKeys.turn, DelegationKeys.counted)
 
   private def declare(b: GraphBuilder, prepared: Prepared, familyLocks: Boolean): AgentNodes =
     val prefix  = s"${prepared.agent.id.value}/"
@@ -863,6 +873,24 @@ object ToolLoop:
           }
       }
     check.failure.toLeft(outcome)
+
+  /**
+   * A tool task's `result` with the usage the task recorded committed with it: the model calls of a tool that
+   * calls a model, and a child run's roll-up, which the child runner adds once, with the call's result (design 4.42).
+   */
+  private def withUsage(context: RunContext)(result: NodeResult): NodeResult = result match
+    case NodeResult.Continue(command) =>
+      NodeResult.Continue(command.copy(update = command.update.combine(usageOf(context)).combine(countedOf(context))))
+    // a suspended call may run again when answered, reattaching a child it ran: the children counted here are recorded,
+    // so the child runner does not count them again
+    case NodeResult.Suspend(update, question, resumeAt) =>
+      NodeResult.Suspend(update.combine(usageOf(context)).combine(countedOf(context)), question, resumeAt)
+    case other => other
+
+  /** The child threads whose roll-ups the task counted, as its update to `DelegationKeys.counted`; nothing if none. */
+  private def countedOf(context: RunContext): StateUpdate =
+    val ids = context.usage.countedChildren
+    if ids.isEmpty then StateUpdate.empty else StateUpdate.update(DelegationKeys.counted, CountedUpdate.Add(ids))
 
   /** The usage the task recorded, as its update to [[LoopKeys.usage]]; nothing when it recorded none. */
   private def usageOf(context: RunContext): StateUpdate =
@@ -1035,8 +1063,11 @@ object ToolLoop:
   private def assemble(id: String, version: String, root: AgentId, prepared: Vector[Prepared]): Result[ToolLoop] =
     val messages = Messages.key
     val b        = GraphBuilder(id, version)
-    val locking  = prepared.exists(_.tools.tools.exists(_.spec.locksOf.isDefined))
-    val agents   = prepared.map(p => p.agent.id -> declare(b, p, locking)).toMap
+    // the runtime's key on a child thread (design 4.42): written only by the child runner, never by a node
+    b.stateKey(DelegationKeys.priorUsage)
+    b.stateKey(DelegationKeys.input)
+    val locking = prepared.exists(_.tools.tools.exists(_.spec.locksOf.isDefined))
+    val agents  = prepared.map(p => p.agent.id -> declare(b, p, locking)).toMap
     // whether a transfer keeps the context, by (source, target)
     val preserves = prepared.flatMap(p => p.agent.handoffs.map(h => (p.agent.id, h.target) -> h.preserveContext)).toMap
     // every key a tool or middleware of the family may write: the input and the finish write them all
@@ -1090,6 +1121,8 @@ object ToolLoop:
                 val prior = written(remembered(Map.empty, keys, state), keys, after)
                 NodeResult.Continue(
                   Command(seeded.update.combine(hooks).combine(usageOf(context)), seeded.routes)
+                    // a new turn: no child of it has been counted yet
+                    .update(DelegationKeys.counted, CountedUpdate.Reset)
                     .update(messages, MessageUpdate.Append(StoredMessage(s"$taskId/user", UserMessage(transformed))))
                     .update(LoopKeys.turn, TurnState(0, None, Some(agentId), transfer, prior))
                     .goto(nodes.model)
@@ -1120,7 +1153,10 @@ object ToolLoop:
           case MiddlewareHook.WrapModelCall => steps(owner.agent.id).model(state, context, answers)
           case MiddlewareHook.WrapToolCall =>
             request.call.fold(missing("tool call")) { task =>
-              steps(owner.agent.id).pipeline.reasked(task, request.approved, state, context, answers)
+              // a tool call again: the usage its task records commits with its result, as the call-tool node's does
+              withUsage(context)(
+                steps(owner.agent.id).pipeline.reasked(task, request.approved, state, context, answers)
+              )
             }
           // the answer is the active agent's: a root middleware asks about a handoff target's answer too
           case MiddlewareHook.AfterAgent =>
@@ -1205,12 +1241,18 @@ object ToolLoop:
     val callWrites = nodes.callWrites
 
     b.implement(nodes.callTool, writes = callWrites) { (task, state, context) =>
-      tools.get(task.call.name) match
-        case None       => pipeline.error(task, s"Unknown tool '${task.call.name}'", context)
-        case Some(tool) => pipeline.admit(tool, task, state, context)
+      withUsage(context) {
+        tools.get(task.call.name) match
+          case None       => pipeline.error(task, s"Unknown tool '${task.call.name}'", context)
+          case Some(tool) => pipeline.admit(tool, task, state, context)
+      }
     }
 
     b.implement(nodes.approval.node, writes = callWrites) { (resumed, state, context) =>
+      withUsage(context)(approval(resumed, state, context))
+    }
+
+    def approval(resumed: Resumed[ApprovalRequest, ApprovalDecision], state: ThreadState, context: RunContext) =
       val request = resumed.question
       val task    = ToolTask(request.assistantMessageId, request.call, request.idempotencyKey)
       resumed.answer match
@@ -1232,11 +1274,10 @@ object ToolLoop:
               NodeResult.Continue(command.copy(update = edit.combine(command.update)))
             case NodeResult.Suspend(update, q, resume) => NodeResult.Suspend(edit.combine(update), q, resume)
             case failed                                => failed
-    }
 
     nodes.asking.foreach { tool =>
       b.implement(nodes.askRefs(tool.spec.name).node, writes = callWrites) { (resumed, state, context) =>
-        pipeline.answered(tool, resumed.question, resumed.answer, state, context)
+        withUsage(context)(pipeline.answered(tool, resumed.question, resumed.answer, state, context))
       }
     }
 

@@ -345,9 +345,33 @@ final class RunContext private[graph] (
 final private[agent] class TaskUsage:
   private val recorded = new AtomicReference(UsageSummary())
 
+  /** Child runs' roll-ups (design 4.42): committed with the task, never lost usage, since each child keeps its own. */
+  private val delegated = new AtomicReference(UsageSummary())
+
   def add(model: String, usage: TokenUsage, cost: Option[Double]): Unit =
     recorded.updateAndGet(_.add(model, usage, cost)): Unit
 
-  def summary: UsageSummary = recorded.get
+  /**
+   * Adds a child run's roll-up (design 4.42). It commits with the task's result, as the rest does; a task that fails
+   * drops it rather than reporting it as the run's lost usage, because the child thread keeps that usage itself and the
+   * call's replay, which reattaches the child, adds it then.
+   */
+  def merge(other: UsageSummary, child: ThreadId): Unit =
+    // once per child per task: a wrapper may run the call - and so reattach the child - more than once
+    if !children.getAndUpdate(_ + child.value).contains(child.value) then delegated.updateAndGet(_.merge(other)): Unit
 
-  def isEmpty: Boolean = recorded.get.requestCount == 0
+  /** The child threads whose roll-ups [[merge]] added. */
+  private val children = new AtomicReference(Set.empty[String])
+
+  /** The child threads whose roll-ups this task's result commits. */
+  def countedChildren: Set[String] = children.get
+
+  /** Everything the task's result commits: its own model calls and its children's roll-ups. */
+  def summary: UsageSummary = recorded.get.merge(delegated.get)
+
+  def isEmpty: Boolean = recorded.get.requestCount == 0 && delegated.get.requestCount == 0
+
+  /** What a failed task loses: its own model calls only ([[merge]]). */
+  def lost: UsageSummary = recorded.get
+
+  def lostIsEmpty: Boolean = recorded.get.requestCount == 0

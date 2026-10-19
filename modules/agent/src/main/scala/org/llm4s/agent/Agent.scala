@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory
 final class Agent private[agent] (
   val id: AgentId,
   val loop: ToolLoop,
-  runtime: GraphRuntime,
+  private[agent] val runtime: GraphRuntime,
   tracing: Option[Tracing],
   interruptBefore: Set[NodeId] = Set.empty,
   interruptAfter: Set[NodeId] = Set.empty,
@@ -49,7 +49,7 @@ final class Agent private[agent] (
    * `config` with the agent's static breakpoints ([[AgentBuilder.withInterruptBefore]],
    * [[AgentBuilder.withInterruptAfter]]) added to its own.
    */
-  private def configured(config: RunConfig): RunConfig =
+  private[agent] def configured(config: RunConfig): RunConfig =
     config
       .withInterruptBefore(config.interruptBefore ++ interruptBefore)
       .withInterruptAfter(config.interruptAfter ++ interruptAfter)
@@ -304,17 +304,7 @@ final class Agent private[agent] (
    */
   private def blocking(begin: => Result[AgentRun]): Result[AgentResult] =
     if Thread.currentThread().isInterrupted then Left(CancelledError("agent turn"))
-    else
-      begin.flatMap { run =>
-        run.await() match
-          case cancelled @ Left(_: CancelledError) =>
-            if run.cancelAndAwaitEnd() then
-              run.awaitEnded() match
-                case outcome @ Right(_) => outcome
-                case Left(_)            => cancelled
-            else cancelled
-          case other => other
-      }
+    else begin.flatMap(Agent.awaitBlocking)
 
   private def recoverWith(threadId: ThreadId, config: RunConfig, listening: Listening): Result[AgentRun] =
     val (observer, scope) = observed(config, listening)
@@ -360,11 +350,27 @@ final class Agent private[agent] (
       Left(ValidationError("history", "system messages are not imported; prompts belong to agents"))
     else Message.validateConversation(history.toList)
 
-  private def agentRun(handle: RunHandle[TurnOutput], scope: Option[RunScope], drain: Boolean): AgentRun =
+  private[agent] def agentRun(handle: RunHandle[TurnOutput], scope: Option[RunScope], drain: Boolean): AgentRun =
     AgentRun(handle, loop, id, runtime, tracing, scope, drain)
 
 object Agent:
   private val logger = LoggerFactory.getLogger(classOf[Agent])
+
+  /**
+   * Awaits `run`, which has begun, as [[Agent.blocking]] does: an interrupted wait - also one interrupted before it
+   * began - cancels the run and waits up to [[AgentRun.Drain]] for it to end, returning its real outcome if its commit
+   * beat the cancel, else the `CancelledError`, with the interrupt flag kept. The child runner awaits a child with it
+   * (design 4.42), so a child admitted just before its parent's cancel is still cancelled.
+   */
+  private[agent] def awaitBlocking(run: AgentRun): Result[AgentResult] =
+    run.await() match
+      case cancelled @ Left(_: CancelledError) =>
+        if run.cancelAndAwaitEnd() then
+          run.awaitEnded() match
+            case outcome @ Right(_) => outcome
+            case Left(_)            => cancelled
+        else cancelled
+      case other => other
 
   /** Model calls per turn when [[AgentBuilder.withMaxSteps]] is not set. */
   val DefaultMaxSteps: Int = 50
