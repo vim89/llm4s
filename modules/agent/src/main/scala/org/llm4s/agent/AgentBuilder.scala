@@ -217,7 +217,8 @@ final class AgentBuilder private (
    * Compiles this agent and every agent reachable through handoffs into one graph. Refuses an
    * invalid id, a `maxSteps` below 1, a handoff whose id is invalid or differs from its target's,
    * an id-only handoff ([[Handoff.toId]]) to an id no builder of the family defines, one id
-   * defined by two builders with different settings - their handoff targets and subagents compared too - and whatever
+   * defined by two builders with different settings - their handoff targets and subagents compared too - a tool named
+   * like a task tool of any agent of the family (task calls are counted by name across handoffs), and whatever
    * [[org.llm4s.agent.graph.toolloop.ToolLoop.build]] refuses: tool name clashes, invalid tool
    * schemas, keys the loop owns, handoffs to self or twice to one target.
    */
@@ -226,9 +227,12 @@ final class AgentBuilder private (
     for
       family <- AgentBuilder.family(this)
       _      <- AgentBuilder.idTargetsDefined(family)
+      // a handoff stays in the turn, so each agent counts the whole family's task calls in it (#2067)
+      taskNames = family.flatMap(b => TaskTools.names(b.subagents)).toSet
+      _ <- AgentBuilder.taskNamesUnshared(family, taskNames)
       agents <- family.foldLeft[Result[Vector[LoopAgent]]](Right(Vector.empty)) { (acc, builder) =>
         // every member's subagents trace to the root's tracing, which traces the whole family's runs (design 4.47)
-        acc.flatMap(done => builder.loopAgent(graphRuntime, tracing).map(done :+ _))
+        acc.flatMap(done => builder.loopAgent(graphRuntime, tracing, taskNames).map(done :+ _))
       }
       root      <- AgentId.of(id)
       loop      <- ToolLoop.build(id, AgentBuilder.fingerprint(family), root, agents)
@@ -250,7 +254,11 @@ final class AgentBuilder private (
    * without subagents. Refuses a bound that is not positive, two subagents with one id, and a subagent that does not
    * bind.
    */
-  private def delegating(graphRuntime: GraphRuntime, tracing: Option[Tracing]): Result[Option[DelegationMiddleware]] =
+  private def delegating(
+    graphRuntime: GraphRuntime,
+    tracing: Option[Tracing],
+    familyTaskNames: Set[String]
+  ): Result[Option[DelegationMiddleware]] =
     // the bounds are checked whether or not any subagent is set, so a bad config never lies latent
     if subagents.isEmpty then delegation.validated.map(_ => None)
     else
@@ -266,7 +274,7 @@ final class AgentBuilder private (
         bound <- subagents.foldLeft[Result[Vector[BoundAgent[?, ?]]]](Right(Vector.empty)) { (acc, definition) =>
           acc.flatMap(done => definition.bind(client, graphRuntime, tracing).map(done :+ _))
         }
-      yield Some(new DelegationMiddleware(bound, config, depth = 0))
+      yield Some(new DelegationMiddleware(bound, config, depth = 0, familyTaskNames))
 
   /** The nodes of `loop` this agent's breakpoints on `nodes` hold in `phase`; its id is checked by `build` first. */
   private def held(loop: ToolLoop, nodes: Vector[AgentNode], phase: BreakpointPhase): Vector[NodeId] =
@@ -297,7 +305,11 @@ final class AgentBuilder private (
             )
           )
 
-  private def loopAgent(graphRuntime: GraphRuntime, tracing: Option[Tracing]): Result[LoopAgent] =
+  private def loopAgent(
+    graphRuntime: GraphRuntime,
+    tracing: Option[Tracing],
+    familyTaskNames: Set[String]
+  ): Result[LoopAgent] =
     for
       agentId <- AgentId.of(id)
       _ <- Either.cond(
@@ -306,7 +318,7 @@ final class AgentBuilder private (
         ValidationError("maxSteps", s"agent '$id': must be at least 1, was $maxSteps")
       )
       installed  <- effective
-      delegating <- delegating(graphRuntime, tracing)
+      delegating <- delegating(graphRuntime, tracing, familyTaskNames)
       toolSet    <- ToolSet.of(validator, installed.tools*)
       loopHandoffs <- handoffs.foldLeft[Result[Vector[LoopHandoff]]](Right(Vector.empty)) { (acc, h) =>
         acc.flatMap(done => loopHandoff(h).map(done :+ _))
@@ -446,6 +458,36 @@ object AgentBuilder:
     walk(Vector(root), Vector.empty, Vector.empty)
 
   /** Every id-only handoff names an agent some builder of the family defines. */
+  /**
+   * No agent of the family has an ordinary tool named like a task tool of any agent of it (#2067): the per-turn count
+   * counts the family's task calls by name across handoffs, so such a tool's calls would count as tasks.
+   */
+  private def taskNamesUnshared(family: Vector[AgentBuilder], taskNames: Set[String]): Result[Unit] =
+    family
+      .foldLeft[Result[Vector[(String, String)]]](Right(Vector.empty)) { (acc, b) =>
+        acc.flatMap(found =>
+          b.effective.map { e =>
+            // the tools the loop offers: the agent's own and its middleware's, not the task tools themselves
+            val offered = e.tools ++ e.middleware.filterNot(_.isInstanceOf[DelegationMiddleware]).flatMap(_.tools)
+            found ++ offered.map(_.spec.name).filter(taskNames).distinct.map(b.id -> _)
+          }
+        )
+      }
+      .flatMap {
+        case clashes if clashes.isEmpty => Right(())
+        case clashes =>
+          Left(
+            ValidationError(
+              "tools",
+              clashes
+                .map((agent, name) =>
+                  s"agent '$agent' has a tool named '$name', the name of a task tool in its handoff family; rename it"
+                )
+                .toList
+            )
+          )
+      }
+
   private def idTargetsDefined(family: Vector[AgentBuilder]): Result[Unit] =
     val ids = family.map(_.id).toSet
     family.flatMap(b => b.handoffs.collect { case h if h.target.isEmpty && !ids(h.id) => b.id -> h.id }).toList match
