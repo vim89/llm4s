@@ -283,6 +283,12 @@ final class ModelCall private[toolloop] (val context: RunContext, val agent: Age
 trait ModelStep:
   def next(messages: Vector[Message], tools: ToolSet, call: ModelCall): Result[Completion]
 
+  /**
+   * The response format a call offering `tools` is sent with, if any: counted in the usage estimate of a completion
+   * that reports none (#2084). `None` by default; [[ModelStep.fromClient]] gives its own.
+   */
+  def responseFormat(tools: ToolSet): Option[ResponseFormat] = None
+
 object ModelStep:
 
   /**
@@ -302,12 +308,12 @@ object ModelStep:
     options: CompletionOptions = CompletionOptions(),
     streaming: Boolean = false,
     output: Option[ResponseFormat] = None
-  ): ModelStep =
-    (messages, tools, call) =>
-      val offered = options.withTools(tools.toolFunctions)
-      val withTools =
-        if output.isEmpty then offered
-        else offered.withResponseFormat(output.filter(_ => tools.toolFunctions.isEmpty))
+  ): ModelStep = new ModelStep:
+    override def responseFormat(tools: ToolSet): Option[ResponseFormat] =
+      if output.isEmpty then options.responseFormat else output.filter(_ => tools.toolFunctions.isEmpty)
+
+    def next(messages: Vector[Message], tools: ToolSet, call: ModelCall): Result[Completion] =
+      val withTools = options.withTools(tools.toolFunctions).withResponseFormat(responseFormat(tools))
       if !streaming then client.complete(Conversation(messages), withTools)
       else
         client.streamComplete(
@@ -922,6 +928,10 @@ object ToolLoop:
    * `state` less its usage when the run was admitted, plus what this task has recorded and not yet committed.
    * Outside a runtime there is no admission, so the thread's whole usage counts.
    */
+  /** What a model step's call returns when a call of the step was refused at the token budget (#2084). */
+  private case object TokenLimitStop extends LLMError:
+    def message: String = "a model call was refused at the run's token budget"
+
   private[agent] def runTokens(state: ThreadState, context: RunContext): Result[Long] =
     def tokens(usage: UsageSummary): Long = usage.inputTokens + usage.outputTokens
     for
@@ -1439,7 +1449,14 @@ object ToolLoop:
       answers: Vector[GivenAnswer]
     ): Result[NodeResult] =
       val hooks = hookContext(agent.id, context, answers, state)
-      for
+      // a call refused at the token budget ends the turn as the step check does, keeping the usage of the calls made
+      // before it (#2084)
+      def limitReached: NodeResult =
+        NodeResult.Continue(
+          Command(usageOf(context), Nil)
+            .update(LoopKeys.turn, turn.copy(outcome = Some(TurnOutcome.TokenLimitReached), priorValues = Map.empty))
+        )
+      val prepared = for
         history  <- state.get(messages)
         _        <- Message.validateConversation(history.map(_.message).toList)
         transfer <- state.get(LoopKeys.transfer)
@@ -1459,13 +1476,25 @@ object ToolLoop:
         // one request through every wrapper; each provider call is counted in the task's usage as it returns
         def call(req: ModelRequest): Result[ModelResponse] =
           val result = stack.wrapModelCall(req, hooks, check) { r =>
-            callModel(agent.model, agent.id, context, attempts)(r).map { (completion, attempt) =>
-              hooks.recordCall(completion, attempt)
-              ModelResponse(completion)
-            }
+            // every call is checked against the token budget, also a wrapper's second one (#2084)
+            hooks.admitted(
+              callModel(agent.model, agent.id, context, attempts)(r).map { (completion, attempt) =>
+                hooks.recordCall(
+                  completion,
+                  attempt,
+                  r.messages,
+                  ModelContext.definitions(r.tools.toolFunctions, agent.model.responseFormat(r.tools))
+                )
+                ModelResponse(completion)
+              }
+            )
           }
-          // an undeclared write fails the step whatever the wrappers returned
-          check.failure.fold(result)(Left(_))
+          // an undeclared write fails the step whatever the wrappers returned; otherwise a call refused at the
+          // token budget ends the turn, whatever they returned (#2084)
+          check.failure match
+            case Some(undeclared)              => Left(undeclared)
+            case None if context.usage.refused => Left(ToolLoop.TokenLimitStop)
+            case None                          => result
         // an answer (no tool calls) checked against the response format; None when there is nothing to check
         def checked(response: ModelResponse): Option[Either[Vector[String], ujson.Value]] =
           agent.output
@@ -1490,6 +1519,9 @@ object ToolLoop:
           )
         def answered(result: Result[ModelResponse])(invalid: (ModelResponse, Vector[String]) => NodeResult) =
           result match
+            // a call refused at the token budget ends the turn as the step check does, whatever the wrappers
+            // returned; the calls made before it are counted (#2084)
+            case Left(ToolLoop.TokenLimitStop) => limitReached
             // nothing of the step is stored while the question waits - it runs again once answered - but
             // the model calls a wrapper made before asking were made, and are counted
             case Left(asked: MiddlewareAsked) =>
@@ -1515,6 +1547,8 @@ object ToolLoop:
               .fold(NodeResult.Fail(_), NodeResult.Block(_, GraphError.OutputInvalid(invalid)))
           }
         }
+      // a prompt-section hook's accounted call may be refused too, failing the step's preparation
+      prepared.left.flatMap(error => if context.usage.refused then Right(limitReached) else Left(error))
 
     // a response format's second invalid answer retracts the turn from here, restoring any key the turn wrote
     val formatWrites = if agent.output.isDefined then harness.writes else Set.empty

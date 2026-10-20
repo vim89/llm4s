@@ -1,7 +1,7 @@
 package org.llm4s.agent.graph
 
 import org.llm4s.agent.delegation.ChildRef
-import org.llm4s.error.ValidationError
+import org.llm4s.error.{ CancelledError, ValidationError }
 import org.llm4s.llmconnect.model.{ TokenUsage, UsageSummary }
 import org.llm4s.types.Result
 
@@ -16,11 +16,13 @@ import scala.concurrent.duration.FiniteDuration
  * non-positive one, and [[RunBudgets.of]] returns it as a `ValidationError`.
  *
  * `maxTokens` is the input and output tokens the run may use, counted from the thread's usage when
- * the run was admitted: before each model call the agent's tool loop compares the run's tokens so
- * far with it, and at or above it ends the turn `TokenLimitReached` without calling the model. A
- * model call in flight is never interrupted, so a run can overshoot the budget by one call (with
- * its wrappers' retries). `None`, the default, sets no token budget. A plain graph's nodes never
- * read it.
+ * the run was admitted: before each model call - the loop's own and every one a middleware makes
+ * through `next` or `ModelContext.accounted` - the run's tokens so far are compared with it, and at
+ * or above it the turn ends `TokenLimitReached` without calling the model. A model call in flight is
+ * never interrupted, so a run can overshoot the budget by one call. A completion without usage is
+ * charged an estimate of its whole request and answer. A retrying client (`ReliableClient`) is one
+ * call: its failed attempts carry no usage and are not counted, so set `maxTokens` with retries in
+ * mind. `None`, the default, sets no token budget. A plain graph's nodes never read it.
  */
 final case class RunBudgets private (
   maxSupersteps: Int,
@@ -400,6 +402,31 @@ final private[agent] class TaskUsage:
 
   /** The agent model steps a failed task loses: one for a model step that called the model, else none. */
   def lostSteps: Long = if stepped.get then 1L else 0L
+
+  /** Whether an accounted call was refused at the run's token budget (#2084): the model step then ends the turn. */
+  private val refusedAtLimit = new java.util.concurrent.atomic.AtomicBoolean(false)
+
+  /** Marks the task as having refused a model call at `RunBudgets.maxTokens`. */
+  def refuse(): Unit = refusedAtLimit.set(true)
+
+  /** Whether the task refused a model call at `RunBudgets.maxTokens`. */
+  def refused: Boolean = refusedAtLimit.get
+
+  /** Serializes the task's model calls under a token budget, so each is admitted against every earlier one's usage. */
+  private val calls = new java.util.concurrent.locks.ReentrantLock(true)
+
+  /**
+   * `body` - a model call's admission, the call and its recording - run while no other model call of the task runs
+   * (#2084). An interrupt while waiting is `Left(CancelledError)`, with the flag restored.
+   */
+  def serialized[A](body: => Result[A]): Result[A] =
+    CancelledError.catchInterrupt(calls.lockInterruptibly()) match
+      case Left(_) =>
+        Thread.currentThread().interrupt()
+        Left(CancelledError("model"))
+      case Right(_) =>
+        given scala.util.Using.Releasable[java.util.concurrent.locks.ReentrantLock] = _.unlock()
+        scala.util.Using.resource(calls)(_ => body)
 
   /**
    * Adds a child run's roll-up (design 4.42). It commits with the task's result, as the rest does; a task that fails
