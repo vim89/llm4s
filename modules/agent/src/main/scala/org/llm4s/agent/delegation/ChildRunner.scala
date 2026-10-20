@@ -52,6 +52,10 @@ private[agent] enum ChildEnd:
  *  - `Completed` or `Failed`: the outcome the child's terminal checkpoint records, nothing run. A settled checkpoint
  *    without one is corrupt stored state, a `Left`.
  *
+ * A child started with other input than this call's ([[DelegationKeys.input]]) is refused with a `ValidationError`,
+ * after an unsettled one is settled `Failed("abandoned")` ([[GraphRuntime.settleChild]], #2096); a busy one is
+ * `ThreadBusy` for the call, and the next admission settles it.
+ *
  * A child failure is `Failed`. With `settleOnFailure` (the caller's `ChildFailure.Report`, whose call commits the
  * failure as a tool error) the child is first settled ([[GraphRuntime.settleChild]]), so no child is left `Running`
  * behind a committed call, and the failure returned is the one replay rebuilds from the settled checkpoint. Without it
@@ -247,6 +251,13 @@ private[agent] object ChildRunner:
         ctx.run.nested(StreamEvent.Nested(ref(runId), StreamEvent.LiveGap(0)))
         streamed += runId
 
+    /** Another runtime (or run) holds the child, as `busy` names it: its live events cannot reach this one. */
+    private def held(busy: GraphError.ThreadBusy): Unit =
+      gap(busy.holder match
+        case GraphError.BusyHolder.Run(runId) => runId
+        case _                                => config.runId
+      )
+
     /**
      * The forwarder a child run `runId` is admitted with: it passes on every event of the run to the parent's nested
      * subscribers, a grandchild's included; a disconnection (it fell behind) as a gap. It sends `TaskStarted` first, on
@@ -385,16 +396,39 @@ private[agent] object ChildRunner:
               )
             )
           )
-        case Right(Some((_, exec))) if !sameInput(exec.state) =>
-          Step.Done(
-            Left(
-              ValidationError(
-                "input",
-                s"the child thread '${childId.value}' was started with other input; a delegated call's arguments " +
-                  "cannot change once its child has started"
-              )
-            )
+        case Right(Some((checkpoint, exec))) if !sameInput(exec.state) =>
+          val refusal = ValidationError(
+            "input",
+            s"the child thread '${childId.value}' was started with other input; a delegated call's arguments " +
+              "cannot change once its child has started"
           )
+          checkpoint.status match
+            // no call will reattach the original child, so it is settled before the refusal, never left open (#2096)
+            case CheckpointStatus.Running | CheckpointStatus.Suspended =>
+              // an earlier attempt's run, whose live events this attempt never saw, as for any child it reattaches
+              gap(RunId(checkpoint.runId))
+              val message = s"abandoned: its call on '${origin.parent.value}' was run again with other input"
+              runtime.settleChild(
+                childId,
+                graph,
+                RunOutcome.Failed("abandoned", message),
+                message,
+                base.withRunId(RunId.random()),
+                foldLostUsage,
+                ours,
+                parentClaim
+              ) match
+                // read again: the run that settled it - this one, or another that got there first - is announced below
+                case Right(_) => Step.Again
+                // the next admission of the call settles it
+                case Left(busy: GraphError.ThreadBusy) =>
+                  held(busy)
+                  Step.Done(Left(busy))
+                case Left(error) => Step.Done(Left(error))
+            case _ =>
+              // the run that settled it names the child's latest checkpoint, and no event of it was forwarded here
+              gap(RunId(checkpoint.runId))
+              Step.Done(Left(refusal))
         case Right(Some((checkpoint, exec))) =>
           checkpoint.status match
             case CheckpointStatus.Running =>
@@ -544,9 +578,11 @@ private[agent] object ChildRunner:
         ours,
         parentClaim
       ) match
-        case Right(_)                          => Step.Again
-        case Left(busy: GraphError.ThreadBusy) => Step.Busy(busy)
-        case Left(other)                       => Step.Done(Left(other))
+        case Right(_) => Step.Again
+        case Left(busy: GraphError.ThreadBusy) =>
+          held(busy)
+          Step.Busy(busy)
+        case Left(other) => Step.Done(Left(other))
 
     /**
      * Adds the child's roll-up to the calling task's accumulator, unless the thread's committed state shows it counted
@@ -587,11 +623,7 @@ private[agent] object ChildRunner:
           ) =>
         Step.Again
       case Left(busy: GraphError.ThreadBusy) =>
-        // another runtime (or run) holds the child: its live events cannot reach this one
-        gap(busy.holder match
-          case GraphError.BusyHolder.Run(runId) => runId
-          case _                                => config.runId
-        )
+        held(busy)
         Step.Busy(busy)
       case Left(error) => Step.Done(Left(error))
 

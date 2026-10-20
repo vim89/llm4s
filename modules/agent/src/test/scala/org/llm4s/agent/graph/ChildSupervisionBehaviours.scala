@@ -4,6 +4,7 @@ import org.llm4s.agent.{ Agent, AgentBuilder, AgentOutputSpec, AgentStatus, Comp
 import org.llm4s.agent.{ ScriptedLLMClient, SpecTools }
 import org.llm4s.agent.SpecTools.{ call, calling }
 import org.llm4s.agent.delegation.{ ChildEnd, ChildRunner, DelegationKeys, PriorUsage }
+import org.llm4s.agent.events.SubagentEvents
 import org.llm4s.agent.graph.middleware.{
   AgentMiddleware,
   GuardrailMiddleware,
@@ -910,6 +911,115 @@ trait ChildSupervisionBehaviours extends AnyFlatSpecLike with Matchers {
     }
     parent.resume(thread, Map(parked.edit(id, ujson.Obj("text" -> "another task")))).isLeft shouldBe true
     setup.allEnds.last.left.toOption.get.message should include("started with other input")
+    setup.childClient.callCount shouldBe 1
+  }
+
+  /** A family whose reviewed call left its failed child `Running`, the parent parked on the approval (#2096). */
+  private def parkedOverRunningChild(name: String, open: () => Checkpointer) = {
+    val setup = new Setup(
+      delegating(),
+      ScriptedLLMClient.of(calling(call("k1", "flaky"))),
+      settle = false,
+      childTools = Seq(flaky(new AtomicBoolean(true))),
+      parentMiddleware = Seq(reviewing(rerun = true))
+    )
+    val runtime = new GraphRuntime(open())
+    val parent  = family(runtime, setup)._1
+    val thread  = ThreadId(name)
+    val parked  = parent.run(thread, "go").ok
+    val id = parked.status match {
+      case AgentStatus.Suspended(approvals, _, _, _, _) => approvals.head._1
+      case other                                        => fail(s"unexpected $other")
+    }
+    val child = onlyChild(runtime, thread)
+    child.status shouldBe CheckpointStatus.Running
+    (setup, runtime, parent, thread, parked.edit(id, ujson.Obj("text" -> "another task")), child.threadId)
+  }
+
+  private def latestRun(store: Checkpointer, child: ThreadId): RunId = RunId(
+    store.latest(child).ok.get.checkpoint.runId
+  )
+
+  /** The child runs `events` announced (`TaskStarted`) and gave a `LiveGap(0)`, in order. */
+  private def announced(events: Vector[StreamEvent]): (Vector[RunId], Vector[RunId]) =
+    (
+      events.flatMap(SubagentEvents.TaskStarted.unapply).map(_.child.runId),
+      events.collect { case StreamEvent.Nested(child, StreamEvent.LiveGap(0)) => child.runId }
+    )
+
+  private def abandoned(store: Checkpointer, child: ThreadId): Unit =
+    store.latest(child).ok.map(s => (s.checkpoint.status, s.checkpoint.outcome)) match {
+      case Some((CheckpointStatus.Failed, Some(RunOutcome.Failed("abandoned", _)))) => ()
+      case other => fail(s"expected the child settled abandoned, got $other")
+    }
+
+  it should "settle the Running child of a call whose arguments an approval edited, then refuse it (#2096)" in {
+    val open                                        = storage()
+    val (setup, _, parent, thread, edited, childId) = parkedOverRunningChild("edited-over-running", open)
+    val original                                    = latestRun(open(), childId)
+    val seen                                        = new CopyOnWriteArrayList[StreamEvent]()
+    parent.streamResume(thread, Map(edited), nested = true)(seen.add(_): Unit).ok.await().isLeft shouldBe true
+    setup.allEnds.last.left.toOption.get.message should include("started with other input")
+    abandoned(open(), childId)
+    setup.childClient.callCount shouldBe 1
+    // the run found, then the settlement run, now the child's latest checkpoint, each announced with a gap
+    val runs = Vector(original, latestRun(open(), childId))
+    announced(seen.asScala.toVector) shouldBe ((runs, runs))
+  }
+
+  it should "announce the run that settled the child first when another settles it before its abandon (#2096)" in {
+    val open                                   = storage()
+    val (setup, _, _, thread, edited, childId) = parkedOverRunningChild("edited-raced", open)
+    val original                               = latestRun(open(), childId)
+    val racing                                 = new AtomicBoolean(false)
+    val other                                  = new GraphRuntime(open())
+    val otherGraph                             = family(other, setup)._2.loop.graph
+    val otherRun                               = RunId("settled-elsewhere")
+    // between the runner's read and its abandon's claim, another runtime settles the child
+    val store = new ForwardingCheckpointer(open()) {
+      override def claim(threadId: ThreadId, request: ClaimRequest) = {
+        if (threadId == childId && racing.getAndSet(false))
+          other
+            .settleChild(
+              childId,
+              otherGraph,
+              RunOutcome.Failed("elsewhere", "raced"),
+              "raced",
+              RunConfig().withRunId(otherRun)
+            )
+            .ok
+        super.claim(threadId, request)
+      }
+    }
+    val parent = family(new GraphRuntime(store), setup)._1
+    racing.set(true)
+    val seen = new CopyOnWriteArrayList[StreamEvent]()
+    parent.streamResume(thread, Map(edited), nested = true)(seen.add(_): Unit).ok.await().isLeft shouldBe true
+    racing.get shouldBe false
+    setup.allEnds.last.left.toOption.get.message should include("started with other input")
+    open().latest(childId).ok.map(_.checkpoint.runId) shouldBe Some(otherRun.value)
+    announced(seen.asScala.toVector) shouldBe ((Vector(original, otherRun), Vector(original, otherRun)))
+  }
+
+  it should "return ThreadBusy for an edited call over a busy child, and settle it on a later recover (#2096)" in {
+    val open                                        = storage()
+    val (setup, _, parent, thread, edited, childId) = parkedOverRunningChild("edited-over-busy", open)
+    val original                                    = latestRun(open(), childId)
+    val held = open().claim(childId, ClaimRequest(RunId("elsewhere"), None, 1.minute)).ok
+    val seen = new CopyOnWriteArrayList[StreamEvent]()
+    parent.streamResume(thread, Map(edited), nested = true)(seen.add(_): Unit).ok.await().isLeft shouldBe true
+    setup.allEnds.last.left.toOption.get shouldBe a[GraphError.ThreadBusy]
+    // the run found, then the run holding the child, each announced with a gap, though it could not be settled
+    announced(seen.asScala.toVector) shouldBe ((
+      Vector(original, RunId("elsewhere")),
+      Vector(original, RunId("elsewhere"))
+    ))
+    open().latest(childId).ok.map(_.checkpoint.status) shouldBe Some(CheckpointStatus.Running)
+
+    open().release(childId, held.token).ok
+    parent.recover(thread).isLeft shouldBe true
+    setup.allEnds.last.left.toOption.get.message should include("started with other input")
+    abandoned(open(), childId)
     setup.childClient.callCount shouldBe 1
   }
 
