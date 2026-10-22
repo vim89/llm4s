@@ -41,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and `withDelegation` beside a harness is refused; [migration](docs/reference/migration.md#subagents-in-the-harness-profile-2052).
 - `LLMClientPekko.streamComplete` materializes `Future[Done]` instead of `NotUsed`: code that names the type, or keeps
   the materialized value, changes; [migration](docs/reference/migration.md#llmclientpekkostreamcomplete-materializes-futuredone-1848).
+- `TraceEvent.CustomEvent`, `TokenUsageRecorded`, `ErrorOccurred` and `AgentRunEnded` gain a `span` field, and an agent
+  run's OpenTelemetry spans and Langfuse trace ids change: positional patterns and dashboards break; [migration](docs/reference/migration.md#one-trace-per-run-2137).
 
 ### Agent subagents (Phase 4)
 
@@ -74,6 +76,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Added** `Checkpointer.sweep`: store-wide retention in bounded pages, reclaiming old tombstones while their readers are still
   told the thread was deleted [#2059](https://github.com/llm4s/llm4s/issues/2059); [design §4.53](docs/design/typed-agent-runtime/4.53-stage-5-slice-s4-store-wide-retention-and-tombstone-reclamation.md).
 - **Added** the checkpoint store chosen in `application.conf` (`llm4s.agent.checkpointer.kind`: `memory`, `sqlite`, `postgres`) through a `CheckpointerBackend` SPI, and `ClaimPolicy`/`WatchPolicy` from `llm4s.agent.runtime` (`CheckpointerConfigLoader`, `RuntimeConfigLoader`) [#2133](https://github.com/llm4s/llm4s/issues/2133); [design §4.54](docs/design/typed-agent-runtime/4.54-stage-5-slice-s5-store-configuration.md).
+- **Added** one trace per agent run: an OpenTelemetry span tree (`invoke_agent` over `chat` and `execute_tool`, a child
+  run under its `task` call) and Langfuse nesting, continued across machines through `TraceContext` on
+  `RunConfig.traceContext` and `RunOrigin.trace` ([#2137](https://github.com/llm4s/llm4s/issues/2137), [design 4.58](docs/design/typed-agent-runtime/4.58-stage-5-slice-o1-one-trace-per-run-across-machines-and-child-runs.md)).
 
 ### Agent harness (Phase 3)
 
