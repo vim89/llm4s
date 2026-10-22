@@ -211,6 +211,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Fixed** (security) `Redaction` left the value of a sensitive key on an indented YAML line in the clear
   (`  apiKey: ...` under a section, `  - password: ...` in a list), whatever the key and quoting style; only a key at the
   start of a line was read [#1844](https://github.com/llm4s/llm4s/issues/1844).
+- **Fixed** (security) the workspace runner refuses more ways round `WORKSPACE_EXTRA_COMMANDS`: rsync's daemon mode
+  (`--daemon`, `--config`, `--dparam`, `-M`), sftp's `-b` batch file and scp's `-D`, a `tar` or `rsync` argument naming
+  a file on another host (`host:path`, `host::module`, `rsync://`), Python front-ends, notebook tooling, package and
+  project runners (`ipython`, `pydoc`, `jupyter`, `npx`, `uv`, `poetry`, `conda`, ...; `npm`, `yarn`, `pnpm` stay
+  allowed build tools), and musl's loader as
+  `libc.musl-*.so.1` [#1845](https://github.com/llm4s/llm4s/issues/1845); [sandbox](docs/reference/workspace-sandbox.md).
 - **Fixed** (security) `Redaction` left the value of a sensitive key in the clear where TOML, YAML or dotenv text sits
   in a JSON string and the key starts a line after an escaped line break or tab (`\n`, `\r`, `\t`, `\u000a`, `\u000d`,
   also doubly escaped in JSON inside a JSON string): `token = "..."`, `password: ...`, `token='...'`. The rest of such
