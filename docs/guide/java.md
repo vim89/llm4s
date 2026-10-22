@@ -283,6 +283,7 @@ import java.util.concurrent.Flow;
 
 import org.llm4s.javaapi.CompletionStream;
 import org.llm4s.javaapi.ConversationBuilder;
+import org.llm4s.javaapi.FakeLlmClient;
 import org.llm4s.javaapi.JCompletion;
 import org.llm4s.javaapi.JCompletionOptions;
 import org.llm4s.javaapi.JEmbeddingClient;
@@ -293,6 +294,7 @@ import org.llm4s.javaapi.JReasoningEffort;
 import org.llm4s.javaapi.JTool;
 import org.llm4s.javaapi.JToolCall;
 import org.llm4s.javaapi.Llm4s;
+import org.llm4s.javaapi.LlmErrorKind;
 import org.llm4s.javaapi.LlmException;
 import org.llm4s.javaapi.LlmResult;
 import org.llm4s.javaapi.Param;
@@ -302,6 +304,10 @@ import org.llm4s.llmconnect.config.OllamaConfig;
 import org.llm4s.llmconnect.config.OpenAIConfig;
 import org.llm4s.llmconnect.model.Conversation;
 import org.llm4s.metrics.MetricsCollector;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 ```
 
 ## A conversation
@@ -688,6 +694,49 @@ that does not answer in time `TIMEOUT`; any other failure with no status, such a
 `OTHER`. To keep the vectors in a store, search them and answer questions from what they find, see
 [Java RAG](java-rag) (`llm4s-java-rag`).
 
+## Testing your code
+
+`FakeLlmClient` is a fake model for your own tests: it answers from a script, records every prompt your code sent, and
+needs no network or API key. Its `client()` is a real `JLlmClient`, so the code under test needs no interface or mock -
+give it the fake's client wherever it takes one:
+
+```java
+class CalculatorTest {
+
+    @Test
+    void answersFromTheModel() {
+        FakeLlmClient fake = FakeLlmClient.replying("4");
+
+        String answer = new Calculator(fake.client()).ask("What is 2+2?");
+
+        assertEquals("4", answer);
+        assertEquals(List.of("What is 2+2?"), fake.prompts());
+    }
+
+    @Test
+    void reportsAProviderFailure() {
+        FakeLlmClient fake = FakeLlmClient.builder()
+            .failWith(LlmErrorKind.RATE_LIMIT, "slow down")
+            .build();
+
+        LlmResult<String> result = fake.client().complete("What is 2+2?");
+
+        assertTrue(result.isFailure());
+        assertEquals(LlmErrorKind.RATE_LIMIT, result.getError().getKind());
+    }
+}
+```
+
+`Calculator` stands for your own class: here, one whose `ask` returns `client.complete(question).getOrNull()`.
+`FakeLlmClient.replying("a", "b")` answers the first call with `a` and the second with `b`; `builder()` mixes replies
+(`reply`) and failures (`failWith`, with the `LlmErrorKind` that `getKind()` then reports). A call beyond the script is a
+failed result whose message names the call and its prompt, so a test that makes more calls than it scripted says why.
+`callCount()`, `prompts()` (the last user message of each call, in order) and `lastPrompt()` show what your code sent.
+
+The fake is in `llm4s-java-api` itself, so a test needs no other dependency. It answers `complete`, `completion` and
+structured output; for an agent with tools from Scala, `llm4s-testkit`'s `ScriptedLLMClient` scripts tool calls too
+([Testing with the Testkit](testing-with-the-testkit)), and `Llm4s.wrapClient` turns it into a `JLlmClient`.
+
 ## What is not here yet
 
 `llm4s-java-api` covers a client, a conversation, the whole reply, the kind of a failure and embeddings. These are not
@@ -697,7 +746,6 @@ available from Java yet, each with the issue that tracks it:
 |---|---|
 | An asynchronous call | none; wrap `complete` yourself, or use the [Spring Boot starter](spring-boot)'s `completeAsync`. Threading and cancellation are being documented in [#1500](https://github.com/llm4s/llm4s/issues/1500) |
 | Agents beyond a turn | [An agent turn](#an-agent-turn) reads a result; the agent guide covers [streaming a turn](agents/streaming#java-and-kotlin) and [suspended turns](agents/#suspended-turns-from-java-and-kotlin) from Java. Tools are defined from Java in [Tools](#tools) |
-| A fake client for your own tests | [#1497](https://github.com/llm4s/llm4s/issues/1497) |
 
 ## Where next
 

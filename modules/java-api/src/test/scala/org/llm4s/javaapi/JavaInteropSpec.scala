@@ -154,6 +154,8 @@ class JavaInteropSpec extends AnyFlatSpec with Matchers {
   /** The facade's Java-visible classes: every one a Java caller calls or implements. */
   private def facade: List[Class[_]] = List(
     classOf[LlmResult[_]],
+    classOf[FakeLlmClient],
+    classOf[FakeLlmClient.Builder],
     classOf[JTool],
     classOf[JTool.Builder],
     classOf[JToolArgs],
@@ -389,7 +391,9 @@ class JavaInteropSpec extends AnyFlatSpec with Matchers {
 
   /** Every public static method the facade means Java callers to call, by class. Nothing else may be one. */
   private def intendedStatics: Map[Class[_], Set[String]] = Map(
-    classOf[JTool] -> Set("builder(String,String)", "fromAnnotated(Object)"),
+    // a test double's entry points: a script of replies, or a builder that mixes in failures (#1497)
+    classOf[FakeLlmClient] -> Set("replying(String[])", "builder()"),
+    classOf[JTool]         -> Set("builder(String,String)", "fromAnnotated(Object)"),
     Class.forName("org.llm4s.javaapi.Llm4s") -> Set(
       "createDefaultClient()",
       "createClient(ProviderConfig)",
@@ -551,6 +555,7 @@ class JavaInteropSpec extends AnyFlatSpec with Matchers {
    */
   private def internalClasses: Set[String] = Set(
     "org.llm4s.javaapi.FacadeInternals", // reads core's Scala values into the facade's types
+    "org.llm4s.javaapi.FakeLlmClients",  // FakeLlmClient's script entries and scripted LLMClient (#1497)
     "org.llm4s.javaapi.JTools",          // a Java tool's schema, the reading of its arguments and its result (#1484)
     "org.llm4s.javaapi.CompletionPublisher", // the Flow.Publisher of JLlmClient.streamAsPublisher (#1485)
     "org.llm4s.javaapi.JavaRecords",         // a Java record's JSON Schema, and the record read back (#1486)

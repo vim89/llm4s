@@ -1997,7 +1997,8 @@ lazy val javaApi = (project in file("modules/java-api"))
     // process-wide. Run the suites one at a time, so another suite's snippets and stream threads cannot print into it.
     Test / parallelExecution := false,
     libraryDependencies ++= Seq(
-      Deps.scalatest % Test
+      Deps.scalatest       % Test,
+      Deps.junitJupiterApi % Test
     )
   )
 
