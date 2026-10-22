@@ -211,6 +211,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation & samples
 
+- **Added** a Quarkus guide ([docs/guide/quarkus.md](docs/guide/quarkus.md)) and a runnable Maven sample,
+  `modules/samples/quarkus-java`: a `@Produces @ApplicationScoped JLlmClient` built with the Java API's builders from
+  a `@ConfigMapping` of `llm4s.provider`, `model`, `base-url` and `api-key`, closed by a `@Disposes` method, and a
+  `@Blocking` `POST /chat` resource; `mvn quarkus:dev` answers from a local Ollama. Its `@QuarkusTest` runs against a
+  stub Ollama server on a loopback port, and CI builds and tests it against the published snapshot and checks that
+  the guide's snippets are excerpts of it (`scripts/check-quarkus-guide-snippets.sh`). The guide covers the `_3`
+  suffix, logging, threading, what is not supported (native image, #1463) and what an extension would add
+  [#1468](https://github.com/llm4s/llm4s/issues/1468).
 - **Added** `DocumentExtractionInspector`, an offline sample that runs `TikaDocumentExtractor` over a file or a
   directory (or generated .txt/.md/.html/.docx/.pdf samples) and prints each file's detected MIME and `MediaType`, the
   extractor used, character and line counts, metadata, a preview and any extraction error
