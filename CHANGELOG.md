@@ -65,6 +65,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   them with `X(...)` and change them with `with*`; `new` and `.copy` are private, and the classes are `final`. JSON is
   unchanged. `UsageSummary.bigDecimalRw` is private;
   [migration](docs/reference/migration.md#core-data-types-are-growth-safe-2356).
+- The `TraceEvent` cases (`AgentInitialized`, `CompletionReceived`, `ToolExecuted`, `ErrorOccurred`, `TokenUsageRecorded`,
+  `AgentRunEnded`, `CustomEvent`, `EmbeddingUsageRecorded`, `CostRecorded`, `RAGOperationCompleted`,
+  `ImageGenerationCompleted`, `CacheHit`, `CacheMiss`) are growth-prone types: build them with `TraceEvent.X(...)` and
+  change them with `with*`; `new` and `.copy` are private, and the classes are `final`. Pattern matching and `toJson`
+  are unchanged; [migration](docs/reference/migration.md#traceevent-cases-are-growth-safe-2377).
 - `JsonlProviderExchangeSink`, `CacheEntry`, `CacheStats`, `OpenAICompatibleClient.Settings`, `SSEParser.SSEEvent`
   and the provider SPI's `EmbeddingProviderSection`, `ProviderConfigKey`, `ProviderModuleReport`,
   `ProviderDiscoveryFailure`, `ProviderIdCollision` and `ProviderRegistryReport` are growth-prone types: build them with
