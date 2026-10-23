@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking changes
 
+- The Postgres stores take a `javax.sql.DataSource`, not a `com.zaxxer.hikari.HikariDataSource`: `PgVectorStore.create`
+  and `PgVectorStore.apply(dataSource, tableName)`, and `PgKeywordIndex.apply(dataSource, ...)`. Source-compatible for
+  callers passing a Hikari pool; recompile against the new signatures. `PgSearchIndex.close()` no longer closes a pool it
+  did not create; [migration](docs/reference/migration.md#postgres-stores-take-a-javaxsqldatasource-2300).
 - The default console tracer prints metadata only: queries, completion content, tool input/output, custom event data
   and error messages are withheld unless `llm4s.tracing.console.captureContent = true`
   (`LLM4S_TRACING_CONSOLE_CAPTURE_CONTENT`) or `new ConsoleTracing(captureContent = true)`; see the new
@@ -335,6 +339,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Embeddings & RAG
 
+- **Added** caller-owned connection pools for every Postgres store and index: `PgVectorStore`, `PgKeywordIndex`,
+  `HybridSearcher.pgvectorShared(dataSource, vectorTableName, keywordTableName[, strategy])` and
+  `PgSearchIndex.fromDataSource(dataSource, vectorTableName)` take any `javax.sql.DataSource` and never close it; no public
+  signature names HikariCP. `HybridSearcher.pgvectorShared(connectionString, ...)` now closes the pool it creates when
+  the searcher closes, and a config-built store closes its pool when the schema cannot be created
+  [#2300](https://github.com/llm4s/llm4s/issues/2300); see
+  [Vector Store](docs/guide/vector-store.md#sharing-your-applications-connection-pool).
 - **Added** `llm4s-vectorstore-elasticsearch` (Experimental): `ElasticsearchVectorStore`, a `VectorStore` over the
   Elasticsearch REST API with no client library - a `dense_vector` index created on the first upsert with the configured
   similarity, kNN search with every `MetadataFilter` applied inside it, `_bulk` writes, API-key or basic authentication,
@@ -359,6 +370,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Memory
 
+- **Added** `PostgresMemoryStore.fromDataSource(dataSource, tableName, embeddingService)`: the store over a caller-owned
+  `javax.sql.DataSource` (a doobie `HikariTransactor`'s `kernel`, a Play or Slick pool), which `close()` leaves open; a
+  store built from a `Config` closes its own pool, also when the schema cannot be created
+  [#2300](https://github.com/llm4s/llm4s/issues/2300); see
+  [Postgres Memory Store](docs/reference/postgres-memory-store.md#sharing-your-applications-connection-pool).
 - **Changed** `MemoryManagerConfig` to a private constructor with `with*` setters (`.copy` is private) [#1847](https://github.com/llm4s/llm4s/issues/1847).
 - **Fixed** `autoExtractEntities` swallowing a cancellation: `recordMessage` returns the `CancelledError` (also a failure ending
   while the thread is interrupted, or a thrown `InterruptedException`) and the interrupt flag stays set [#1847](https://github.com/llm4s/llm4s/issues/1847).
