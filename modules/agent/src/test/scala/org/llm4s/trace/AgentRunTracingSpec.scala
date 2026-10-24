@@ -21,6 +21,7 @@ import org.llm4s.types.Result
 import org.llm4s.agent.AgentStatus
 import org.llm4s.agent.graph.middleware.GuardrailMiddleware
 import org.llm4s.agent.guardrails.builtin.LengthCheck
+import org.llm4s.types.ProviderModelTypes.ProviderId
 import org.scalatest.concurrent.Eventually
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.time.{ Millis, Seconds, Span }
@@ -119,6 +120,32 @@ class AgentRunTracingSpec extends AnyFlatSpec with TestTimeLimit with Matchers w
     tracing.custom.map(_.data("runId").str).toSet shouldBe Set(result.runId.value)
     tracing.custom.map(_.data("threadId").str).toSet shouldBe Set(result.threadId.value)
     tracing.custom.map(_.data("seq").num) shouldBe sorted
+  }
+
+  it should "record the client's provider on its model calls and the run (#2275)" in {
+    val tracing = new Recording()
+    val client = new LLMClient {
+      override def complete(conversation: Conversation, options: CompletionOptions): Result[Completion] =
+        Right(answer("hello"))
+      override def streamComplete(
+        conversation: Conversation,
+        options: CompletionOptions,
+        onChunk: StreamedChunk => Unit
+      ): Result[Completion] = complete(conversation, options)
+      override def getContextWindow(): Int        = 4096
+      override def getReserveCompletion(): Int    = 1024
+      override def providerId: Option[ProviderId] = Some(ProviderId("anthropic"))
+    }
+    ok(traced(client, tracing).run("hi"))
+
+    eventually {
+      tracing.all.collect { case e: TraceEvent.AgentRunEnded => e.provider } shouldBe Vector(
+        Some(ProviderId("anthropic"))
+      )
+    }
+    tracing.custom
+      .filter(_.name == "agent.model_call_completed")
+      .map(_.data("payload")("provider").str) shouldBe Vector("anthropic")
   }
 
   it should "trace a tool call's task between the model calls around it" in {
