@@ -229,6 +229,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Providers
 
+- **Added** keyless Microsoft Entra ID authentication for Azure OpenAI: `authentication = "entra-id"` with the new
+  `llm4s-azure-identity` (`DefaultAzureCredential`, any `TokenCredential`), `AzureConfig.withTokenProvider`, embeddings, Java and Spring [#2274](https://github.com/llm4s/llm4s/issues/2274).
 - **Added** one proxy and custom-CA setting honoured by every provider client - the JDK client, `openai-java`,
   `anthropic-java` and the AWS SDK: `llm4s.http` (`HTTPS_PROXY`, `NO_PROXY`, a trust store, an mTLS key store), a
   section's `http` override, the Java builders' `proxy`/`trustStore` and the Spring `llm4s.http.*` properties;

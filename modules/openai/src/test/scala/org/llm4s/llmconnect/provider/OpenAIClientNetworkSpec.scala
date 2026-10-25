@@ -87,6 +87,26 @@ final class OpenAIClientNetworkSpec extends AnyFlatSpec with Matchers with Eithe
     }
   }
 
+  it should "send an Entra ID bearer token through it, with no api-key header (#2274)" in {
+    Using.resource(RecordingProxy.start(body = LocalProviderTestServer.openAICompletion("keyless", "gpt-4o"))) {
+      proxy =>
+        val tokens = new org.llm4s.llmconnect.auth.AccessTokenProvider {
+          def token(): org.llm4s.types.Result[String] = Right("entra-token")
+          def invalidate(rejected: String): Unit      = ()
+        }
+        val config = AzureConfig
+          .keyless("http://my-resource.openai.test", "gpt-4o", tokens)
+          .withNetwork(via(HttpProxy("127.0.0.1", proxy.port)))
+        val client = OpenAIClient(config).value
+        client.complete(hello, CompletionOptions()).value.content shouldBe "keyless"
+        val request = proxy.requests.head
+        request.target should startWith("http://my-resource.openai.test/openai/deployments/gpt-4o/")
+        request.header("Authorization") shouldBe Some("Bearer entra-token")
+        request.header("api-key") shouldBe None
+        client.close()
+    }
+  }
+
   "OpenAIClient with a trust store" should "reach an HTTPS server signed by its CA, which it refuses without one" in {
     val server  = TestTls.httpsServer(body = LocalProviderTestServer.openAICompletion("over tls", "gpt-4o"))
     val baseUrl = s"https://localhost:${server.getAddress.getPort}/v1"

@@ -2,6 +2,7 @@ package org.llm4s.llmconnect.config
 
 import org.llm4s.annotation.Stable
 import org.llm4s.http.HttpNetworkSettings
+import org.llm4s.llmconnect.auth.AccessTokenProvider
 import org.llm4s.types.ProviderModelTypes.ProviderId
 import org.llm4s.types.Result
 import org.llm4s.util.Redaction
@@ -31,6 +32,12 @@ import org.llm4s.util.Redaction
  * @param reserveCompletion Tokens held back from prompt history for the completion.
  * @param timeouts how long a request and a stream may take: the section's `timeouts` block. An absent
  *                 value keeps the client's own default ([[ProviderTimeouts]])
+ * @param tokenProvider keyless Microsoft Entra ID authentication (#2274): when set, each request carries
+ *                 `Authorization: Bearer <token>` from it instead of the `api-key` header, and `apiKey`
+ *                 is unused (empty). A section with `authentication = "entra-id"` gets one from
+ *                 `llm4s-azure-identity`; in code, build one with that module's `AzureEntraId`, or
+ *                 implement [[org.llm4s.llmconnect.auth.AccessTokenProvider]] directly. Use [[AzureConfig.keyless]]
+ *                 or [[withTokenProvider]].
  */
 @Stable
 final case class AzureConfig private (
@@ -41,7 +48,8 @@ final case class AzureConfig private (
   contextWindow: Int,
   reserveCompletion: Int,
   override val timeouts: ProviderTimeouts,
-  override val network: HttpNetworkSettings
+  override val network: HttpNetworkSettings,
+  tokenProvider: Option[AccessTokenProvider]
 ) extends ProviderConfig:
   override val providerId: ProviderId                                 = ProviderId("azure")
   override def endpointUrl: Option[String]                            = Some(endpoint)
@@ -54,8 +62,17 @@ final case class AzureConfig private (
   def withApiVersion(apiVersion: String): AzureConfig            = copy(apiVersion = apiVersion)
   def withContextWindow(contextWindow: Int): AzureConfig         = copy(contextWindow = contextWindow)
   def withReserveCompletion(reserveCompletion: Int): AzureConfig = copy(reserveCompletion = reserveCompletion)
+
+  /** Authenticates with Microsoft Entra ID tokens from `tokenProvider` instead of the API key, which is cleared. */
+  def withTokenProvider(tokenProvider: AccessTokenProvider): AzureConfig = withTokenProvider(Some(tokenProvider))
+
+  /** `Some` as [[withTokenProvider(tokenProvider:* withTokenProvider]]; `None` goes back to the API key. */
+  def withTokenProvider(tokenProvider: Option[AccessTokenProvider]): AzureConfig =
+    copy(tokenProvider = tokenProvider, apiKey = if tokenProvider.isDefined then "" else apiKey)
+
   override def toString: String =
-    s"AzureConfig(endpoint=$endpoint, apiKey=${Redaction.secret(apiKey)}, model=$model, apiVersion=$apiVersion, " +
+    val credential = tokenProvider.fold(s"apiKey=${Redaction.secret(apiKey)}")(_ => "auth=entra-id")
+    s"AzureConfig(endpoint=$endpoint, $credential, model=$model, apiVersion=$apiVersion, " +
       s"contextWindow=$contextWindow, reserveCompletion=$reserveCompletion)"
 
 object AzureConfig {
@@ -70,7 +87,10 @@ object AzureConfig {
 
   private val standardReserve = 4096
 
-  /** Builds a config without validating it; [[fromValues]] validates. `timeouts` defaults to [[ProviderTimeouts.default]]. */
+  /**
+   * Builds a config without validating it; [[fromValues]] validates. `timeouts` defaults to
+   * [[ProviderTimeouts.default]], and `tokenProvider` to none: the API key authenticates.
+   */
   def apply(
     endpoint: String,
     apiKey: String,
@@ -78,18 +98,32 @@ object AzureConfig {
     apiVersion: String,
     contextWindow: Int,
     reserveCompletion: Int,
-    timeouts: ProviderTimeouts = ProviderTimeouts.default
+    timeouts: ProviderTimeouts = ProviderTimeouts.default,
+    tokenProvider: Option[AccessTokenProvider] = None
   ): AzureConfig =
     new AzureConfig(
       endpoint,
-      apiKey,
+      if tokenProvider.isDefined then "" else apiKey,
       model,
       apiVersion,
       contextWindow,
       reserveCompletion,
       timeouts,
-      network = HttpNetworkSettings.default
+      HttpNetworkSettings.default,
+      tokenProvider
     )
+
+  /** The shape before `tokenProvider` (#2274): API-key authentication. */
+  def apply(
+    endpoint: String,
+    apiKey: String,
+    model: String,
+    apiVersion: String,
+    contextWindow: Int,
+    reserveCompletion: Int,
+    timeouts: ProviderTimeouts
+  ): AzureConfig =
+    apply(endpoint, apiKey, model, apiVersion, contextWindow, reserveCompletion, timeouts, None)
 
   /**
    * The endpoint, API key and deployment name, every other field at its default: the entry point
@@ -102,6 +136,27 @@ object AzureConfig {
     val (cw, rc) = azureFallback(model)
     apply(endpoint, apiKey, model, DEFAULT_API_VERSION, cw, rc)
   }
+
+  /**
+   * A keyless config (#2274): the endpoint and deployment name, authenticated with Microsoft Entra ID
+   * tokens from `tokenProvider` - such as `AzureEntraId.defaultCredential()` from `llm4s-azure-identity` -
+   * every other field at its default, as [[apply(endpoint:String,apiKey:String,model:String)* apply]]
+   * gives it. Usable from Java and Kotlin.
+   */
+  def keyless(endpoint: String, model: String, tokenProvider: AccessTokenProvider): AzureConfig =
+    apply(endpoint, "", model).withTokenProvider(tokenProvider)
+
+  /**
+   * [[fromValues]] for keyless Microsoft Entra ID authentication (#2274): validates the endpoint and
+   * resolves the context window from the model catalogue, with `tokenProvider` in place of an API key.
+   */
+  def fromTokenProvider(
+    modelName: String,
+    endpoint: String,
+    tokenProvider: AccessTokenProvider,
+    apiVersion: String
+  )(using ContextWindowResolver): Result[AzureConfig] =
+    resolved(modelName, endpoint, None, apiVersion).map(_.withTokenProvider(tokenProvider))
 
   private def azureFallback(modelName: String): (Int, Int) =
     modelName match {
@@ -130,10 +185,19 @@ object AzureConfig {
     endpoint: String,
     apiKey: String,
     apiVersion: String
+  )(using ContextWindowResolver): Result[AzureConfig] =
+    resolved(modelName, endpoint, Some(apiKey), apiVersion)
+
+  /** The validated config, with `apiKey` checked when there is one to check (a keyless config has none). */
+  private def resolved(
+    modelName: String,
+    endpoint: String,
+    apiKey: Option[String],
+    apiVersion: String
   )(using resolver: ContextWindowResolver): Result[AzureConfig] =
     for {
       _ <- ProviderConfig.nonEmpty("Azure", "endpoint", endpoint)
-      _ <- ProviderConfig.nonEmpty("Azure", "apiKey", apiKey)
+      _ <- ProviderConfig.nonEmptyIfSet("Azure", "apiKey", apiKey)
     } yield {
       val (cw, rc) = resolver.resolve(
         lookupProviders = Seq("azure", "openai"),
@@ -145,7 +209,7 @@ object AzureConfig {
       )
       AzureConfig(
         endpoint = endpoint,
-        apiKey = apiKey,
+        apiKey = apiKey.getOrElse(""),
         model = modelName,
         apiVersion = apiVersion,
         contextWindow = cw,
